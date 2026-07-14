@@ -115,10 +115,11 @@ public sealed class NetworkCaptureService : IDisposable
 
         if (tcp is not null && ip is not null)
         {
-            protocol = tcp.SourcePort == 502 || tcp.DestinationPort == 502 ? "Modbus/TCP" : "TCP";
+            var isModbusTcp = IsLikelyModbusTcp(tcp);
+            protocol = isModbusTcp || tcp.SourcePort == 502 || tcp.DestinationPort == 502 ? "Modbus/TCP" : "TCP";
             source = $"{ip.SourceAddress}:{tcp.SourcePort}";
             destination = $"{ip.DestinationAddress}:{tcp.DestinationPort}";
-            info = BuildTcpInfo(tcp);
+            info = isModbusTcp ? BuildModbusTcpInfo(tcp) : BuildTcpInfo(tcp);
         }
         else if (udp is not null && ip is not null)
         {
@@ -165,6 +166,38 @@ public sealed class NetworkCaptureService : IDisposable
 
         var flagText = flags.Count == 0 ? "TCP" : string.Join(",", flags);
         return $"{tcp.SourcePort} -> {tcp.DestinationPort} [{flagText}] Seq={tcp.SequenceNumber} Ack={tcp.AcknowledgmentNumber} Win={tcp.WindowSize}";
+    }
+
+    private static bool IsLikelyModbusTcp(TcpPacket tcp)
+    {
+        var payload = tcp.PayloadData;
+        if (payload is null || payload.Length < 8)
+        {
+            return false;
+        }
+
+        var protocolId = (payload[2] << 8) | payload[3];
+        var length = (payload[4] << 8) | payload[5];
+        var functionCode = payload[7] & 0x7F;
+
+        return protocolId == 0
+            && length >= 2
+            && length <= payload.Length - 6
+            && functionCode is >= 1 and <= 127;
+    }
+
+    private static string BuildModbusTcpInfo(TcpPacket tcp)
+    {
+        var payload = tcp.PayloadData;
+        if (payload is null || payload.Length < 8)
+        {
+            return BuildTcpInfo(tcp);
+        }
+
+        var transactionId = (payload[0] << 8) | payload[1];
+        var unitId = payload[6];
+        var functionCode = payload[7];
+        return $"{tcp.SourcePort} -> {tcp.DestinationPort} Modbus/TCP TID={transactionId} UID={unitId} FC={functionCode}";
     }
 
     private static string Clean(string? text) => string.IsNullOrWhiteSpace(text) ? "Interface sem descricao" : text.Trim();

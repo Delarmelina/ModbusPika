@@ -71,7 +71,7 @@ Filtros:
 - `Filtro Source`, `Filtro Destination`, `Filtro Protocol`, `Filtro Info`: filtros visuais por coluna.
 - `BPF gerado`: expressao tecnica montada automaticamente para a captura.
 
-Quando `Modbus TCP` esta selecionado sem porta informada, o filtro assume `tcp port 502`. Quando uma porta e informada, o filtro usa `tcp` + a porta escolhida, evitando combinar `502` com outra porta.
+Quando `Modbus TCP` esta selecionado, o filtro de captura usa `tcp`. Se uma porta for informada, a porta escolhida e adicionada ao filtro. A classificacao visual como `Modbus/TCP` usa deteccao de payload MBAP e fallback por porta 502.
 
 Sem Npcap, o app continua funcionando como client/server Modbus, mas a captura passiva nao lista interfaces.
 - leitura FC03 e FC04 no cliente

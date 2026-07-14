@@ -661,7 +661,7 @@ public sealed partial class MainViewModel : ObservableObject
             "UDP" => "udp",
             "ARP" => "arp",
             "ICMP" => "icmp",
-            "Modbus TCP" => string.IsNullOrWhiteSpace(CapturePort) ? "tcp port 502" : "tcp",
+            "Modbus TCP" => "tcp",
             _ => "tcp or udp or arp or icmp"
         };
         parts.Add($"({protocol})");
