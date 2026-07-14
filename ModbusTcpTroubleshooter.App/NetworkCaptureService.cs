@@ -25,6 +25,22 @@ public sealed class NetworkCaptureService : IDisposable
         }
     }
 
+    public async Task<IReadOnlyList<CaptureDeviceTrafficSample>> SampleDeviceTrafficAsync(string filter, TimeSpan duration, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var devices = CaptureDeviceList.Instance
+                .Select((device, index) => SampleDeviceTrafficAsync(index, device, filter, duration, cancellationToken))
+                .ToArray();
+
+            return await Task.WhenAll(devices);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     public void Start(CaptureDeviceOption deviceOption, string filter)
     {
         Stop();
@@ -201,9 +217,76 @@ public sealed class NetworkCaptureService : IDisposable
     }
 
     private static string Clean(string? text) => string.IsNullOrWhiteSpace(text) ? "Interface sem descricao" : text.Trim();
+
+    private static async Task<CaptureDeviceTrafficSample> SampleDeviceTrafficAsync(int index, ICaptureDevice device, string filter, TimeSpan duration, CancellationToken cancellationToken)
+    {
+        var packetCount = 0;
+        long byteCount = 0;
+        var description = Clean(device.Description);
+        var name = device.Name;
+        var error = "";
+
+        void OnPacketArrival(object sender, PacketCapture e)
+        {
+            try
+            {
+                var raw = e.GetPacket();
+                Interlocked.Increment(ref packetCount);
+                Interlocked.Add(ref byteCount, raw.Data.Length);
+            }
+            catch
+            {
+                // Sampling must not fail due to a malformed packet callback.
+            }
+        }
+
+        try
+        {
+            device.OnPacketArrival += OnPacketArrival;
+            device.Open(DeviceModes.Promiscuous, 500);
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                device.Filter = filter;
+            }
+
+            device.StartCapture();
+            await Task.Delay(duration, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            try
+            {
+                device.StopCapture();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                device.OnPacketArrival -= OnPacketArrival;
+                device.Close();
+            }
+            catch
+            {
+            }
+        }
+
+        return new CaptureDeviceTrafficSample(
+            new CaptureDeviceOption(index, description, name),
+            packetCount,
+            byteCount,
+            error);
+    }
 }
 
 public sealed record CaptureDeviceOption(int Index, string Description, string Name)
 {
     public override string ToString() => $"{Index}: {Description}";
 }
+
+public sealed record CaptureDeviceTrafficSample(CaptureDeviceOption Device, int PacketCount, long ByteCount, string Error);

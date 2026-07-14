@@ -400,7 +400,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task EnsureFullTestRuntimeAsync()
     {
-        EnsureNetworkCaptureForFullTest();
+        await EnsureNetworkCaptureForFullTestAsync();
 
         if (IsServerMode)
         {
@@ -414,7 +414,7 @@ public sealed partial class MainViewModel : ObservableObject
         await Task.Delay(500);
     }
 
-    private void EnsureNetworkCaptureForFullTest()
+    private async Task EnsureNetworkCaptureForFullTestAsync()
     {
         if (IsNetworkCaptureRunning)
         {
@@ -435,6 +435,12 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
+            var selectedByTraffic = await SelectCaptureDeviceByTrafficAsync();
+            if (selectedByTraffic is not null)
+            {
+                SelectedCaptureDevice = selectedByTraffic;
+            }
+
             GeneratedCaptureFilter = BuildCaptureFilter();
             _networkCapture.Start(SelectedCaptureDevice, GeneratedCaptureFilter);
             IsNetworkCaptureRunning = true;
@@ -445,6 +451,45 @@ public sealed partial class MainViewModel : ObservableObject
             _fullTestStartupActions.Add($"Captura passiva: falha ao iniciar automaticamente ({ex.Message}).");
             Log.Error(ex, "Falha ao iniciar captura passiva automaticamente no teste completo");
         }
+    }
+
+    private async Task<CaptureDeviceOption?> SelectCaptureDeviceByTrafficAsync()
+    {
+        const string probeFilter = "tcp or udp or arp or icmp";
+        var samples = await _networkCapture.SampleDeviceTrafficAsync(
+            probeFilter,
+            TimeSpan.FromSeconds(2),
+            CancellationToken.None);
+
+        if (samples.Count == 0)
+        {
+            _fullTestStartupActions.Add("Selecao de interface: amostragem sem resultado; usando interface selecionada atual.");
+            return SelectedCaptureDevice;
+        }
+
+        var sampleSummary = string.Join("; ", samples
+            .OrderByDescending(x => x.PacketCount)
+            .ThenByDescending(x => x.ByteCount)
+            .Take(5)
+            .Select(x => string.IsNullOrWhiteSpace(x.Error)
+                ? $"{x.Device.Index}:{x.Device.Description}={x.PacketCount} pkt/{FormatBytes(x.ByteCount)}"
+                : $"{x.Device.Index}:{x.Device.Description}=erro {x.Error}"));
+
+        var best = samples
+            .Where(x => string.IsNullOrWhiteSpace(x.Error))
+            .OrderByDescending(x => x.PacketCount)
+            .ThenByDescending(x => x.ByteCount)
+            .FirstOrDefault();
+
+        if (best is null || best.PacketCount == 0)
+        {
+            _fullTestStartupActions.Add($"Selecao de interface: nenhuma interface apresentou trafego em 2 s com BPF '{probeFilter}'. Amostras: {sampleSummary}. Usando interface selecionada atual.");
+            return SelectedCaptureDevice;
+        }
+
+        var matchingDevice = CaptureDevices.FirstOrDefault(x => x.Index == best.Device.Index) ?? best.Device;
+        _fullTestStartupActions.Add($"Selecao de interface: escolhida '{matchingDevice.Description}' por maior trafego em 2 s ({best.PacketCount} pkt, {FormatBytes(best.ByteCount)}). Amostras: {sampleSummary}.");
+        return matchingDevice;
     }
 
     private void EnsureServerForFullTest()
@@ -2130,6 +2175,19 @@ public sealed partial class MainViewModel : ObservableObject
             return $"{bytesPerSecond / 1024:0.00} KB/s";
         }
         return $"{bytesPerSecond:0} B/s";
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1024 * 1024)
+        {
+            return $"{bytes / 1024.0 / 1024.0:0.00} MB";
+        }
+        if (bytes >= 1024)
+        {
+            return $"{bytes / 1024.0:0.00} KB";
+        }
+        return $"{bytes} B";
     }
 
     private static string FormatBitsPerSecond(long bitsPerSecond)
