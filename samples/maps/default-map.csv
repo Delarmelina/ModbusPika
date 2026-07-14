@@ -1,0 +1,9 @@
+type,address,name,value,writable
+Coil,0,Permissive Run,1,true
+Coil,1,Remote Enable,0,true
+DiscreteInput,0,Healthy Status,1,false
+DiscreteInput,1,Alarm Active,0,false
+HoldingRegister,0,Speed Setpoint,1000,true
+HoldingRegister,1,Mode Command,1001,true
+InputRegister,0,Actual Speed,2000,false
+InputRegister,1,Motor Current,2001,false
