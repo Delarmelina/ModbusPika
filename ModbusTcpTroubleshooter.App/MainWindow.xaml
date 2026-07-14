@@ -366,12 +366,17 @@
                                     <Button Content="Executar teste completo" Command="{Binding StartFullTestCommand}" />
                                     <Button Content="Exportar relatorio" Command="{Binding SaveFullTestReportCommand}" />
                                     <CheckBox Content="Varredura ativa da sub-rede" IsChecked="{Binding EnableActiveSubnetScan}" VerticalAlignment="Center" Margin="14,0,8,0" />
+                                    <CheckBox Content="Descoberta de mapa" IsChecked="{Binding EnableMapDiscovery}" VerticalAlignment="Center" Margin="8,0,8,0" />
                                     <TextBlock Text="Timeout ms" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
                                     <TextBox Text="{Binding ActiveScanTimeoutMs, UpdateSourceTrigger=PropertyChanged}" Width="58" />
                                     <TextBlock Text="Concorrencia" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
                                     <TextBox Text="{Binding ActiveScanConcurrency, UpdateSourceTrigger=PropertyChanged}" Width="48" />
                                     <TextBlock Text="Observacao s" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
                                     <TextBox Text="{Binding PassiveObservationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="48" />
+                                    <TextBlock Text="Mapa ate" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
+                                    <TextBox Text="{Binding MapDiscoveryMaxAddress, UpdateSourceTrigger=PropertyChanged}" Width="54" />
+                                    <TextBlock Text="Bloco" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
+                                    <TextBox Text="{Binding MapDiscoveryBlockSize, UpdateSourceTrigger=PropertyChanged}" Width="42" />
                                 </WrapPanel>
                                 <UniformGrid Columns="3" Margin="0,0,0,8">
                                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,0">
@@ -448,6 +453,21 @@
                                             <DataGridTextColumn Header="Fonte" Binding="{Binding Source}" Width="160" />
                                             <DataGridTextColumn Header="Papel provavel" Binding="{Binding RoleGuess}" Width="200" />
                                             <DataGridTextColumn Header="Portas/Modbus" Binding="{Binding ModbusStatus}" Width="145" />
+                                            <DataGridTextColumn Header="Notas" Binding="{Binding Notes}" Width="*" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                                <TabItem Header="Mapa descoberto">
+                                    <DataGrid Margin="0,8,0,0" ItemsSource="{Binding DiscoveredMapRows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Endpoint" Binding="{Binding Endpoint}" Width="145" />
+                                            <DataGridTextColumn Header="Unit ID" Binding="{Binding UnitId}" Width="65" />
+                                            <DataGridTextColumn Header="Function" Binding="{Binding Function}" Width="170" />
+                                            <DataGridTextColumn Header="Inicio" Binding="{Binding StartAddress}" Width="70" />
+                                            <DataGridTextColumn Header="Fim" Binding="{Binding EndAddress}" Width="70" />
+                                            <DataGridTextColumn Header="Qtd" Binding="{Binding Quantity}" Width="60" />
+                                            <DataGridTextColumn Header="Modo" Binding="{Binding DiscoveryMode}" Width="115" />
+                                            <DataGridTextColumn Header="Confianca" Binding="{Binding Confidence}" Width="130" />
                                             <DataGridTextColumn Header="Notas" Binding="{Binding Notes}" Width="*" />
                                         </DataGrid.Columns>
                                     </DataGrid>
