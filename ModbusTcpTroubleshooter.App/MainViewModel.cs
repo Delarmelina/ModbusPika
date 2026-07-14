@@ -3,8 +3,10 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -60,6 +62,15 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool isFullTestRunning;
     [ObservableProperty] private FullTestStep? selectedFullTestStep;
     [ObservableProperty] private string fullTestReport = "";
+    [ObservableProperty] private string fullTestOverallStatus = "Aguardando";
+    [ObservableProperty] private string fullTestScore = "0/0";
+    [ObservableProperty] private string fullTestNetworkSummary = "Sem varredura executada.";
+    [ObservableProperty] private string fullTestModbusSummary = "Sem descoberta Modbus executada.";
+    [ObservableProperty] private string fullTestRouteSummary = "Sem analise de rota executada.";
+    [ObservableProperty] private string fullTestBandwidthSummary = "Sem medicao de banda executada.";
+    [ObservableProperty] private bool enableActiveSubnetScan = true;
+    [ObservableProperty] private int activeScanTimeoutMs = 250;
+    [ObservableProperty] private int activeScanConcurrency = 48;
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
     public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP"];
@@ -75,6 +86,7 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<ImportantWarningSummary> ImportantWarnings { get; } = [];
     public ObservableCollection<VerificationCheck> VerificationChecks { get; } = [];
     public ObservableCollection<FullTestStep> FullTestSteps { get; } = [];
+    public ObservableCollection<NetworkDiscoveryRow> NetworkDiscoveryRows { get; } = [];
 
     public bool IsClientMode => SelectedMode == "Client";
     public bool IsServerMode => SelectedMode == "Server";
@@ -312,15 +324,26 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsFullTestRunning = true;
         FullTestReport = "";
+        FullTestOverallStatus = "Executando";
+        FullTestScore = "0/0";
+        FullTestNetworkSummary = "Coletando dados...";
+        FullTestModbusSummary = "Coletando dados...";
+        FullTestRouteSummary = "Coletando dados...";
+        FullTestBandwidthSummary = "Coletando dados...";
         FullTestSteps.Clear();
+        NetworkDiscoveryRows.Clear();
 
         var steps = new List<(FullTestStep Step, Func<CancellationToken, Task<FullTestStepResult>> Action)>
         {
             CreateFullTestStep("Contexto do teste", "Registra alvo, modo, porta, interface, filtro e premissas de seguranca.", RunFullTestContextAsync),
+            CreateFullTestStep("Interfaces e rotas IP", "Mapeia placas ativas, gateways, mascara, velocidade nominal e rotas do Windows.", RunIpRouteAnalysisAsync),
             CreateFullTestStep("Inventario passivo TCP", "Resume endpoints e protocolos vistos na captura TCP atual.", RunPassiveInventoryAsync),
             CreateFullTestStep("Tabela ARP local", "Consulta ARP do Windows para descobrir dispositivos ja resolvidos na rede.", RunArpSnapshotAsync),
+            CreateFullTestStep("Varredura de hosts", "Testa hosts candidatos da sub-rede e consolida dispositivos possivelmente ativos.", RunHostDiscoveryAsync),
+            CreateFullTestStep("Descoberta Modbus", "Procura servidores Modbus/TCP nos hosts descobertos e no alvo configurado.", RunModbusDiscoveryAsync),
             CreateFullTestStep("Conectividade TCP", "Testa abertura de socket TCP no alvo e porta configurados.", RunTcpConnectivityAsync),
-            CreateFullTestStep("Banda e carga", "Analisa taxa aproximada de pacotes, fila de UI e distribuicao de protocolos.", RunTrafficLoadAsync),
+            CreateFullTestStep("Banda e carga", "Mede contadores de interface e analisa taxa aproximada de pacotes capturados.", RunTrafficLoadAsync),
+            CreateFullTestStep("Topologia inferida", "Infere gateway, possiveis switches/infraestrutura e lacunas de visibilidade.", RunTopologyInferenceAsync),
             CreateFullTestStep("Mapa Modbus", "Valida todas as linhas habilitadas do mapa configurado por leitura real.", RunClientMapValidationAsync),
             CreateFullTestStep("Envio e recebimento", "Executa uma transacao Modbus read-only para confirmar request/response.", RunSendReceiveValidationAsync),
             CreateFullTestStep("Falhas observadas", "Consolida avisos importantes e checks automaticos ja detectados.", RunObservedFailuresAsync),
@@ -333,6 +356,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         FullTestReport = BuildFullTestReport();
+        UpdateFullTestSummaryCards();
         Status = "Teste completo finalizado. Relatorio gerado.";
         IsFullTestRunning = false;
     }
@@ -533,27 +557,39 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnSelectedCaptureProtocolChanged(string value)
     {
-        GeneratedCaptureFilter = BuildCaptureFilter();
+        RefreshGeneratedCaptureFilterPreview();
     }
 
     partial void OnCaptureIpChanged(string value)
     {
-        GeneratedCaptureFilter = BuildCaptureFilter();
+        RefreshGeneratedCaptureFilterPreview();
     }
 
     partial void OnSelectedCaptureIpDirectionChanged(string value)
     {
-        GeneratedCaptureFilter = BuildCaptureFilter();
+        RefreshGeneratedCaptureFilterPreview();
     }
 
     partial void OnCapturePortChanged(string value)
     {
-        GeneratedCaptureFilter = BuildCaptureFilter();
+        RefreshGeneratedCaptureFilterPreview();
     }
 
     partial void OnSelectedCapturePortDirectionChanged(string value)
     {
-        GeneratedCaptureFilter = BuildCaptureFilter();
+        RefreshGeneratedCaptureFilterPreview();
+    }
+
+    private void RefreshGeneratedCaptureFilterPreview()
+    {
+        try
+        {
+            GeneratedCaptureFilter = BuildCaptureFilter();
+        }
+        catch (Exception ex)
+        {
+            GeneratedCaptureFilter = ex.Message;
+        }
     }
 
     private void LoadDefaultClientMap()
@@ -737,6 +773,11 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (!string.IsNullOrWhiteSpace(CaptureIp))
         {
+            if (!IPAddress.TryParse(CaptureIp.Trim(), out _))
+            {
+                throw new InvalidOperationException($"IP invalido para filtro BPF: {CaptureIp}");
+            }
+
             var ipClause = SelectedCaptureIpDirection switch
             {
                 "Somente origem" => $"src host {CaptureIp.Trim()}",
@@ -748,11 +789,16 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (!string.IsNullOrWhiteSpace(CapturePort))
         {
+            if (!int.TryParse(CapturePort.Trim(), out var filterPort) || filterPort < 1 || filterPort > 65535)
+            {
+                throw new InvalidOperationException($"Porta invalida para filtro BPF: {CapturePort}");
+            }
+
             var portClause = SelectedCapturePortDirection switch
             {
-                "Somente origem" => $"src port {CapturePort.Trim()}",
-                "Somente destino" => $"dst port {CapturePort.Trim()}",
-                _ => $"port {CapturePort.Trim()}"
+                "Somente origem" => $"src port {filterPort}",
+                "Somente destino" => $"dst port {filterPort}",
+                _ => $"port {filterPort}"
             };
             parts.Add($"({portClause})");
         }
@@ -806,6 +852,7 @@ public sealed partial class MainViewModel : ObservableObject
         finally
         {
             step.FinishedAt = DateTimeOffset.Now;
+            UpdateFullTestSummaryCards();
         }
     }
 
@@ -835,6 +882,37 @@ public sealed partial class MainViewModel : ObservableObject
         return Task.FromResult(new FullTestStepResult(status, details, recommendation));
     }
 
+    private async Task<FullTestStepResult> RunIpRouteAnalysisAsync(CancellationToken cancellationToken)
+    {
+        var profiles = GetNetworkProfiles();
+        var routeOutput = await RunProcessAsync("route", "print -4", cancellationToken);
+        var activeProfiles = profiles.Where(x => x.IsOperational).ToList();
+
+        var profileLines = activeProfiles.Count == 0
+            ? "Nenhuma interface IPv4 operacional encontrada."
+            : string.Join(Environment.NewLine, activeProfiles.Select(x =>
+                $"{x.Name} | IP {x.Address}/{x.PrefixLength} | Gateway {x.Gateway} | Speed {FormatBitsPerSecond(x.SpeedBitsPerSecond)} | MAC {x.MacAddress}"));
+
+        FullTestRouteSummary = activeProfiles.Count == 0
+            ? "Sem interface IPv4 operacional."
+            : string.Join(" | ", activeProfiles.Take(3).Select(x => $"{x.Address}/{x.PrefixLength} via {x.Gateway}"));
+
+        var defaultRouteFound = routeOutput.Contains("0.0.0.0", StringComparison.OrdinalIgnoreCase);
+        var status = activeProfiles.Count == 0 ? "Falha" : defaultRouteFound ? "OK" : "Atencao";
+        var details = string.Join(Environment.NewLine, [
+            "Interfaces operacionais:",
+            profileLines,
+            "",
+            "Amostra de rotas IPv4:",
+            string.Join(Environment.NewLine, routeOutput.Split(Environment.NewLine).Take(40))
+        ]);
+        var recommendation = status == "OK"
+            ? "Rotas e interfaces basicas foram detectadas. Confira se a interface usada e a mesma conectada a rede industrial."
+            : "Verifique IP, mascara, gateway, VLAN e se a interface industrial esta ativa antes de diagnosticar Modbus.";
+
+        return new FullTestStepResult(status, details, recommendation);
+    }
+
     private Task<FullTestStepResult> RunPassiveInventoryAsync(CancellationToken cancellationToken)
     {
         var rows = TcpTimeline.ToList();
@@ -852,6 +930,11 @@ public sealed partial class MainViewModel : ObservableObject
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
             .ToList();
+
+        foreach (var endpoint in endpoints)
+        {
+            UpsertDiscovery(endpoint, "", "Captura TCP", GuessRole(endpoint), "", "Host observado passivamente na timeline TCP.");
+        }
 
         var protocols = rows
             .GroupBy(x => x.Protocol)
@@ -880,15 +963,16 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task<FullTestStepResult> RunArpSnapshotAsync(CancellationToken cancellationToken)
     {
         var output = await RunProcessAsync("arp", "-a", cancellationToken);
-        var lines = output
-            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
+        var lines = output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        var arpEntries = ParseArpEntries(output);
 
-        var entries = lines.Count(x => x.Contains("dynamic", StringComparison.OrdinalIgnoreCase)
-            || x.Contains("static", StringComparison.OrdinalIgnoreCase)
-            || x.Contains("dinamico", StringComparison.OrdinalIgnoreCase)
-            || x.Contains("estatico", StringComparison.OrdinalIgnoreCase));
-        var targetSeen = lines.Any(x => x.Contains(TargetIp, StringComparison.OrdinalIgnoreCase));
+        foreach (var entry in arpEntries)
+        {
+            UpsertDiscovery(entry.Ip, entry.Mac, "ARP", GuessRole(entry.Ip), "", $"Entrada ARP {entry.Type}.");
+        }
+
+        var entries = arpEntries.Count;
+        var targetSeen = arpEntries.Any(x => x.Ip.Equals(TargetIp, StringComparison.OrdinalIgnoreCase));
         var status = entries == 0 ? "Atencao" : targetSeen || TargetIp is "127.0.0.1" or "localhost" ? "OK" : "Atencao";
 
         var details = string.Join(Environment.NewLine, [
@@ -900,6 +984,151 @@ public sealed partial class MainViewModel : ObservableObject
         var recommendation = status == "OK"
             ? "ARP local encontrou entradas; valide se MAC/vendor batem com o inventario industrial."
             : "Se o alvo deveria estar no mesmo segmento, gere comunicacao/ping permitido ou revise VLAN, gateway, mascara e porta do switch.";
+
+        return new FullTestStepResult(status, details, recommendation);
+    }
+
+    private async Task<FullTestStepResult> RunHostDiscoveryAsync(CancellationToken cancellationToken)
+    {
+        var candidates = BuildDiscoveryCandidates();
+        if (candidates.Count == 0)
+        {
+            FullTestNetworkSummary = "Nenhum host candidato.";
+            return new FullTestStepResult("Atencao", "Nenhum host candidato foi encontrado por ARP, captura passiva, alvo configurado ou sub-rede local.", "Configure o IP alvo e/ou inicie uma captura passiva antes da varredura.");
+        }
+
+        var timeoutMs = Math.Clamp(ActiveScanTimeoutMs, 100, 3000);
+        var concurrency = Math.Clamp(ActiveScanConcurrency, 4, 128);
+        var semaphore = new SemaphoreSlim(concurrency);
+        var results = new ConcurrentBag<HostProbeResult>();
+
+        var tasks = candidates.Select(async ip =>
+        {
+            await semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var pingOk = await TryPingAsync(ip, timeoutMs);
+                var configuredPortOpen = await TryTcpConnectAsync(ip, Port, timeoutMs, cancellationToken);
+                var modbusPortOpen = Port == 502 ? configuredPortOpen : await TryTcpConnectAsync(ip, 502, timeoutMs, cancellationToken);
+                results.Add(new HostProbeResult(ip, pingOk, configuredPortOpen, modbusPortOpen));
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+
+        var active = results
+            .Where(x => x.PingOk || x.ConfiguredPortOpen || x.ModbusPortOpen)
+            .OrderBy(x => IpSortKey(x.Ip))
+            .ToList();
+
+        foreach (var result in active)
+        {
+            var openPorts = new List<string>();
+            if (result.ConfiguredPortOpen)
+            {
+                openPorts.Add(Port.ToString());
+            }
+            if (result.ModbusPortOpen && Port != 502)
+            {
+                openPorts.Add("502");
+            }
+
+            UpsertDiscovery(
+                result.Ip,
+                "",
+                "Varredura ativa",
+                GuessRole(result.Ip),
+                string.Join(", ", openPorts.Distinct()),
+                $"Ping: {(result.PingOk ? "OK" : "sem resposta")}; porta configurada {Port}: {(result.ConfiguredPortOpen ? "aberta" : "fechada/filtrada")}; porta 502: {(result.ModbusPortOpen ? "aberta" : "fechada/filtrada")}.");
+        }
+
+        FullTestNetworkSummary = $"{active.Count}/{candidates.Count} hosts candidatos responderam; {active.Count(x => x.ModbusPortOpen || x.ConfiguredPortOpen)} com porta Modbus/configurada aberta.";
+
+        var status = active.Count == 0 ? "Atencao" : "OK";
+        var details = string.Join(Environment.NewLine, [
+            $"Candidatos testados: {candidates.Count}",
+            $"Timeout por tentativa: {timeoutMs} ms",
+            $"Concorrencia: {concurrency}",
+            $"Hosts ativos/provaveis: {active.Count}",
+            active.Count == 0 ? "Nenhum host respondeu a ping ou TCP." : string.Join(Environment.NewLine, active.Take(80).Select(x => $"{x.Ip} | ping={x.PingOk} | port {Port}={x.ConfiguredPortOpen} | port 502={x.ModbusPortOpen}"))
+        ]);
+        var recommendation = status == "OK"
+            ? "Compare hosts encontrados com a topologia esperada; qualquer IP desconhecido em rede industrial deve ser investigado."
+            : "Se a rede bloqueia ICMP/TCP probe, use captura passiva com porta espelhada e ARP para inventario.";
+
+        return new FullTestStepResult(status, details, recommendation);
+    }
+
+    private async Task<FullTestStepResult> RunModbusDiscoveryAsync(CancellationToken cancellationToken)
+    {
+        var hosts = BuildDiscoveryCandidates()
+            .Concat(NetworkDiscoveryRows.Select(x => x.Ip))
+            .Where(IsIPv4)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(256)
+            .ToList();
+
+        if (!hosts.Contains(TargetIp) && IsIPv4(TargetIp))
+        {
+            hosts.Insert(0, TargetIp);
+        }
+
+        var ports = new[] { Port, 502 }.Distinct().Where(x => x > 0 && x <= 65535).ToList();
+        var modbusCandidates = new ConcurrentBag<(string Ip, int Port, bool Open)>();
+        var timeoutMs = Math.Clamp(ActiveScanTimeoutMs, 100, 3000);
+        var semaphore = new SemaphoreSlim(Math.Clamp(ActiveScanConcurrency, 4, 128));
+
+        var tasks = hosts.SelectMany(ip => ports.Select(async port =>
+        {
+            await semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var open = await TryTcpConnectAsync(ip, port, timeoutMs, cancellationToken);
+                modbusCandidates.Add((ip, port, open));
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }));
+
+        await Task.WhenAll(tasks);
+
+        var openEndpoints = modbusCandidates
+            .Where(x => x.Open)
+            .OrderBy(x => IpSortKey(x.Ip))
+            .ThenBy(x => x.Port)
+            .ToList();
+
+        foreach (var endpoint in openEndpoints)
+        {
+            UpsertDiscovery(endpoint.Ip, "", "Descoberta Modbus", endpoint.Port == 502 ? "Possivel server Modbus" : "Porta TCP configurada aberta", endpoint.Port.ToString(), $"Porta TCP {endpoint.Port} aceitou conexao.");
+        }
+
+        var passiveModbusHosts = TcpTimeline
+            .Where(x => x.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase) || x.Info.Contains("Modbus", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(x => new[] { ExtractHost(x.Source), ExtractHost(x.Destination) })
+            .Where(IsIPv4)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        FullTestModbusSummary = $"{openEndpoints.Count} endpoint(s) TCP Modbus/configurado aberto(s); {passiveModbusHosts.Count} host(s) Modbus vistos passivamente.";
+
+        var status = openEndpoints.Count > 0 || passiveModbusHosts.Count > 0 ? "OK" : "Atencao";
+        var details = string.Join(Environment.NewLine, [
+            $"Hosts avaliados: {hosts.Count}",
+            $"Portas avaliadas: {string.Join(", ", ports)}",
+            $"Endpoints com porta aberta: {openEndpoints.Count}",
+            openEndpoints.Count == 0 ? "Nenhuma porta Modbus/configurada aberta encontrada." : string.Join(Environment.NewLine, openEndpoints.Take(80).Select(x => $"{x.Ip}:{x.Port} aberto")),
+            $"Hosts Modbus na captura passiva: {(passiveModbusHosts.Count == 0 ? "nenhum" : string.Join(", ", passiveModbusHosts))}"
+        ]);
+        var recommendation = status == "OK"
+            ? "Valide se todos os servidores Modbus encontrados pertencem ao inventario esperado da rede."
+            : "Se deveria haver Modbus na rede, revise filtros de captura, porta usada pelo equipamento, firewall e segmentacao/VLAN.";
 
         return new FullTestStepResult(status, details, recommendation);
     }
@@ -925,15 +1154,37 @@ public sealed partial class MainViewModel : ObservableObject
             "Conectividade TCP basica OK. Se Modbus falhar, investigue Unit ID, mapa, function code, gateway ou resposta de aplicacao.");
     }
 
-    private Task<FullTestStepResult> RunTrafficLoadAsync(CancellationToken cancellationToken)
+    private async Task<FullTestStepResult> RunTrafficLoadAsync(CancellationToken cancellationToken)
     {
+        var before = TakeInterfaceSnapshots();
+        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+        var after = TakeInterfaceSnapshots();
+        var bandwidthLines = new List<string>();
+
+        foreach (var end in after)
+        {
+            if (!before.TryGetValue(end.Key, out var start))
+            {
+                continue;
+            }
+
+            var rxBytesPerSecond = Math.Max(0, end.Value.BytesReceived - start.BytesReceived) / 2.0;
+            var txBytesPerSecond = Math.Max(0, end.Value.BytesSent - start.BytesSent) / 2.0;
+            bandwidthLines.Add($"{end.Value.Name}: RX {FormatBytesPerSecond(rxBytesPerSecond)}, TX {FormatBytesPerSecond(txBytesPerSecond)}, nominal {FormatBitsPerSecond(end.Value.SpeedBitsPerSecond)}");
+        }
+
         var rows = TcpTimeline.ToList();
         if (rows.Count < 2)
         {
-            return Task.FromResult(new FullTestStepResult(
+            FullTestBandwidthSummary = bandwidthLines.Count == 0 ? "Sem contadores de interface." : string.Join(" | ", bandwidthLines.Take(3));
+            return new FullTestStepResult(
                 "Atencao",
-                $"Amostra insuficiente para banda/carga. Pacotes: {rows.Count}. Fila pendente UI: {QueuedPassivePackets}.",
-                "Colete uma janela maior de captura para estimar carga, rajadas e protocolos competindo com Modbus."));
+                string.Join(Environment.NewLine, [
+                    $"Amostra TCP insuficiente para carga por protocolo. Pacotes: {rows.Count}. Fila pendente UI: {QueuedPassivePackets}.",
+                    "Contadores de interface:",
+                    bandwidthLines.Count == 0 ? "Nenhum contador coletado." : string.Join(Environment.NewLine, bandwidthLines)
+                ]),
+                "Colete uma janela maior de captura para estimar carga, rajadas e protocolos competindo com Modbus.");
         }
 
         var minTime = rows.Min(x => x.RelativeTime);
@@ -948,7 +1199,11 @@ public sealed partial class MainViewModel : ObservableObject
             .Select(x => $"{x.Key}: {x.Count()} pkt");
 
         var status = QueuedPassivePackets > 5000 || packetsPerSecond > 5000 ? "Atencao" : "OK";
+        FullTestBandwidthSummary = $"{packetsPerSecond:0.0} pkt/s capturados | {(bandwidthLines.Count == 0 ? "sem contador de interface" : bandwidthLines[0])}";
         var details = string.Join(Environment.NewLine, [
+            "Contadores de interface em janela de 2s:",
+            bandwidthLines.Count == 0 ? "Nenhum contador coletado." : string.Join(Environment.NewLine, bandwidthLines),
+            "",
             $"Janela analisada: {span:0.0} s",
             $"Pacotes analisados: {rows.Count}",
             $"Taxa aproximada: {packetsPerSecond:0.0} pkt/s, {bytesPerSecond / 1024:0.0} KB/s",
@@ -958,6 +1213,47 @@ public sealed partial class MainViewModel : ObservableObject
         var recommendation = status == "OK"
             ? "Carga observada parece tratavel pela UI; compare com baseline da rede industrial."
             : "Ha sinal de alto volume ou backlog. Filtre por VLAN/IP/porta, valide broadcast storm, multicast excessivo ou porta espelhada muito ampla.";
+
+        return new FullTestStepResult(status, details, recommendation);
+    }
+
+    private Task<FullTestStepResult> RunTopologyInferenceAsync(CancellationToken cancellationToken)
+    {
+        var profiles = GetNetworkProfiles().Where(x => x.IsOperational).ToList();
+        var gateways = profiles.Select(x => x.Gateway).Where(IsIPv4).Distinct().ToList();
+        var knownHosts = NetworkDiscoveryRows.ToList();
+        var modbusHosts = knownHosts.Where(x => x.ModbusStatus.Contains("aberta", StringComparison.OrdinalIgnoreCase)
+            || x.RoleGuess.Contains("Modbus", StringComparison.OrdinalIgnoreCase)).ToList();
+        var passiveOnly = knownHosts.Where(x => x.Source.Contains("Captura", StringComparison.OrdinalIgnoreCase)).ToList();
+        var gatewayRows = knownHosts.Where(x => gateways.Contains(x.Ip)).ToList();
+
+        foreach (var gateway in gateways)
+        {
+            UpsertDiscovery(gateway, "", "Rota IP", "Gateway / possivel roteador industrial", "", "Gateway padrao detectado nas interfaces IPv4.");
+        }
+
+        var possibleInfrastructure = knownHosts
+            .Where(x => gateways.Contains(x.Ip)
+                || x.Notes.Contains("ARP", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(x.ModbusStatus))
+            .Take(20)
+            .ToList();
+
+        var details = string.Join(Environment.NewLine, [
+            $"Gateways detectados: {(gateways.Count == 0 ? "nenhum" : string.Join(", ", gateways))}",
+            $"Dispositivos conhecidos na tabela visual: {knownHosts.Count}",
+            $"Possiveis servidores Modbus: {modbusHosts.Count}",
+            $"Hosts vistos apenas passivamente: {passiveOnly.Count}",
+            $"Gateways tambem vistos em ARP/captura: {gatewayRows.Count}",
+            "Possivel infraestrutura:",
+            possibleInfrastructure.Count == 0 ? "Sem candidatos claros." : string.Join(Environment.NewLine, possibleInfrastructure.Select(x => $"{x.Ip} | {x.RoleGuess} | {x.Source} | {x.Notes}")),
+            "",
+            "Limite tecnico: switch L2 puro normalmente nao aparece como hop IP. Para identificar switch, porta fisica, VLAN e fabricante com confianca, o proximo passo e SNMP/LLDP/CDP ou leitura do switch gerenciavel."
+        ]);
+
+        var status = gateways.Count == 0 ? "Atencao" : "OK";
+        var recommendation = status == "OK"
+            ? "Use gateway + ARP + captura passiva como mapa inicial. Para topologia fisica real, adicionar SNMP/LLDP e cadastro de switches."
+            : "Sem gateway claro. Verifique se a maquina esta na VLAN industrial correta ou se a rede e isolada sem roteamento.";
 
         return Task.FromResult(new FullTestStepResult(status, details, recommendation));
     }
@@ -1098,6 +1394,12 @@ public sealed partial class MainViewModel : ObservableObject
         builder.AppendLine($"- Unit ID: {UnitId}");
         builder.AppendLine($"- Interface captura: {SelectedCaptureDevice?.Description ?? "Nao selecionada"}");
         builder.AppendLine($"- Filtro BPF: {GeneratedCaptureFilter}");
+        builder.AppendLine($"- Status geral: {FullTestOverallStatus}");
+        builder.AppendLine($"- Score: {FullTestScore}");
+        builder.AppendLine($"- Rede: {FullTestNetworkSummary}");
+        builder.AppendLine($"- Modbus: {FullTestModbusSummary}");
+        builder.AppendLine($"- Rotas: {FullTestRouteSummary}");
+        builder.AppendLine($"- Banda: {FullTestBandwidthSummary}");
         builder.AppendLine();
 
         foreach (var step in FullTestSteps)
@@ -1115,7 +1417,339 @@ public sealed partial class MainViewModel : ObservableObject
             builder.AppendLine();
         }
 
+        builder.AppendLine("## Dispositivos / rede");
+        builder.AppendLine();
+        if (NetworkDiscoveryRows.Count == 0)
+        {
+            builder.AppendLine("Nenhum dispositivo consolidado.");
+        }
+        else
+        {
+            builder.AppendLine("| IP | MAC | Fonte | Papel provavel | Portas/Modbus | Notas |");
+            builder.AppendLine("|---|---|---|---|---|---|");
+            foreach (var row in NetworkDiscoveryRows.OrderBy(x => IpSortKey(x.Ip)))
+            {
+                builder.AppendLine($"| {row.Ip} | {row.Mac} | {EscapeMarkdownTable(row.Source)} | {EscapeMarkdownTable(row.RoleGuess)} | {EscapeMarkdownTable(row.ModbusStatus)} | {EscapeMarkdownTable(row.Notes)} |");
+            }
+        }
+
         return builder.ToString();
+    }
+
+    private static string EscapeMarkdownTable(string value)
+    {
+        return value.Replace("|", "\\|").Replace(Environment.NewLine, " ");
+    }
+
+    private void UpdateFullTestSummaryCards()
+    {
+        var completed = FullTestSteps.ToList();
+        var ok = completed.Count(x => x.Status == "OK");
+        var warnings = completed.Count(x => x.Status == "Atencao");
+        var failures = completed.Count(x => x.Status is "Falha" or "Erro");
+
+        FullTestScore = $"{ok}/{completed.Count} OK";
+        FullTestOverallStatus = failures > 0 ? "Falha" : warnings > 0 ? "Atencao" : "OK";
+    }
+
+    private List<string> BuildDiscoveryCandidates()
+    {
+        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (IsIPv4(TargetIp))
+        {
+            candidates.Add(TargetIp);
+        }
+
+        foreach (var row in TcpTimeline)
+        {
+            var source = ExtractHost(row.Source);
+            var destination = ExtractHost(row.Destination);
+            if (IsIPv4(source))
+            {
+                candidates.Add(source);
+            }
+            if (IsIPv4(destination))
+            {
+                candidates.Add(destination);
+            }
+        }
+
+        foreach (var row in NetworkDiscoveryRows)
+        {
+            if (IsIPv4(row.Ip))
+            {
+                candidates.Add(row.Ip);
+            }
+        }
+
+        if (EnableActiveSubnetScan)
+        {
+            foreach (var profile in GetNetworkProfiles().Where(x => x.IsOperational))
+            {
+                foreach (var ip in EnumerateSubnetHosts(profile.Address, profile.PrefixLength, 512))
+                {
+                    candidates.Add(ip);
+                }
+            }
+        }
+
+        return candidates
+            .Where(IsIPv4)
+            .OrderBy(IpSortKey)
+            .Take(512)
+            .ToList();
+    }
+
+    private void UpsertDiscovery(string ip, string mac, string source, string roleGuess, string modbusStatus, string notes)
+    {
+        if (!IsIPv4(ip))
+        {
+            return;
+        }
+
+        var row = NetworkDiscoveryRows.FirstOrDefault(x => x.Ip.Equals(ip, StringComparison.OrdinalIgnoreCase));
+        if (row is null)
+        {
+            NetworkDiscoveryRows.Add(new NetworkDiscoveryRow
+            {
+                Ip = ip,
+                Mac = mac,
+                Source = source,
+                RoleGuess = roleGuess,
+                ModbusStatus = modbusStatus,
+                Notes = notes
+            });
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(mac))
+        {
+            row.Mac = mac;
+        }
+        row.Source = MergeText(row.Source, source);
+        row.RoleGuess = PreferLonger(row.RoleGuess, roleGuess);
+        row.ModbusStatus = MergeText(row.ModbusStatus, modbusStatus);
+        row.Notes = MergeText(row.Notes, notes);
+    }
+
+    private static string MergeText(string current, string next)
+    {
+        if (string.IsNullOrWhiteSpace(next))
+        {
+            return current;
+        }
+        if (string.IsNullOrWhiteSpace(current))
+        {
+            return next;
+        }
+        return current.Contains(next, StringComparison.OrdinalIgnoreCase) ? current : $"{current}; {next}";
+    }
+
+    private static string PreferLonger(string current, string next)
+    {
+        if (string.IsNullOrWhiteSpace(next))
+        {
+            return current;
+        }
+        return string.IsNullOrWhiteSpace(current) || next.Length > current.Length ? next : current;
+    }
+
+    private List<NetworkInterfaceProfile> GetNetworkProfiles()
+    {
+        var profiles = new List<NetworkInterfaceProfile>();
+        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            var properties = networkInterface.GetIPProperties();
+            var unicast = properties.UnicastAddresses
+                .FirstOrDefault(x => x.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(x.Address));
+
+            if (unicast is null)
+            {
+                continue;
+            }
+
+            var gateway = properties.GatewayAddresses
+                .FirstOrDefault(x => x.Address.AddressFamily == AddressFamily.InterNetwork)?.Address.ToString() ?? "";
+
+            profiles.Add(new NetworkInterfaceProfile(
+                networkInterface.Name,
+                networkInterface.Description,
+                unicast.Address.ToString(),
+                PrefixLengthFromMask(unicast.IPv4Mask),
+                gateway,
+                networkInterface.GetPhysicalAddress().ToString(),
+                networkInterface.Speed,
+                networkInterface.OperationalStatus == OperationalStatus.Up));
+        }
+
+        return profiles;
+    }
+
+    private Dictionary<string, InterfaceTrafficSnapshot> TakeInterfaceSnapshots()
+    {
+        var snapshots = new Dictionary<string, InterfaceTrafficSnapshot>(StringComparer.OrdinalIgnoreCase);
+        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces().Where(x => x.OperationalStatus == OperationalStatus.Up))
+        {
+            try
+            {
+                var stats = networkInterface.GetIPv4Statistics();
+                snapshots[networkInterface.Id] = new InterfaceTrafficSnapshot(
+                    networkInterface.Name,
+                    stats.BytesReceived,
+                    stats.BytesSent,
+                    networkInterface.Speed);
+            }
+            catch
+            {
+                // Some virtual adapters throw while counters are being queried.
+            }
+        }
+
+        return snapshots;
+    }
+
+    private static List<ArpEntry> ParseArpEntries(string output)
+    {
+        var entries = new List<ArpEntry>();
+        var regex = new Regex(@"(?<ip>(?:\d{1,3}\.){3}\d{1,3})\s+(?<mac>[0-9a-fA-F:-]{17})\s+(?<type>\S+)", RegexOptions.Compiled);
+
+        foreach (Match match in regex.Matches(output))
+        {
+            var ip = match.Groups["ip"].Value;
+            if (!IsIPv4(ip))
+            {
+                continue;
+            }
+
+            entries.Add(new ArpEntry(ip, match.Groups["mac"].Value, match.Groups["type"].Value));
+        }
+
+        return entries;
+    }
+
+    private static IEnumerable<string> EnumerateSubnetHosts(string address, int prefixLength, int maxHosts)
+    {
+        if (!IsIPv4(address) || prefixLength < 16 || prefixLength > 30)
+        {
+            yield break;
+        }
+
+        var ip = IpToUInt32(address);
+        var mask = prefixLength == 0 ? 0u : uint.MaxValue << (32 - prefixLength);
+        var network = ip & mask;
+        var broadcast = network | ~mask;
+        var count = Math.Min(maxHosts, Math.Max(0, (int)Math.Min(uint.MaxValue, broadcast - network - 1)));
+
+        for (var i = 1u; i <= count; i++)
+        {
+            yield return UInt32ToIp(network + i);
+        }
+    }
+
+    private static async Task<bool> TryTcpConnectAsync(string ip, int port, int timeoutMs, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(timeoutMs));
+            await client.ConnectAsync(ip, port, timeout.Token);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> TryPingAsync(string ip, int timeoutMs)
+    {
+        try
+        {
+            using var ping = new Ping();
+            var reply = await ping.SendPingAsync(ip, timeoutMs);
+            return reply.Status == IPStatus.Success;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string GuessRole(string ip)
+    {
+        if (!IsIPv4(ip))
+        {
+            return "";
+        }
+
+        return ip switch
+        {
+            "127.0.0.1" => "Loopback/local",
+            _ => "Host industrial ou infraestrutura"
+        };
+    }
+
+    private static bool IsIPv4(string value)
+    {
+        return IPAddress.TryParse(value, out var address) && address.AddressFamily == AddressFamily.InterNetwork;
+    }
+
+    private static int PrefixLengthFromMask(IPAddress? mask)
+    {
+        if (mask is null)
+        {
+            return 24;
+        }
+
+        return mask.GetAddressBytes().Sum(b => Convert.ToString(b, 2).Count(bit => bit == '1'));
+    }
+
+    private static uint IpSortKey(string ip)
+    {
+        return IsIPv4(ip) ? IpToUInt32(ip) : uint.MaxValue;
+    }
+
+    private static uint IpToUInt32(string ip)
+    {
+        var bytes = IPAddress.Parse(ip).GetAddressBytes();
+        return ((uint)bytes[0] << 24) | ((uint)bytes[1] << 16) | ((uint)bytes[2] << 8) | bytes[3];
+    }
+
+    private static string UInt32ToIp(uint value)
+    {
+        return $"{(value >> 24) & 0xFF}.{(value >> 16) & 0xFF}.{(value >> 8) & 0xFF}.{value & 0xFF}";
+    }
+
+    private static string FormatBytesPerSecond(double bytesPerSecond)
+    {
+        if (bytesPerSecond >= 1024 * 1024)
+        {
+            return $"{bytesPerSecond / 1024 / 1024:0.00} MB/s";
+        }
+        if (bytesPerSecond >= 1024)
+        {
+            return $"{bytesPerSecond / 1024:0.00} KB/s";
+        }
+        return $"{bytesPerSecond:0} B/s";
+    }
+
+    private static string FormatBitsPerSecond(long bitsPerSecond)
+    {
+        if (bitsPerSecond <= 0)
+        {
+            return "desconhecida";
+        }
+        if (bitsPerSecond >= 1_000_000_000)
+        {
+            return $"{bitsPerSecond / 1_000_000_000.0:0.0} Gbps";
+        }
+        if (bitsPerSecond >= 1_000_000)
+        {
+            return $"{bitsPerSecond / 1_000_000.0:0.0} Mbps";
+        }
+        return $"{bitsPerSecond / 1_000.0:0.0} Kbps";
     }
 
     private static async Task<string> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken)
@@ -1468,6 +2102,32 @@ public sealed partial class FullTestStep : ObservableObject
 }
 
 public sealed record FullTestStepResult(string Status, string Detail, string Recommendation);
+
+public sealed partial class NetworkDiscoveryRow : ObservableObject
+{
+    [ObservableProperty] private string ip = "";
+    [ObservableProperty] private string mac = "";
+    [ObservableProperty] private string source = "";
+    [ObservableProperty] private string roleGuess = "";
+    [ObservableProperty] private string modbusStatus = "";
+    [ObservableProperty] private string notes = "";
+}
+
+internal sealed record NetworkInterfaceProfile(
+    string Name,
+    string Description,
+    string Address,
+    int PrefixLength,
+    string Gateway,
+    string MacAddress,
+    long SpeedBitsPerSecond,
+    bool IsOperational);
+
+internal sealed record InterfaceTrafficSnapshot(string Name, long BytesReceived, long BytesSent, long SpeedBitsPerSecond);
+
+internal sealed record ArpEntry(string Ip, string Mac, string Type);
+
+internal sealed record HostProbeResult(string Ip, bool PingOk, bool ConfiguredPortOpen, bool ModbusPortOpen);
 
 public sealed class TcpTimelineRow
 {

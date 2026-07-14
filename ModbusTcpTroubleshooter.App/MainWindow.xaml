@@ -238,44 +238,96 @@
                             </TabItem>
                             <TabItem Header="Teste completo">
                                 <DockPanel Margin="0,8,0,0">
-                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                                        <TextBlock Text="Varredura industrial guiada" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
-                                        <Button Content="Executar teste completo" Command="{Binding StartFullTestCommand}" />
-                                        <Button Content="Exportar relatorio" Command="{Binding SaveFullTestReportCommand}" />
+                                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <TextBlock Text="Varredura industrial guiada" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                            <Button Content="Executar teste completo" Command="{Binding StartFullTestCommand}" />
+                                            <Button Content="Exportar relatorio" Command="{Binding SaveFullTestReportCommand}" />
+                                            <CheckBox Content="Varredura ativa da sub-rede" IsChecked="{Binding EnableActiveSubnetScan}" VerticalAlignment="Center" Margin="14,0,8,0" />
+                                            <TextBlock Text="Timeout ms" VerticalAlignment="Center" Margin="8,0,4,0" />
+                                            <TextBox Text="{Binding ActiveScanTimeoutMs, UpdateSourceTrigger=PropertyChanged}" Width="58" />
+                                            <TextBlock Text="Concorrencia" VerticalAlignment="Center" Margin="8,0,4,0" />
+                                            <TextBox Text="{Binding ActiveScanConcurrency, UpdateSourceTrigger=PropertyChanged}" Width="48" />
+                                        </WrapPanel>
+                                        <UniformGrid Columns="3" Margin="0,0,0,4">
+                                            <Border Background="#EEF4EA" BorderBrush="#CAD8C5" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,6,6">
+                                                <StackPanel>
+                                                    <TextBlock Text="Status geral" Foreground="#5B665F" />
+                                                    <TextBlock Text="{Binding FullTestOverallStatus}" FontSize="18" FontWeight="SemiBold" Foreground="#17312B" />
+                                                    <TextBlock Text="{Binding FullTestScore}" Foreground="#5B665F" />
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Background="#F4F0E6" BorderBrush="#DDD1B8" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,6,6">
+                                                <StackPanel>
+                                                    <TextBlock Text="Rede / hosts" Foreground="#5B665F" />
+                                                    <TextBlock Text="{Binding FullTestNetworkSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#17312B" />
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Background="#EAF2F5" BorderBrush="#C7D8DF" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                                <StackPanel>
+                                                    <TextBlock Text="Modbus descoberto" Foreground="#5B665F" />
+                                                    <TextBlock Text="{Binding FullTestModbusSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#17312B" />
+                                                </StackPanel>
+                                            </Border>
+                                        </UniformGrid>
+                                        <UniformGrid Columns="2">
+                                            <Border Background="#F6F7F3" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,6,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="Rotas / gateway" Foreground="#5B665F" />
+                                                    <TextBlock Text="{Binding FullTestRouteSummary}" TextWrapping="Wrap" Foreground="#17312B" />
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Background="#F6F7F3" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="8">
+                                                <StackPanel>
+                                                    <TextBlock Text="Banda / carga" Foreground="#5B665F" />
+                                                    <TextBlock Text="{Binding FullTestBandwidthSummary}" TextWrapping="Wrap" Foreground="#17312B" />
+                                                </StackPanel>
+                                            </Border>
+                                        </UniformGrid>
                                     </StackPanel>
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="1.1*" />
-                                            <RowDefinition Height="6" />
-                                            <RowDefinition Height="*" />
-                                        </Grid.RowDefinitions>
-                                        <DataGrid Grid.Row="0" ItemsSource="{Binding FullTestSteps}" SelectedItem="{Binding SelectedFullTestStep}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
-                                            <DataGrid.Columns>
-                                                <DataGridTextColumn Header="#" Binding="{Binding Order}" Width="35" />
-                                                <DataGridTextColumn Header="Etapa" Binding="{Binding Name}" Width="150" />
-                                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="85" />
-                                                <DataGridTextColumn Header="Objetivo" Binding="{Binding Objective}" Width="*" />
-                                                <DataGridTextColumn Header="Recomendacao" Binding="{Binding Recommendation}" Width="240" />
-                                            </DataGrid.Columns>
-                                        </DataGrid>
-                                        <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
-                                        <Grid Grid.Row="2">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="1*" />
-                                                <ColumnDefinition Width="6" />
-                                                <ColumnDefinition Width="1*" />
-                                            </Grid.ColumnDefinitions>
-                                            <DockPanel Grid.Column="0" Margin="0,8,8,0">
-                                                <TextBlock DockPanel.Dock="Top" Text="Detalhe da etapa selecionada" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,4" />
-                                                <TextBox Text="{Binding SelectedFullTestStep.Result}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
-                                            </DockPanel>
-                                            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" Margin="0,8,0,0" />
-                                            <DockPanel Grid.Column="2" Margin="8,8,0,0">
-                                                <TextBlock DockPanel.Dock="Top" Text="Relatorio final" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,4" />
+                                    <TabControl>
+                                        <TabItem Header="Checklist">
+                                            <Grid Margin="0,8,0,0">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="1.1*" />
+                                                    <RowDefinition Height="6" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+                                                <DataGrid Grid.Row="0" ItemsSource="{Binding FullTestSteps}" SelectedItem="{Binding SelectedFullTestStep}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Header="#" Binding="{Binding Order}" Width="35" />
+                                                        <DataGridTextColumn Header="Etapa" Binding="{Binding Name}" Width="155" />
+                                                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="85" />
+                                                        <DataGridTextColumn Header="Objetivo" Binding="{Binding Objective}" Width="*" />
+                                                        <DataGridTextColumn Header="Recomendacao" Binding="{Binding Recommendation}" Width="260" />
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
+                                                <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
+                                                <DockPanel Grid.Row="2" Margin="0,8,0,0">
+                                                    <TextBlock DockPanel.Dock="Top" Text="Detalhe da etapa selecionada" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,4" />
+                                                    <TextBox Text="{Binding SelectedFullTestStep.Result}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
+                                                </DockPanel>
+                                            </Grid>
+                                        </TabItem>
+                                        <TabItem Header="Dispositivos / rede">
+                                            <DataGrid Margin="0,8,0,0" ItemsSource="{Binding NetworkDiscoveryRows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="IP" Binding="{Binding Ip}" Width="120" />
+                                                    <DataGridTextColumn Header="MAC" Binding="{Binding Mac}" Width="140" />
+                                                    <DataGridTextColumn Header="Fonte" Binding="{Binding Source}" Width="150" />
+                                                    <DataGridTextColumn Header="Papel provavel" Binding="{Binding RoleGuess}" Width="180" />
+                                                    <DataGridTextColumn Header="Portas/Modbus" Binding="{Binding ModbusStatus}" Width="130" />
+                                                    <DataGridTextColumn Header="Notas" Binding="{Binding Notes}" Width="*" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </TabItem>
+                                        <TabItem Header="Relatorio">
+                                            <DockPanel Margin="0,8,0,0">
+                                                <TextBlock DockPanel.Dock="Top" Text="Relatorio final exportavel" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,4" />
                                                 <TextBox Text="{Binding FullTestReport}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
                                             </DockPanel>
-                                        </Grid>
-                                    </Grid>
+                                        </TabItem>
+                                    </TabControl>
                                 </DockPanel>
                             </TabItem>
                         </TabControl>
