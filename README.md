@@ -384,6 +384,8 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 - smoke test local passando com FC03 e FC06
 - botao `TESTE COMPLETO` executa checklist guiado com contexto, inventario passivo TCP, ARP local, conectividade TCP, carga de trafego, validacao do mapa, teste read-only de envio/recebimento e consolidacao de falhas
 - o teste completo agora inclui interfaces/rotas IP, gateways, velocidade nominal de placas, medicao de banda por contadores da interface, varredura ativa limitada de hosts candidatos/sub-rede, descoberta de portas Modbus/configuradas e tabela visual de dispositivos encontrados
+- etapas dependentes de captura passiva usam janela de observacao configuravel antes de declarar amostra insuficiente
+- deteccao de polling rapido usa mediana de multiplas amostras e ignora bursts muito curtos para reduzir falso positivo
 - a inferencia de topologia aponta gateway, possiveis elementos de infraestrutura e lacunas de visibilidade; identificacao fisica de switches/portas exige evolucao futura com SNMP/LLDP/CDP ou integracao com switches gerenciaveis
 - relatorio do teste completo pode ser exportado em Markdown
 - por seguranca industrial, o teste completo nao executa escrita automatica em PLC/equipamento; escrita deve ser manual ou futura configuracao explicita de ponto seguro

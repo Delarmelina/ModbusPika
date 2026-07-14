@@ -28,6 +28,7 @@ public sealed partial class MainViewModel : ObservableObject
     private CancellationTokenSource? _serverCts;
     private CancellationTokenSource? _scanCts;
     private readonly Dictionary<string, DateTimeOffset> _lastRequestBySignature = [];
+    private readonly Dictionary<string, Queue<double>> _pollingIntervalsBySignature = [];
     private readonly Dictionary<string, int> _exceptionCounts = [];
     private readonly Dictionary<string, int> _outOfMapCounts = [];
 
@@ -71,6 +72,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool enableActiveSubnetScan = true;
     [ObservableProperty] private int activeScanTimeoutMs = 250;
     [ObservableProperty] private int activeScanConcurrency = 48;
+    [ObservableProperty] private int passiveObservationSeconds = 12;
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
     public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP"];
@@ -313,6 +315,7 @@ public sealed partial class MainViewModel : ObservableObject
         Diagnostics.Clear();
         ImportantWarnings.Clear();
         _lastRequestBySignature.Clear();
+        _pollingIntervalsBySignature.Clear();
         _exceptionCounts.Clear();
         _outOfMapCounts.Clear();
         LoadVerificationChecks();
@@ -913,15 +916,15 @@ public sealed partial class MainViewModel : ObservableObject
         return new FullTestStepResult(status, details, recommendation);
     }
 
-    private Task<FullTestStepResult> RunPassiveInventoryAsync(CancellationToken cancellationToken)
+    private async Task<FullTestStepResult> RunPassiveInventoryAsync(CancellationToken cancellationToken)
     {
-        var rows = TcpTimeline.ToList();
+        var rows = await CollectPassiveTrafficSampleAsync(minNewPackets: 10, cancellationToken);
         if (rows.Count == 0)
         {
-            return Task.FromResult(new FullTestStepResult(
+            return new FullTestStepResult(
                 "Atencao",
-                "Nenhum pacote TCP/UDP/ARP/ICMP foi observado na timeline TCP.",
-                "Inicie a captura passiva sem filtro ou com filtro amplo por alguns minutos antes do teste completo para inventario mais confiavel."));
+                $"Nenhum pacote TCP/UDP/ARP/ICMP foi observado na timeline TCP apos {Math.Clamp(PassiveObservationSeconds, 3, 60)} s de observacao. Captura ativa: {(IsNetworkCaptureRunning ? "sim" : "nao")}. Fila pendente UI: {QueuedPassivePackets}.",
+                "Inicie a captura passiva sem filtro ou com filtro amplo, confirme a interface correta/Npcap e repita o teste. Se voce ve pacotes na aba TCP, use Atualizar filtro e confira se eles nao estao apenas na visao filtrada antiga.");
         }
 
         var endpoints = rows
@@ -957,7 +960,7 @@ public sealed partial class MainViewModel : ObservableObject
             ? "Compare a lista de endpoints com a topologia esperada da celula/linha."
             : "A captura tem pouca amostra. Verifique porta espelhada/SPAN, interface correta e filtros de captura.";
 
-        return Task.FromResult(new FullTestStepResult(status, details, recommendation));
+        return new FullTestStepResult(status, details, recommendation);
     }
 
     private async Task<FullTestStepResult> RunArpSnapshotAsync(CancellationToken cancellationToken)
@@ -1157,9 +1160,10 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task<FullTestStepResult> RunTrafficLoadAsync(CancellationToken cancellationToken)
     {
         var before = TakeInterfaceSnapshots();
-        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+        var rows = await CollectPassiveTrafficSampleAsync(minNewPackets: 20, cancellationToken);
         var after = TakeInterfaceSnapshots();
         var bandwidthLines = new List<string>();
+        var observationSeconds = Math.Clamp(PassiveObservationSeconds, 3, 60);
 
         foreach (var end in after)
         {
@@ -1168,12 +1172,11 @@ public sealed partial class MainViewModel : ObservableObject
                 continue;
             }
 
-            var rxBytesPerSecond = Math.Max(0, end.Value.BytesReceived - start.BytesReceived) / 2.0;
-            var txBytesPerSecond = Math.Max(0, end.Value.BytesSent - start.BytesSent) / 2.0;
+            var rxBytesPerSecond = Math.Max(0, end.Value.BytesReceived - start.BytesReceived) / (double)observationSeconds;
+            var txBytesPerSecond = Math.Max(0, end.Value.BytesSent - start.BytesSent) / (double)observationSeconds;
             bandwidthLines.Add($"{end.Value.Name}: RX {FormatBytesPerSecond(rxBytesPerSecond)}, TX {FormatBytesPerSecond(txBytesPerSecond)}, nominal {FormatBitsPerSecond(end.Value.SpeedBitsPerSecond)}");
         }
 
-        var rows = TcpTimeline.ToList();
         if (rows.Count < 2)
         {
             FullTestBandwidthSummary = bandwidthLines.Count == 0 ? "Sem contadores de interface." : string.Join(" | ", bandwidthLines.Take(3));
@@ -1181,10 +1184,11 @@ public sealed partial class MainViewModel : ObservableObject
                 "Atencao",
                 string.Join(Environment.NewLine, [
                     $"Amostra TCP insuficiente para carga por protocolo. Pacotes: {rows.Count}. Fila pendente UI: {QueuedPassivePackets}.",
+                    $"Janela de observacao: {observationSeconds} s. Captura ativa: {(IsNetworkCaptureRunning ? "sim" : "nao")}.",
                     "Contadores de interface:",
                     bandwidthLines.Count == 0 ? "Nenhum contador coletado." : string.Join(Environment.NewLine, bandwidthLines)
                 ]),
-                "Colete uma janela maior de captura para estimar carga, rajadas e protocolos competindo com Modbus.");
+                "Aumente a janela de observacao, confirme a interface de captura e mantenha trafego ativo durante o teste para estimar carga por protocolo.");
         }
 
         var minTime = rows.Min(x => x.RelativeTime);
@@ -1201,7 +1205,7 @@ public sealed partial class MainViewModel : ObservableObject
         var status = QueuedPassivePackets > 5000 || packetsPerSecond > 5000 ? "Atencao" : "OK";
         FullTestBandwidthSummary = $"{packetsPerSecond:0.0} pkt/s capturados | {(bandwidthLines.Count == 0 ? "sem contador de interface" : bandwidthLines[0])}";
         var details = string.Join(Environment.NewLine, [
-            "Contadores de interface em janela de 2s:",
+            $"Contadores de interface em janela de {observationSeconds}s:",
             bandwidthLines.Count == 0 ? "Nenhum contador coletado." : string.Join(Environment.NewLine, bandwidthLines),
             "",
             $"Janela analisada: {span:0.0} s",
@@ -1450,6 +1454,23 @@ public sealed partial class MainViewModel : ObservableObject
 
         FullTestScore = $"{ok}/{completed.Count} OK";
         FullTestOverallStatus = failures > 0 ? "Falha" : warnings > 0 ? "Atencao" : "OK";
+    }
+
+    private async Task<List<TcpTimelineRow>> CollectPassiveTrafficSampleAsync(int minNewPackets, CancellationToken cancellationToken)
+    {
+        FlushPassivePackets();
+        var initialCount = TcpTimeline.Count;
+        var observationSeconds = Math.Clamp(PassiveObservationSeconds, 3, 60);
+        var deadline = DateTimeOffset.Now.AddSeconds(observationSeconds);
+
+        while (DateTimeOffset.Now < deadline && TcpTimeline.Count - initialCount < minNewPackets)
+        {
+            FlushPassivePackets();
+            await Task.Delay(500, cancellationToken);
+        }
+
+        FlushPassivePackets();
+        return TcpTimeline.ToList();
     }
 
     private List<string> BuildDiscoveryCandidates()
@@ -1857,18 +1878,39 @@ public sealed partial class MainViewModel : ObservableObject
             if (_lastRequestBySignature.TryGetValue(signature, out var lastSeen))
             {
                 var intervalMs = (trafficEvent.Timestamp - lastSeen).TotalMilliseconds;
-                var status = intervalMs < 100 ? "Atencao" : "OK";
-                SetCheck("Padrao de polling", status, $"FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress} qty {trafficEvent.Quantity}: intervalo ~{intervalMs:0} ms.");
-
-                if (intervalMs < 100)
+                var intervals = GetPollingIntervals(signature);
+                if (intervalMs >= 10)
                 {
-                    UpsertImportantWarning(
-                        "polling-rapido",
-                        "Atencao",
-                        "Polling muito rapido observado",
-                        $"Requisicoes repetidas abaixo de 100 ms para FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress}.",
-                        "Verifique se a taxa de scan do cliente/PLC esta adequada para o equipamento e para a rede.",
-                        trafficEvent.Timestamp);
+                    intervals.Enqueue(intervalMs);
+                    while (intervals.Count > 12)
+                    {
+                        intervals.Dequeue();
+                    }
+                }
+
+                if (intervals.Count < 3)
+                {
+                    SetCheck(
+                        "Padrao de polling",
+                        "Aguardando",
+                        $"Coletando amostras para FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress}. Ultimo intervalo bruto: {intervalMs:0} ms; amostras validas: {intervals.Count}/3.");
+                }
+                else
+                {
+                    var medianMs = Median(intervals);
+                    var status = medianMs < 100 ? "Atencao" : "OK";
+                    SetCheck("Padrao de polling", status, $"FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress} qty {trafficEvent.Quantity}: mediana ~{medianMs:0} ms em {intervals.Count} amostras. Ultimo intervalo bruto: {intervalMs:0} ms.");
+
+                    if (medianMs < 100)
+                    {
+                        UpsertImportantWarning(
+                            "polling-rapido",
+                            "Atencao",
+                            "Polling muito rapido observado",
+                            $"Mediana de requisicoes abaixo de 100 ms para FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress}: {medianMs:0} ms em {intervals.Count} amostras.",
+                            "Verifique se a taxa de scan do cliente/PLC esta adequada para o equipamento e para a rede.",
+                            trafficEvent.Timestamp);
+                    }
                 }
             }
 
@@ -1888,6 +1930,31 @@ public sealed partial class MainViewModel : ObservableObject
             _outOfMapCounts[key] = _outOfMapCounts.GetValueOrDefault(key) + 1;
             SetCheck("Mapa / range", "Falha", $"{_outOfMapCounts[key]} acesso(s) fora do mapa em {key}.");
         }
+    }
+
+    private Queue<double> GetPollingIntervals(string signature)
+    {
+        if (!_pollingIntervalsBySignature.TryGetValue(signature, out var intervals))
+        {
+            intervals = new Queue<double>();
+            _pollingIntervalsBySignature[signature] = intervals;
+        }
+
+        return intervals;
+    }
+
+    private static double Median(IEnumerable<double> values)
+    {
+        var ordered = values.OrderBy(x => x).ToList();
+        if (ordered.Count == 0)
+        {
+            return 0;
+        }
+
+        var middle = ordered.Count / 2;
+        return ordered.Count % 2 == 0
+            ? (ordered[middle - 1] + ordered[middle]) / 2
+            : ordered[middle];
     }
 
     private void UpsertImportantWarning(TrafficEvent trafficEvent, DiagnosticFinding finding)
@@ -2095,10 +2162,23 @@ public sealed partial class FullTestStep : ObservableObject
     public string Name { get; }
     public string Objective { get; }
     [ObservableProperty] private string status = "Pendente";
+    [ObservableProperty] private string statusColor = "#9AA39C";
     [ObservableProperty] private string result = "";
     [ObservableProperty] private string recommendation = "";
     [ObservableProperty] private DateTimeOffset? startedAt;
     [ObservableProperty] private DateTimeOffset? finishedAt;
+
+    partial void OnStatusChanged(string value)
+    {
+        StatusColor = value switch
+        {
+            "OK" => "#2E7D32",
+            "Atencao" => "#C58A00",
+            "Falha" or "Erro" => "#B3261E",
+            "Executando" => "#1E6BD6",
+            _ => "#9AA39C"
+        };
+    }
 }
 
 public sealed record FullTestStepResult(string Status, string Detail, string Recommendation);

@@ -370,6 +370,8 @@
                                     <TextBox Text="{Binding ActiveScanTimeoutMs, UpdateSourceTrigger=PropertyChanged}" Width="58" />
                                     <TextBlock Text="Concorrencia" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
                                     <TextBox Text="{Binding ActiveScanConcurrency, UpdateSourceTrigger=PropertyChanged}" Width="48" />
+                                    <TextBlock Text="Observacao s" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
+                                    <TextBox Text="{Binding PassiveObservationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="48" />
                                 </WrapPanel>
                                 <UniformGrid Columns="3" Margin="0,0,0,8">
                                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,0">
@@ -417,6 +419,13 @@
                                         </Grid.ColumnDefinitions>
                                         <DataGrid Grid.Column="0" ItemsSource="{Binding FullTestSteps}" SelectedItem="{Binding SelectedFullTestStep}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                             <DataGrid.Columns>
+                                                <DataGridTemplateColumn Header="" Width="30">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="●" Foreground="{Binding StatusColor}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
                                                 <DataGridTextColumn Header="#" Binding="{Binding Order}" Width="35" />
                                                 <DataGridTextColumn Header="Etapa" Binding="{Binding Name}" Width="170" />
                                                 <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="85" />
