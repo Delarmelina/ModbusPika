@@ -54,6 +54,7 @@ O MVP usa `1502` como porta padrao para teste local. A porta Modbus TCP oficial 
 - BPF gerado automaticamente a partir dos filtros guiados
 - processamento em lote da captura passiva para manter a UI responsiva em redes com alto volume
 - indicador de pacotes pendentes na fila de renderizacao da timeline TCP
+- aba `TCP` alimentada somente pela captura passiva da interface; eventos Modbus internos ficam apenas na aba `Modbus`
 - timeline TCP em formato semelhante ao Wireshark, com numero, tempo relativo, origem, destino, protocolo, tamanho e info
 
 ## Captura passiva TCP

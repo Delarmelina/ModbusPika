@@ -24,8 +24,6 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly Dictionary<string, DateTimeOffset> _lastRequestBySignature = [];
     private readonly Dictionary<string, int> _exceptionCounts = [];
     private readonly Dictionary<string, int> _outOfMapCounts = [];
-    private DateTimeOffset? _firstPacketAt;
-    private int _tcpPacketNumber;
 
     [ObservableProperty] private string caseName = "Troubleshoot Modbus TCP";
     [ObservableProperty] private string selectedMode = "Client";
@@ -297,8 +295,6 @@ public sealed partial class MainViewModel : ObservableObject
         _lastRequestBySignature.Clear();
         _exceptionCounts.Clear();
         _outOfMapCounts.Clear();
-        _firstPacketAt = null;
-        _tcpPacketNumber = 0;
         LoadVerificationChecks();
         Status = "Timeline limpa.";
     }
@@ -530,7 +526,6 @@ public sealed partial class MainViewModel : ObservableObject
         App.Current.Dispatcher.Invoke(() =>
         {
             Traffic.Insert(0, e);
-            AddTcpTimelineRow(e);
             while (Traffic.Count > 500)
             {
                 Traffic.RemoveAt(Traffic.Count - 1);
@@ -580,45 +575,6 @@ public sealed partial class MainViewModel : ObservableObject
                 $"Fila de pacotes pendentes: {QueuedPassivePackets}.",
                 "Aplique filtros de captura por protocolo, IP ou porta para reduzir a carga da interface.",
                 DateTimeOffset.Now);
-        }
-    }
-
-    private void AddTcpTimelineRow(TrafficEvent trafficEvent)
-    {
-        if (trafficEvent.Direction == TrafficDirection.System)
-        {
-            return;
-        }
-
-        _firstPacketAt ??= trafficEvent.Timestamp;
-        var (source, destination) = ResolveTcpEndpoints(trafficEvent);
-        var length = string.IsNullOrWhiteSpace(trafficEvent.Hex)
-            ? 0
-            : trafficEvent.Hex.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-
-        var row = new TcpTimelineRow
-        {
-            Number = ++_tcpPacketNumber,
-            RelativeTime = (trafficEvent.Timestamp - _firstPacketAt.Value).TotalSeconds,
-            Source = source,
-            Destination = destination,
-            Protocol = "Modbus/TCP",
-            Length = length,
-            Info = BuildTcpInfo(trafficEvent)
-        };
-
-        TcpTimeline.Insert(0, row);
-        if (MatchesTcpFilter(row))
-        {
-            FilteredTcpTimeline.Insert(0, row);
-        }
-        while (TcpTimeline.Count > 1000)
-        {
-            TcpTimeline.RemoveAt(TcpTimeline.Count - 1);
-        }
-        while (FilteredTcpTimeline.Count > 1000)
-        {
-            FilteredTcpTimeline.RemoveAt(FilteredTcpTimeline.Count - 1);
         }
     }
 
@@ -717,28 +673,6 @@ public sealed partial class MainViewModel : ObservableObject
     {
         return string.IsNullOrWhiteSpace(filter)
             || value.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private (string Source, string Destination) ResolveTcpEndpoints(TrafficEvent trafficEvent)
-    {
-        return trafficEvent.Direction switch
-        {
-            TrafficDirection.ClientToServer when IsServerRunning => (trafficEvent.Endpoint, $"{LocalIp}:{Port}"),
-            TrafficDirection.ClientToServer => ("local", $"{TargetIp}:{Port}"),
-            TrafficDirection.ServerToClient when IsServerRunning => ($"{LocalIp}:{Port}", trafficEvent.Endpoint),
-            TrafficDirection.ServerToClient => ($"{TargetIp}:{Port}", "local"),
-            _ => ("local", trafficEvent.Endpoint)
-        };
-    }
-
-    private static string BuildTcpInfo(TrafficEvent trafficEvent)
-    {
-        var tid = trafficEvent.TransactionId is null ? "" : $"TID={trafficEvent.TransactionId} ";
-        var uid = trafficEvent.UnitId is null ? "" : $"UID={trafficEvent.UnitId} ";
-        var fc = trafficEvent.FunctionCode is null ? "" : $"FC={trafficEvent.FunctionCode} ";
-        var addr = trafficEvent.StartAddress is null ? "" : $"Addr={trafficEvent.StartAddress} ";
-        var qty = trafficEvent.Quantity is null ? "" : $"Qty={trafficEvent.Quantity} ";
-        return $"{tid}{uid}{fc}{addr}{qty}{trafficEvent.Summary}".Trim();
     }
 
     private void AddSystemFinding(string message)
