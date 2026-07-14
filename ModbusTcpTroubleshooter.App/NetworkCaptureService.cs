@@ -126,10 +126,10 @@ public sealed class NetworkCaptureService : IDisposable
         }
         else if (ip is not null)
         {
-            protocol = ip.Protocol.ToString();
+            protocol = ip.Protocol.ToString().Equals("Icmp", StringComparison.OrdinalIgnoreCase) ? "ICMP" : ip.Protocol.ToString();
             source = ip.SourceAddress.ToString();
             destination = ip.DestinationAddress.ToString();
-            info = ip.Protocol.ToString();
+            info = protocol == "ICMP" ? "ICMP packet" : ip.Protocol.ToString();
         }
 
         return new TcpTimelineRow

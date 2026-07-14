@@ -44,7 +44,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string selectedCaptureIpDirection = "Origem ou destino";
     [ObservableProperty] private string capturePort = "";
     [ObservableProperty] private string selectedCapturePortDirection = "Origem ou destino";
-    [ObservableProperty] private string generatedCaptureFilter = "tcp or udp or arp";
+    [ObservableProperty] private string generatedCaptureFilter = "tcp or udp or arp or icmp";
     [ObservableProperty] private string tcpViewFilter = "";
     [ObservableProperty] private string sourceColumnFilter = "";
     [ObservableProperty] private string destinationColumnFilter = "";
@@ -52,7 +52,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string infoColumnFilter = "";
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
-    public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "Modbus TCP"];
+    public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP"];
     public ObservableCollection<string> CaptureDirections { get; } = ["Origem ou destino", "Somente origem", "Somente destino"];
     public ObservableCollection<CaptureDeviceOption> CaptureDevices { get; } = [];
     public ObservableCollection<ModbusPoint> ServerPoints { get; } = [];
@@ -643,8 +643,9 @@ public sealed partial class MainViewModel : ObservableObject
             "TCP" => "tcp",
             "UDP" => "udp",
             "ARP" => "arp",
+            "ICMP" => "icmp",
             "Modbus TCP" => "tcp port 502",
-            _ => "tcp or udp or arp"
+            _ => "tcp or udp or arp or icmp"
         };
         parts.Add($"({protocol})");
 

@@ -60,7 +60,7 @@ A aba `TCP` pode capturar trafego real da interface de rede. No Windows, isso de
 
 Filtros:
 
-- `Protocolo`: todos, TCP, UDP, ARP ou Modbus TCP.
+- `Protocolo`: todos, TCP, UDP, ARP, ICMP ou Modbus TCP.
 - `IP` + `Direcao IP`: origem, destino ou ambos.
 - `Porta` + `Direcao porta`: origem, destino ou ambos.
 - `Filtro Source`, `Filtro Destination`, `Filtro Protocol`, `Filtro Info`: filtros visuais por coluna.
