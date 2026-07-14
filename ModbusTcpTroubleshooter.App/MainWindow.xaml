@@ -334,6 +334,7 @@
                                             <TextBox Text="{Binding GeneratedCaptureFilter}" IsReadOnly="True" />
                                         </StackPanel>
                                     </Grid>
+                                    <TextBlock Foreground="#6D756E" Text="{Binding QueuedPassivePackets, StringFormat=Pacotes pendentes na fila de UI: {0}}" />
                                 </StackPanel>
                                 <DataGrid ItemsSource="{Binding FilteredTcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                     <DataGrid.Columns>

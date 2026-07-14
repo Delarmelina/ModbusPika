@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
 using System.Net;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
@@ -14,6 +16,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DiagnosticsEngine _diagnostics = new();
     private readonly ModbusTcpClientProbe _client = new();
     private readonly NetworkCaptureService _networkCapture = new();
+    private readonly ConcurrentQueue<TcpTimelineRow> _passivePacketQueue = new();
+    private readonly DispatcherTimer _passivePacketFlushTimer;
     private ModbusTcpServer? _server;
     private CancellationTokenSource? _serverCts;
     private CancellationTokenSource? _scanCts;
@@ -50,6 +54,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string destinationColumnFilter = "";
     [ObservableProperty] private string protocolColumnFilter = "";
     [ObservableProperty] private string infoColumnFilter = "";
+    [ObservableProperty] private int queuedPassivePackets;
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
     public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP"];
@@ -79,6 +84,12 @@ public sealed partial class MainViewModel : ObservableObject
         LoadCaptureDevices();
         _client.TrafficObserved += OnTrafficObserved;
         _networkCapture.PacketCaptured += OnPassivePacketCaptured;
+        _passivePacketFlushTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        _passivePacketFlushTimer.Tick += (_, _) => FlushPassivePackets();
+        _passivePacketFlushTimer.Start();
     }
 
     [RelayCommand]
@@ -277,6 +288,10 @@ public sealed partial class MainViewModel : ObservableObject
         Traffic.Clear();
         TcpTimeline.Clear();
         FilteredTcpTimeline.Clear();
+        while (_passivePacketQueue.TryDequeue(out _))
+        {
+        }
+        QueuedPassivePackets = 0;
         Diagnostics.Clear();
         ImportantWarnings.Clear();
         _lastRequestBySignature.Clear();
@@ -541,7 +556,31 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnPassivePacketCaptured(object? sender, TcpTimelineRow row)
     {
-        App.Current.Dispatcher.Invoke(() => AddTcpTimelineRow(row));
+        _passivePacketQueue.Enqueue(row);
+    }
+
+    private void FlushPassivePackets()
+    {
+        const int maxRowsPerFlush = 250;
+        var processed = 0;
+
+        while (processed < maxRowsPerFlush && _passivePacketQueue.TryDequeue(out var row))
+        {
+            AddTcpTimelineRow(row);
+            processed++;
+        }
+
+        QueuedPassivePackets = _passivePacketQueue.Count;
+        if (QueuedPassivePackets > 5000)
+        {
+            UpsertImportantWarning(
+                "captura-tcp-alta-taxa",
+                "Atencao",
+                "Captura TCP em alta taxa",
+                $"Fila de pacotes pendentes: {QueuedPassivePackets}.",
+                "Aplique filtros de captura por protocolo, IP ou porta para reduzir a carga da interface.",
+                DateTimeOffset.Now);
+        }
     }
 
     private void AddTcpTimelineRow(TrafficEvent trafficEvent)
