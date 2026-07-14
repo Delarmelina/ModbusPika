@@ -388,3 +388,15 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 - relatorio do teste completo pode ser exportado em Markdown
 - por seguranca industrial, o teste completo nao executa escrita automatica em PLC/equipamento; escrita deve ser manual ou futura configuracao explicita de ponto seguro
 - detalhes tecnicos em [[docs/MVP]]
+
+### Proximos testes recomendados
+
+- SNMP/LLDP/CDP para identificar switches gerenciaveis, portas fisicas, VLANs e topologia real
+- deteccao de IP duplicado por ARP churn, MAC mudando para o mesmo IP e conflito entre ARP/captura
+- histograma de tempo de resposta Modbus por endpoint, Unit ID, function code e range
+- analise TCP de retransmissao, reset, janela zero, handshake incompleto e conexoes fechadas pelo equipamento
+- varredura read-only por Unit ID e function code para descobrir mapa publicado sem escrever em PLC
+- baseline de polling: taxa por cliente, ciclos fora do padrao, rajadas e mudanca de periodo ao longo do tempo
+- deteccao de broadcast/multicast excessivo e protocolos nao industriais competindo na rede
+- comparacao de mapa esperado x mapa observado passivamente, gerando mapa consumido real
+- teste de estabilidade longo com resumo por janela de tempo, evitando lista gigante de eventos
