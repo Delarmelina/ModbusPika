@@ -386,6 +386,7 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 - o teste completo agora inclui interfaces/rotas IP, gateways, velocidade nominal de placas, medicao de banda por contadores da interface, varredura ativa limitada de hosts candidatos/sub-rede, descoberta de portas Modbus/configuradas e tabela visual de dispositivos encontrados
 - etapas dependentes de captura passiva usam janela de observacao configuravel antes de declarar amostra insuficiente
 - deteccao de polling rapido usa mediana de multiplas amostras e ignora bursts muito curtos para reduzir falso positivo
+- cada etapa do teste completo agora inclui bloco `Interpretacao` com leitura direta dos numeros, percentuais, sinais de atencao e acao recomendada
 - a inferencia de topologia aponta gateway, possiveis elementos de infraestrutura e lacunas de visibilidade; identificacao fisica de switches/portas exige evolucao futura com SNMP/LLDP/CDP ou integracao com switches gerenciaveis
 - relatorio do teste completo pode ser exportado em Markdown
 - por seguranca industrial, o teste completo nao executa escrita automatica em PLC/equipamento; escrita deve ser manual ou futura configuracao explicita de ponto seguro

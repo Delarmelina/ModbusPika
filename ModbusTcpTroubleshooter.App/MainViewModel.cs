@@ -906,6 +906,9 @@ public sealed partial class MainViewModel : ObservableObject
             "Interfaces operacionais:",
             profileLines,
             "",
+            "Interpretacao:",
+            InterpretRoutes(activeProfiles, defaultRouteFound),
+            "",
             "Amostra de rotas IPv4:",
             string.Join(Environment.NewLine, routeOutput.Split(Environment.NewLine).Take(40))
         ]);
@@ -942,16 +945,21 @@ public sealed partial class MainViewModel : ObservableObject
         var protocols = rows
             .GroupBy(x => x.Protocol)
             .OrderByDescending(x => x.Count())
-            .Select(x => $"{x.Key}: {x.Count()}")
+            .Select(x => $"{x.Key}: {x.Count()} ({FormatPercent(x.Count(), rows.Count)})")
             .Take(8);
 
         var modbusRows = rows.Count(x => x.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase));
+        var externalEndpoints = endpoints.Where(IsPublicIPv4).ToList();
+        var dominantProtocol = rows.GroupBy(x => x.Protocol).OrderByDescending(x => x.Count()).FirstOrDefault();
         var details = string.Join(Environment.NewLine, [
             $"Pacotes observados: {rows.Count}",
             $"Endpoints unicos: {endpoints.Count}",
             $"Endpoints: {string.Join(", ", endpoints.Take(25))}{(endpoints.Count > 25 ? " ..." : "")}",
             $"Protocolos: {string.Join("; ", protocols)}",
-            $"Pacotes identificados como Modbus/TCP: {modbusRows}",
+            $"Pacotes identificados como Modbus/TCP: {modbusRows} ({FormatPercent(modbusRows, rows.Count)})",
+            "",
+            "Interpretacao:",
+            InterpretPassiveInventory(rows.Count, endpoints.Count, modbusRows, externalEndpoints.Count, dominantProtocol?.Key ?? "", dominantProtocol?.Count() ?? 0),
             "Switches: identificacao direta exige SNMP/LLDP/porta espelhada documentada. Nesta etapa o sistema infere apenas hosts vistos em trafego/ARP."
         ]);
 
@@ -981,6 +989,10 @@ public sealed partial class MainViewModel : ObservableObject
         var details = string.Join(Environment.NewLine, [
             $"Entradas ARP encontradas: {entries}",
             $"Alvo aparece na tabela ARP: {(targetSeen ? "sim" : "nao")}",
+            "",
+            "Interpretacao:",
+            InterpretArp(entries, targetSeen),
+            "",
             "Amostra ARP:",
             string.Join(Environment.NewLine, lines.Take(20))
         ]);
@@ -1052,11 +1064,18 @@ public sealed partial class MainViewModel : ObservableObject
         FullTestNetworkSummary = $"{active.Count}/{candidates.Count} hosts candidatos responderam; {active.Count(x => x.ModbusPortOpen || x.ConfiguredPortOpen)} com porta Modbus/configurada aberta.";
 
         var status = active.Count == 0 ? "Atencao" : "OK";
+        var activePct = FormatPercent(active.Count, candidates.Count);
+        var modbusOpen = active.Count(x => x.ModbusPortOpen || x.ConfiguredPortOpen);
         var details = string.Join(Environment.NewLine, [
             $"Candidatos testados: {candidates.Count}",
             $"Timeout por tentativa: {timeoutMs} ms",
             $"Concorrencia: {concurrency}",
-            $"Hosts ativos/provaveis: {active.Count}",
+            $"Hosts ativos/provaveis: {active.Count} ({activePct})",
+            $"Hosts com porta Modbus/configurada aberta: {modbusOpen} ({FormatPercent(modbusOpen, Math.Max(1, active.Count))} dos ativos)",
+            "",
+            "Interpretacao:",
+            InterpretHostDiscovery(candidates.Count, active.Count, modbusOpen),
+            "",
             active.Count == 0 ? "Nenhum host respondeu a ping ou TCP." : string.Join(Environment.NewLine, active.Take(80).Select(x => $"{x.Ip} | ping={x.PingOk} | port {Port}={x.ConfiguredPortOpen} | port 502={x.ModbusPortOpen}"))
         ]);
         var recommendation = status == "OK"
@@ -1126,6 +1145,11 @@ public sealed partial class MainViewModel : ObservableObject
             $"Hosts avaliados: {hosts.Count}",
             $"Portas avaliadas: {string.Join(", ", ports)}",
             $"Endpoints com porta aberta: {openEndpoints.Count}",
+            $"Percentual de hosts com Modbus/configurado aberto: {FormatPercent(openEndpoints.Select(x => x.Ip).Distinct().Count(), Math.Max(1, hosts.Count))}",
+            "",
+            "Interpretacao:",
+            InterpretModbusDiscovery(hosts.Count, openEndpoints, passiveModbusHosts.Count),
+            "",
             openEndpoints.Count == 0 ? "Nenhuma porta Modbus/configurada aberta encontrada." : string.Join(Environment.NewLine, openEndpoints.Take(80).Select(x => $"{x.Ip}:{x.Port} aberto")),
             $"Hosts Modbus na captura passiva: {(passiveModbusHosts.Count == 0 ? "nenhum" : string.Join(", ", passiveModbusHosts))}"
         ]);
@@ -1150,10 +1174,16 @@ public sealed partial class MainViewModel : ObservableObject
 
         await client.ConnectAsync(TargetIp, Port, timeout.Token);
         started.Stop();
+        var latencyStatus = started.ElapsedMilliseconds <= 50 ? "baixo" : started.ElapsedMilliseconds <= 200 ? "moderado" : "alto";
 
         return new FullTestStepResult(
             "OK",
-            $"Socket TCP abriu em {started.ElapsedMilliseconds} ms para {TargetIp}:{Port}.",
+            string.Join(Environment.NewLine, [
+                $"Socket TCP abriu em {started.ElapsedMilliseconds} ms para {TargetIp}:{Port}.",
+                "",
+                "Interpretacao:",
+                $"Tempo de conexao {latencyStatus}. Em rede industrial local, valores abaixo de 50 ms normalmente sao confortaveis; acima de 200 ms merecem checagem de rota, firewall, VPN, gateway ou equipamento sobrecarregado."
+            ]),
             "Conectividade TCP basica OK. Se Modbus falhar, investigue Unit ID, mapa, function code, gateway ou resposta de aplicacao.");
     }
 
@@ -1200,9 +1230,13 @@ public sealed partial class MainViewModel : ObservableObject
             .GroupBy(x => $"{ExtractHost(x.Source)} -> {ExtractHost(x.Destination)}")
             .OrderByDescending(x => x.Count())
             .Take(5)
-            .Select(x => $"{x.Key}: {x.Count()} pkt");
+            .Select(x => $"{x.Key}: {x.Count()} pkt ({FormatPercent(x.Count(), rows.Count)})")
+            .ToList();
+        var publicPacketCount = rows.Count(x => IsPublicIPv4(ExtractHost(x.Source)) || IsPublicIPv4(ExtractHost(x.Destination)));
+        var modbusPacketCount = rows.Count(x => x.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase));
+        var broadcastOrMulticastCount = rows.Count(x => IsBroadcastOrMulticast(ExtractHost(x.Source)) || IsBroadcastOrMulticast(ExtractHost(x.Destination)));
 
-        var status = QueuedPassivePackets > 5000 || packetsPerSecond > 5000 ? "Atencao" : "OK";
+        var status = QueuedPassivePackets > 5000 || packetsPerSecond > 5000 || publicPacketCount > rows.Count * 0.25 ? "Atencao" : "OK";
         FullTestBandwidthSummary = $"{packetsPerSecond:0.0} pkt/s capturados | {(bandwidthLines.Count == 0 ? "sem contador de interface" : bandwidthLines[0])}";
         var details = string.Join(Environment.NewLine, [
             $"Contadores de interface em janela de {observationSeconds}s:",
@@ -1212,7 +1246,13 @@ public sealed partial class MainViewModel : ObservableObject
             $"Pacotes analisados: {rows.Count}",
             $"Taxa aproximada: {packetsPerSecond:0.0} pkt/s, {bytesPerSecond / 1024:0.0} KB/s",
             $"Fila pendente na UI: {QueuedPassivePackets}",
-            $"Top conversas: {string.Join("; ", topTalkers)}"
+            $"Pacotes Modbus/TCP: {modbusPacketCount} ({FormatPercent(modbusPacketCount, rows.Count)})",
+            $"Pacotes com IP publico: {publicPacketCount} ({FormatPercent(publicPacketCount, rows.Count)})",
+            $"Broadcast/multicast estimado: {broadcastOrMulticastCount} ({FormatPercent(broadcastOrMulticastCount, rows.Count)})",
+            $"Top conversas: {string.Join("; ", topTalkers)}",
+            "",
+            "Interpretacao:",
+            InterpretTrafficLoad(packetsPerSecond, bytesPerSecond, rows.Count, modbusPacketCount, publicPacketCount, broadcastOrMulticastCount, topTalkers)
         ]);
         var recommendation = status == "OK"
             ? "Carga observada parece tratavel pela UI; compare com baseline da rede industrial."
@@ -1248,6 +1288,10 @@ public sealed partial class MainViewModel : ObservableObject
             $"Possiveis servidores Modbus: {modbusHosts.Count}",
             $"Hosts vistos apenas passivamente: {passiveOnly.Count}",
             $"Gateways tambem vistos em ARP/captura: {gatewayRows.Count}",
+            "",
+            "Interpretacao:",
+            InterpretTopology(gateways.Count, knownHosts.Count, modbusHosts.Count, passiveOnly.Count),
+            "",
             "Possivel infraestrutura:",
             possibleInfrastructure.Count == 0 ? "Sem candidatos claros." : string.Join(Environment.NewLine, possibleInfrastructure.Select(x => $"{x.Ip} | {x.RoleGuess} | {x.Source} | {x.Notes}")),
             "",
@@ -1301,10 +1345,15 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var status = failures.Count == 0 ? "OK" : ok > 0 ? "Atencao" : "Falha";
+        var successPct = FormatPercent(ok, rows.Count);
         var details = string.Join(Environment.NewLine, [
             $"Linhas testadas: {rows.Count}",
-            $"OK: {ok}",
-            $"Falhas: {failures.Count}",
+            $"OK: {ok} ({successPct})",
+            $"Falhas: {failures.Count} ({FormatPercent(failures.Count, rows.Count)})",
+            "",
+            "Interpretacao:",
+            InterpretMapValidation(ok, failures.Count, rows.Count, failures),
+            "",
             failures.Count == 0 ? "Todas as linhas habilitadas responderam." : string.Join(Environment.NewLine, failures.Take(20))
         ]);
         var recommendation = status == "OK"
@@ -1330,14 +1379,24 @@ public sealed partial class MainViewModel : ObservableObject
             var values = await _client.ReadBitsAsync(TargetIp, Port, UnitId, row.FunctionCode, row.StartAddress, row.Quantity, cancellationToken);
             return new FullTestStepResult(
                 "OK",
-                $"Request/response read-only OK em {TargetIp}:{Port} UID {UnitId}, FC{row.FunctionCode}, addr {row.StartAddress}, qty {row.Quantity}. Valores: {string.Join(", ", values.Select(x => x ? "1" : "0"))}",
+                string.Join(Environment.NewLine, [
+                    $"Request/response read-only OK em {TargetIp}:{Port} UID {UnitId}, FC{row.FunctionCode}, addr {row.StartAddress}, qty {row.Quantity}. Valores: {string.Join(", ", values.Select(x => x ? "1" : "0"))}",
+                    "",
+                    "Interpretacao:",
+                    "A pilha Modbus respondeu no nivel de aplicacao. Se outras linhas falham, o problema tende a estar em mapa, Unit ID, function code ou range especifico, nao em conectividade TCP basica."
+                ]),
                 "Envio e recebimento Modbus confirmados sem escrita. Para teste de escrita, configure futuramente um ponto seguro de teste.");
         }
 
         var registers = await _client.ReadRegistersAsync(TargetIp, Port, UnitId, row.FunctionCode, row.StartAddress, row.Quantity, cancellationToken);
         return new FullTestStepResult(
             "OK",
-            $"Request/response read-only OK em {TargetIp}:{Port} UID {UnitId}, FC{row.FunctionCode}, addr {row.StartAddress}, qty {row.Quantity}. Valores: {string.Join(", ", registers)}",
+            string.Join(Environment.NewLine, [
+                $"Request/response read-only OK em {TargetIp}:{Port} UID {UnitId}, FC{row.FunctionCode}, addr {row.StartAddress}, qty {row.Quantity}. Valores: {string.Join(", ", registers)}",
+                "",
+                "Interpretacao:",
+                "A pilha Modbus respondeu no nivel de aplicacao. Se outras linhas falham, o problema tende a estar em mapa, Unit ID, function code ou range especifico, nao em conectividade TCP basica."
+            ]),
             "Envio e recebimento Modbus confirmados sem escrita. Para teste de escrita, configure futuramente um ponto seguro de teste.");
     }
 
@@ -1356,7 +1415,10 @@ public sealed partial class MainViewModel : ObservableObject
             $"Avisos importantes consolidados: {warnings.Count}",
             warnings.Count == 0 ? "Sem avisos importantes." : string.Join(Environment.NewLine, warnings.Take(12).Select(x => $"{x.Severity} x{x.Count}: {x.Title} - {x.LatestDetail}")),
             $"Checks com atencao/falha: {badChecks.Count}",
-            badChecks.Count == 0 ? "Checklist automatico sem falhas atuais." : string.Join(Environment.NewLine, badChecks.Select(x => $"{x.Name}: {x.Status} - {x.Detail}"))
+            badChecks.Count == 0 ? "Checklist automatico sem falhas atuais." : string.Join(Environment.NewLine, badChecks.Select(x => $"{x.Name}: {x.Status} - {x.Detail}")),
+            "",
+            "Interpretacao:",
+            InterpretObservedFailures(warnings, badChecks)
         ]);
         var recommendation = status == "OK"
             ? "Nenhuma falha consolidada foi detectada nesta janela de teste."
@@ -1377,7 +1439,10 @@ public sealed partial class MainViewModel : ObservableObject
             $"Etapas com atencao: {warnings.Count}",
             $"Etapas com falha: {failures.Count}",
             failures.Count == 0 ? "Sem falhas criticas no teste completo." : $"Falhas: {string.Join(", ", failures.Select(x => x.Name))}",
-            warnings.Count == 0 ? "Sem alertas adicionais." : $"Atencoes: {string.Join(", ", warnings.Select(x => x.Name))}"
+            warnings.Count == 0 ? "Sem alertas adicionais." : $"Atencoes: {string.Join(", ", warnings.Select(x => x.Name))}",
+            "",
+            "Interpretacao:",
+            InterpretConclusion(completed.Count, failures.Count, warnings.Count)
         ]);
         var recommendation = status == "OK"
             ? "Use o relatorio como baseline. Para troubleshooting prolongado, deixe a captura ativa e reexecute o teste apos a falha ocorrer."
@@ -1471,6 +1536,194 @@ public sealed partial class MainViewModel : ObservableObject
 
         FlushPassivePackets();
         return TcpTimeline.ToList();
+    }
+
+    private static string InterpretRoutes(IReadOnlyCollection<NetworkInterfaceProfile> activeProfiles, bool defaultRouteFound)
+    {
+        if (activeProfiles.Count == 0)
+        {
+            return "Nao ha interface IPv4 operacional. O teste de rede nao e confiavel ate selecionar/ativar a placa ligada a rede industrial.";
+        }
+
+        var industrialCandidates = activeProfiles.Where(x => IsPrivateIPv4(x.Address)).ToList();
+        var gatewayText = activeProfiles.Any(x => IsIPv4(x.Gateway))
+            ? "ha gateway IPv4 configurado"
+            : "nao ha gateway IPv4 configurado";
+        var routeText = defaultRouteFound
+            ? "rota default existe"
+            : "sem rota default detectada";
+
+        return $"Foram encontradas {activeProfiles.Count} interface(s) IPv4 ativa(s), {industrialCandidates.Count} em faixa privada. Isso indica que a maquina tem conectividade local; {gatewayText} e {routeText}. Em troubleshooting industrial, confirme que a interface privada listada e a mesma conectada ao PLC/switch industrial.";
+    }
+
+    private static string InterpretPassiveInventory(int packetCount, int endpointCount, int modbusRows, int publicEndpointCount, string dominantProtocol, int dominantProtocolCount)
+    {
+        var modbusPct = FormatPercent(modbusRows, packetCount);
+        var dominantPct = FormatPercent(dominantProtocolCount, packetCount);
+        var publicText = publicEndpointCount > 0
+            ? $"Ha {publicEndpointCount} endpoint(s) publico(s) observado(s); se essa rede deveria ser isolada, isso merece atencao."
+            : "Nao foram vistos endpoints publicos na amostra, o que e coerente com rede industrial segregada.";
+        var modbusText = modbusRows == 0
+            ? "Nao apareceu Modbus/TCP passivo nesta janela; isso pode ser normal se o teste esta em server substituto e o trafego Modbus nao passou pela interface/captura."
+            : $"Modbus/TCP representa {modbusPct} da amostra; se o foco e Modbus, esse percentual ajuda a medir quanto trafego concorrente existe.";
+
+        return $"A amostra tem {packetCount} pacote(s), {endpointCount} endpoint(s) e protocolo dominante {dominantProtocol} ({dominantPct}). {modbusText} {publicText}";
+    }
+
+    private static string InterpretArp(int entries, bool targetSeen)
+    {
+        if (entries == 0)
+        {
+            return "Tabela ARP vazia ou sem entradas IPv4 parseaveis. Isso reduz a confianca do inventario local; gere trafego para os equipamentos ou confirme a VLAN/interface.";
+        }
+
+        return targetSeen
+            ? $"O alvo apareceu na tabela ARP. Isso confirma resolucao L2 local para o IP alvo e reduz suspeita de mascara/VLAN errada."
+            : $"Foram vistas {entries} entrada(s), mas o alvo nao apareceu. Se o alvo esta no mesmo segmento, isso pode indicar que ainda nao houve comunicacao L2, IP incorreto, VLAN errada, equipamento desligado ou firewall bloqueando resposta.";
+    }
+
+    private static string InterpretHostDiscovery(int candidates, int active, int modbusOpen)
+    {
+        if (candidates == 0)
+        {
+            return "Nao houve base para varredura. Cadastre alvo, capture trafego ou use ARP antes de concluir algo sobre a rede.";
+        }
+
+        var activePct = FormatPercent(active, candidates);
+        if (active == 0)
+        {
+            return $"0 de {candidates} candidatos responderam. Em rede industrial isso pode ser firewall/ICMP bloqueado, mas tambem pode indicar interface/VLAN incorreta.";
+        }
+
+        var modbusText = modbusOpen == 0
+            ? "Nenhum host ativo aceitou a porta Modbus/configurada; se deveria haver servidor Modbus, verifique porta, firewall ou se o equipamento esta em outro segmento."
+            : $"{modbusOpen} host(s) ativo(s) aceitaram porta Modbus/configurada.";
+        return $"{active} de {candidates} candidatos responderam ({activePct}). {modbusText} Investigue qualquer host ativo que nao esteja no inventario esperado.";
+    }
+
+    private static string InterpretModbusDiscovery(int hostCount, IReadOnlyCollection<(string Ip, int Port, bool Open)> openEndpoints, int passiveModbusHosts)
+    {
+        if (openEndpoints.Count == 0 && passiveModbusHosts == 0)
+        {
+            return "Nenhum sinal de Modbus foi encontrado. Se a rede realmente deveria comunicar Modbus, isso aponta para porta diferente, filtro/captura incorreta, firewall, VLAN errada ou equipamento sem servico ativo.";
+        }
+
+        var uniqueHosts = openEndpoints.Select(x => x.Ip).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        return $"{uniqueHosts} de {hostCount} host(s) avaliados aceitaram porta Modbus/configurada ({FormatPercent(uniqueHosts, Math.Max(1, hostCount))}); {passiveModbusHosts} host(s) apareceram com Modbus passivo. Em rede controlada, a lista deve bater com o inventario esperado. Host Modbus inesperado pode ser simulador, gateway, CLP reserva ou dispositivo indevido.";
+    }
+
+    private static string InterpretTrafficLoad(double packetsPerSecond, double bytesPerSecond, int totalPackets, int modbusPackets, int publicPackets, int broadcastOrMulticastPackets, IReadOnlyList<string> topTalkers)
+    {
+        var loadLevel = packetsPerSecond switch
+        {
+            < 200 => "baixa",
+            < 1000 => "moderada",
+            < 5000 => "alta",
+            _ => "muito alta"
+        };
+
+        var modbusPct = FormatPercent(modbusPackets, totalPackets);
+        var publicPct = FormatPercent(publicPackets, totalPackets);
+        var broadcastPct = FormatPercent(broadcastOrMulticastPackets, totalPackets);
+        var attention = new List<string>();
+
+        if (publicPackets > totalPackets * 0.25)
+        {
+            attention.Add($"trafego com IP publico representa {publicPct}; se essa interface e industrial, isso pode indicar trafego corporativo/internet misturado.");
+        }
+        if (broadcastOrMulticastPackets > totalPackets * 0.20)
+        {
+            attention.Add($"broadcast/multicast representa {broadcastPct}; acima de 20% pode indicar descoberta excessiva, multicast ou ruido de rede.");
+        }
+        if (modbusPackets == 0)
+        {
+            attention.Add("nenhum pacote Modbus foi observado na amostra; a carga medida pode nao representar o ciclo Modbus.");
+        }
+        if (packetsPerSecond > 1000)
+        {
+            attention.Add("taxa acima de 1000 pkt/s ja merece correlacao com CPU do notebook, SPAN amplo ou broadcast storm.");
+        }
+
+        var topTalkerText = topTalkers.Count == 0
+            ? "Sem conversa dominante."
+            : $"Top conversa: {topTalkers[0]}.";
+        var attentionText = attention.Count == 0
+            ? "Nao ha sinal obvio de excesso nesta amostra; use como baseline e compare quando a falha ocorrer."
+            : string.Join(" ", attention);
+
+        return $"Carga {loadLevel}: {packetsPerSecond:0.0} pkt/s e {bytesPerSecond / 1024:0.0} KB/s. Modbus e {modbusPct} do total. {topTalkerText} {attentionText}";
+    }
+
+    private static string InterpretTopology(int gatewayCount, int knownHosts, int modbusHosts, int passiveOnly)
+    {
+        if (knownHosts == 0)
+        {
+            return "Nao ha dispositivos consolidados suficientes para inferir topologia. Capture trafego ou rode ARP/varredura com a interface correta.";
+        }
+
+        var gatewayText = gatewayCount == 0
+            ? "Nao foi detectado gateway; isso pode ser normal em ilha industrial sem roteamento, mas limita diagnostico fora da sub-rede."
+            : $"{gatewayCount} gateway(s) detectado(s), possiveis pontos de saida/roteamento da celula.";
+        return $"{gatewayText} Foram consolidados {knownHosts} host(s), sendo {modbusHosts} possivel(is) Modbus e {passiveOnly} visto(s) apenas por captura. Switch L2 puro nao aparece com confianca sem SNMP/LLDP; para topologia fisica, o proximo teste deve consultar switch gerenciavel.";
+    }
+
+    private static string InterpretMapValidation(int ok, int failures, int total, IReadOnlyList<string> failureMessages)
+    {
+        if (total == 0)
+        {
+            return "Sem linhas habilitadas, entao nao houve validacao real de mapa.";
+        }
+
+        if (failures == 0)
+        {
+            return $"100% do mapa habilitado respondeu. Isso indica que IP, porta, Unit ID, function code e ranges configurados estao coerentes para as linhas testadas.";
+        }
+
+        var exception2 = failureMessages.Count(x => x.Contains("exception 2", StringComparison.OrdinalIgnoreCase));
+        var timeout = failureMessages.Count(x => x.Contains("timeout", StringComparison.OrdinalIgnoreCase) || x.Contains("timed", StringComparison.OrdinalIgnoreCase));
+        var causeHints = new List<string>();
+        if (exception2 > 0)
+        {
+            causeHints.Add($"{exception2} falha(s) parecem Illegal Data Address/exception 02, normalmente range inexistente, offset base 0/1 incorreto ou function code errado.");
+        }
+        if (timeout > 0)
+        {
+            causeHints.Add($"{timeout} falha(s) parecem timeout, normalmente conectividade, firewall, equipamento ocupado ou porta errada.");
+        }
+
+        return $"{ok}/{total} linha(s) responderam ({FormatPercent(ok, total)}). {string.Join(" ", causeHints.DefaultIfEmpty("Revise os detalhes das falhas para separar erro de mapa de erro de comunicacao."))}";
+    }
+
+    private static string InterpretObservedFailures(IReadOnlyList<ImportantWarningSummary> warnings, IReadOnlyList<VerificationCheck> badChecks)
+    {
+        if (warnings.Count == 0 && badChecks.Count == 0)
+        {
+            return "Nenhum alerta consolidado nesta janela. Isso nao prova ausencia de problema, mas indica que os sintomas monitorados nao ocorreram durante o teste.";
+        }
+
+        var critical = warnings.Count(x => x.Severity is "Falha" or "Erro") + badChecks.Count(x => x.Status is "Falha" or "Erro");
+        var attention = warnings.Count + badChecks.Count - critical;
+        return $"Foram encontrados {critical} item(ns) criticos e {attention} item(ns) de atencao. Priorize falhas de mapa/exception e conectividade antes de otimizar taxa de polling ou carga de rede.";
+    }
+
+    private static string InterpretConclusion(int total, int failures, int warnings)
+    {
+        if (total == 0)
+        {
+            return "Teste sem etapas concluidas.";
+        }
+
+        if (failures > 0)
+        {
+            return $"{failures}/{total} etapa(s) falharam. Nao trate o sistema como estavel ainda; corrija primeiro as falhas criticas e rode novamente com a mesma janela de observacao.";
+        }
+
+        if (warnings > 0)
+        {
+            return $"{warnings}/{total} etapa(s) ficaram em atencao. O sistema pode comunicar, mas ha pontos a validar contra baseline, inventario e topologia real.";
+        }
+
+        return "Todas as etapas concluidas sem atencao/falha. Use o relatorio como baseline operacional para comparar com futuras ocorrencias.";
     }
 
     private List<string> BuildDiscoveryCandidates()
@@ -1712,9 +1965,50 @@ public sealed partial class MainViewModel : ObservableObject
         };
     }
 
+    private static string FormatPercent(int part, int total)
+    {
+        return total <= 0 ? "0,0%" : $"{part * 100.0 / total:0.0}%";
+    }
+
     private static bool IsIPv4(string value)
     {
         return IPAddress.TryParse(value, out var address) && address.AddressFamily == AddressFamily.InterNetwork;
+    }
+
+    private static bool IsPrivateIPv4(string value)
+    {
+        if (!IPAddress.TryParse(value, out var address) || address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        return bytes[0] == 10
+            || bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31
+            || bytes[0] == 192 && bytes[1] == 168
+            || bytes[0] == 169 && bytes[1] == 254
+            || bytes[0] == 127;
+    }
+
+    private static bool IsPublicIPv4(string value)
+    {
+        if (!IPAddress.TryParse(value, out var address) || address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        return !IsPrivateIPv4(value) && !IsBroadcastOrMulticast(value) && !value.StartsWith("0.", StringComparison.Ordinal);
+    }
+
+    private static bool IsBroadcastOrMulticast(string value)
+    {
+        if (!IPAddress.TryParse(value, out var address) || address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        return bytes[0] >= 224 || value == "255.255.255.255";
     }
 
     private static int PrefixLengthFromMask(IPAddress? mask)
