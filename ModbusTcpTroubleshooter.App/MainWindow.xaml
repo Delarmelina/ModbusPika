@@ -301,6 +301,7 @@
                                         </StackPanel>
                                         <WrapPanel Grid.Column="6" VerticalAlignment="Bottom">
                                             <Button Content="Atualizar interfaces" Command="{Binding RefreshCaptureDevicesCommand}" />
+                                            <Button Content="Atualizar filtro" Command="{Binding ApplyCaptureFilterCommand}" />
                                             <Button Content="Iniciar captura" Command="{Binding StartNetworkCaptureCommand}" />
                                             <Button Content="Parar captura" Command="{Binding StopNetworkCaptureCommand}" />
                                         </WrapPanel>
@@ -336,7 +337,7 @@
                                     </Grid>
                                     <TextBlock Foreground="#6D756E" Text="{Binding QueuedPassivePackets, StringFormat=Captura passiva da interface. Pacotes pendentes na fila de UI: {0}}" />
                                 </StackPanel>
-                                <DataGrid ItemsSource="{Binding FilteredTcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                <DataGrid ItemsSource="{Binding FilteredTcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="TcpTimelineGrid_MouseDoubleClick">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="No." Binding="{Binding Number}" Width="55" />
                                         <DataGridTextColumn Header="Time" Binding="{Binding RelativeTime, StringFormat=0.000000}" Width="95" />

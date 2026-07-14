@@ -68,6 +68,16 @@ public sealed class NetworkCaptureService : IDisposable
         }
     }
 
+    public void UpdateFilter(string filter)
+    {
+        if (_device is null)
+        {
+            return;
+        }
+
+        _device.Filter = string.IsNullOrWhiteSpace(filter) ? null : filter;
+    }
+
     public void Dispose()
     {
         Stop();

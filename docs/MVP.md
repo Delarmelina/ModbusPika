@@ -52,6 +52,8 @@ O MVP usa `1502` como porta padrao para teste local. A porta Modbus TCP oficial 
 - selecao de interface de rede e filtros guiados de captura por protocolo, IP, direcao e porta
 - filtro visual por coluna na timeline TCP: source, destination, protocol e info
 - BPF gerado automaticamente a partir dos filtros guiados
+- botao `Atualizar filtro` para aplicar filtros de captura sem parar e iniciar manualmente
+- duplo clique em uma linha TCP abre um popup com os detalhes do pacote exibido
 - processamento em lote da captura passiva para manter a UI responsiva em redes com alto volume
 - indicador de pacotes pendentes na fila de renderizacao da timeline TCP
 - aba `TCP` alimentada somente pela captura passiva da interface; eventos Modbus internos ficam apenas na aba `Modbus`
@@ -68,6 +70,8 @@ Filtros:
 - `Porta` + `Direcao porta`: origem, destino ou ambos.
 - `Filtro Source`, `Filtro Destination`, `Filtro Protocol`, `Filtro Info`: filtros visuais por coluna.
 - `BPF gerado`: expressao tecnica montada automaticamente para a captura.
+
+Quando `Modbus TCP` esta selecionado sem porta informada, o filtro assume `tcp port 502`. Quando uma porta e informada, o filtro usa `tcp` + a porta escolhida, evitando combinar `502` com outra porta.
 
 Sem Npcap, o app continua funcionando como client/server Modbus, mas a captura passiva nao lista interfaces.
 - leitura FC03 e FC04 no cliente

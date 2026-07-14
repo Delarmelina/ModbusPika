@@ -336,6 +336,28 @@ public sealed partial class MainViewModel : ObservableObject
         Status = "Captura TCP parada.";
     }
 
+    [RelayCommand]
+    private void ApplyCaptureFilter()
+    {
+        try
+        {
+            GeneratedCaptureFilter = BuildCaptureFilter();
+            if (IsNetworkCaptureRunning)
+            {
+                _networkCapture.UpdateFilter(GeneratedCaptureFilter);
+                Status = $"Filtro atualizado: {GeneratedCaptureFilter}";
+                return;
+            }
+
+            Status = $"Filtro preparado: {GeneratedCaptureFilter}";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Falha ao atualizar filtro: {ex.Message}";
+            Log.Error(ex, "Falha ao atualizar filtro de captura");
+        }
+    }
+
     private async Task ReadEnabledClientRowsAsync(CancellationToken cancellationToken)
     {
         var rows = ClientMapRows.Where(x => x.Enabled).ToList();
@@ -639,7 +661,7 @@ public sealed partial class MainViewModel : ObservableObject
             "UDP" => "udp",
             "ARP" => "arp",
             "ICMP" => "icmp",
-            "Modbus TCP" => "tcp port 502",
+            "Modbus TCP" => string.IsNullOrWhiteSpace(CapturePort) ? "tcp port 502" : "tcp",
             _ => "tcp or udp or arp or icmp"
         };
         parts.Add($"({protocol})");
@@ -981,4 +1003,15 @@ public sealed class TcpTimelineRow
     public string Protocol { get; init; } = "";
     public int Length { get; init; }
     public string Info { get; init; } = "";
+
+    public string Details => string.Join(Environment.NewLine, new[]
+    {
+        $"No.: {Number}",
+        $"Time: {RelativeTime:0.000000}",
+        $"Source: {Source}",
+        $"Destination: {Destination}",
+        $"Protocol: {Protocol}",
+        $"Length: {Length}",
+        $"Info: {Info}"
+    });
 }
