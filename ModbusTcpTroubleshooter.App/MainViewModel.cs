@@ -849,7 +849,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             step.Status = "Falha";
             step.Result = ex.Message;
-            step.Recommendation = "Investigue permissao, interface selecionada, IP/porta e disponibilidade do dispositivo antes de repetir o teste.";
+            step.Recommendation = "Verificacao tecnica: permissao de captura/socket, interface selecionada, IP/porta configurados e disponibilidade do endpoint.";
             Log.Error(ex, "Falha na etapa de teste completo {StepName}", step.Name);
         }
         finally
@@ -913,8 +913,8 @@ public sealed partial class MainViewModel : ObservableObject
             string.Join(Environment.NewLine, routeOutput.Split(Environment.NewLine).Take(40))
         ]);
         var recommendation = status == "OK"
-            ? "Rotas e interfaces basicas foram detectadas. Confira se a interface usada e a mesma conectada a rede industrial."
-            : "Verifique IP, mascara, gateway, VLAN e se a interface industrial esta ativa antes de diagnosticar Modbus.";
+            ? "Validar correspondencia entre interface ativa, VLAN industrial e segmento IP do equipamento."
+            : "Validar configuracao IPv4 local: estado da interface, mascara, gateway, VLAN e tabela de rotas.";
 
         return new FullTestStepResult(status, details, recommendation);
     }
@@ -965,8 +965,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         var status = endpoints.Count < 2 ? "Atencao" : "OK";
         var recommendation = status == "OK"
-            ? "Compare a lista de endpoints com a topologia esperada da celula/linha."
-            : "A captura tem pouca amostra. Verifique porta espelhada/SPAN, interface correta e filtros de captura.";
+            ? "Comparar endpoints observados com inventario/topologia esperada."
+            : "Validar interface de captura, filtro BPF, SPAN/port mirror e volume minimo de amostra.";
 
         return new FullTestStepResult(status, details, recommendation);
     }
@@ -997,8 +997,8 @@ public sealed partial class MainViewModel : ObservableObject
             string.Join(Environment.NewLine, lines.Take(20))
         ]);
         var recommendation = status == "OK"
-            ? "ARP local encontrou entradas; valide se MAC/vendor batem com o inventario industrial."
-            : "Se o alvo deveria estar no mesmo segmento, gere comunicacao/ping permitido ou revise VLAN, gateway, mascara e porta do switch.";
+            ? "Correlacionar IP/MAC com inventario de ativos e tabela CAM do switch."
+            : "Validar se o alvo esta no mesmo dominio L2; revisar VLAN, mascara, gateway e porta fisica.";
 
         return new FullTestStepResult(status, details, recommendation);
     }
@@ -1079,8 +1079,8 @@ public sealed partial class MainViewModel : ObservableObject
             active.Count == 0 ? "Nenhum host respondeu a ping ou TCP." : string.Join(Environment.NewLine, active.Take(80).Select(x => $"{x.Ip} | ping={x.PingOk} | port {Port}={x.ConfiguredPortOpen} | port 502={x.ModbusPortOpen}"))
         ]);
         var recommendation = status == "OK"
-            ? "Compare hosts encontrados com a topologia esperada; qualquer IP desconhecido em rede industrial deve ser investigado."
-            : "Se a rede bloqueia ICMP/TCP probe, use captura passiva com porta espelhada e ARP para inventario.";
+            ? "Correlacionar hosts ativos com inventario de rede; classificar IPs nao documentados."
+            : "Confirmar se ICMP/TCP probe e permitido; caso contrario, usar ARP/captura passiva para inventario.";
 
         return new FullTestStepResult(status, details, recommendation);
     }
@@ -1154,8 +1154,8 @@ public sealed partial class MainViewModel : ObservableObject
             $"Hosts Modbus na captura passiva: {(passiveModbusHosts.Count == 0 ? "nenhum" : string.Join(", ", passiveModbusHosts))}"
         ]);
         var recommendation = status == "OK"
-            ? "Valide se todos os servidores Modbus encontrados pertencem ao inventario esperado da rede."
-            : "Se deveria haver Modbus na rede, revise filtros de captura, porta usada pelo equipamento, firewall e segmentacao/VLAN.";
+            ? "Comparar endpoints Modbus encontrados com inventario de PLCs, gateways e simuladores autorizados."
+            : "Validar porta Modbus usada, firewall local/remoto, segmentacao/VLAN e filtros de captura.";
 
         return new FullTestStepResult(status, details, recommendation);
     }
@@ -1182,7 +1182,7 @@ public sealed partial class MainViewModel : ObservableObject
                 $"Socket TCP abriu em {started.ElapsedMilliseconds} ms para {TargetIp}:{Port}.",
                 "",
                 "Interpretacao:",
-                $"Tempo de conexao {latencyStatus}. Em rede industrial local, valores abaixo de 50 ms normalmente sao confortaveis; acima de 200 ms merecem checagem de rota, firewall, VPN, gateway ou equipamento sobrecarregado."
+                $"Criterio: latencia de abertura TCP. Resultado: {started.ElapsedMilliseconds} ms, classificado como {latencyStatus}. Implicacao: <50 ms e esperado para LAN local; 50-200 ms indica caminho com latencia moderada; >200 ms sugere roteamento intermediario, firewall, VPN, fila no equipamento ou retransmissao TCP."
             ]),
             "Conectividade TCP basica OK. Se Modbus falhar, investigue Unit ID, mapa, function code, gateway ou resposta de aplicacao.");
     }
@@ -1255,7 +1255,7 @@ public sealed partial class MainViewModel : ObservableObject
             InterpretTrafficLoad(packetsPerSecond, bytesPerSecond, rows.Count, modbusPacketCount, publicPacketCount, broadcastOrMulticastCount, topTalkers)
         ]);
         var recommendation = status == "OK"
-            ? "Carga observada parece tratavel pela UI; compare com baseline da rede industrial."
+            ? "Registrar valores como referencia numerica da janela analisada."
             : "Ha sinal de alto volume ou backlog. Filtre por VLAN/IP/porta, valide broadcast storm, multicast excessivo ou porta espelhada muito ampla.";
 
         return new FullTestStepResult(status, details, recommendation);
@@ -1300,8 +1300,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         var status = gateways.Count == 0 ? "Atencao" : "OK";
         var recommendation = status == "OK"
-            ? "Use gateway + ARP + captura passiva como mapa inicial. Para topologia fisica real, adicionar SNMP/LLDP e cadastro de switches."
-            : "Sem gateway claro. Verifique se a maquina esta na VLAN industrial correta ou se a rede e isolada sem roteamento.";
+            ? "Usar gateway, ARP e captura passiva como topologia logica inicial; topologia fisica exige SNMP/LLDP/CDP."
+            : "Validar se a rede e uma ilha L2 sem gateway ou se ha erro de VLAN/mascara/roteamento.";
 
         return Task.FromResult(new FullTestStepResult(status, details, recommendation));
     }
@@ -1357,7 +1357,7 @@ public sealed partial class MainViewModel : ObservableObject
             failures.Count == 0 ? "Todas as linhas habilitadas responderam." : string.Join(Environment.NewLine, failures.Take(20))
         ]);
         var recommendation = status == "OK"
-            ? "Mapa configurado respondeu com sucesso. Mantenha esse mapa como referencia do caso."
+            ? "Mapa habilitado validado para as linhas testadas; registrar como referencia do caso."
             : "Revise function code, endereco base zero/um, quantidade, Unit ID e ranges realmente publicados pelo equipamento.";
 
         return new FullTestStepResult(status, details, recommendation);
@@ -1383,7 +1383,7 @@ public sealed partial class MainViewModel : ObservableObject
                     $"Request/response read-only OK em {TargetIp}:{Port} UID {UnitId}, FC{row.FunctionCode}, addr {row.StartAddress}, qty {row.Quantity}. Valores: {string.Join(", ", values.Select(x => x ? "1" : "0"))}",
                     "",
                     "Interpretacao:",
-                    "A pilha Modbus respondeu no nivel de aplicacao. Se outras linhas falham, o problema tende a estar em mapa, Unit ID, function code ou range especifico, nao em conectividade TCP basica."
+                    "Criterio: transacao Modbus read-only completa. Resultado: request enviado e response valida recebida. Implicacao: socket TCP, MBAP, Unit ID e function code da linha testada estao funcionais; falhas em outras linhas devem ser isoladas por range, offset, FC ou quantidade."
                 ]),
                 "Envio e recebimento Modbus confirmados sem escrita. Para teste de escrita, configure futuramente um ponto seguro de teste.");
         }
@@ -1395,7 +1395,7 @@ public sealed partial class MainViewModel : ObservableObject
                 $"Request/response read-only OK em {TargetIp}:{Port} UID {UnitId}, FC{row.FunctionCode}, addr {row.StartAddress}, qty {row.Quantity}. Valores: {string.Join(", ", registers)}",
                 "",
                 "Interpretacao:",
-                "A pilha Modbus respondeu no nivel de aplicacao. Se outras linhas falham, o problema tende a estar em mapa, Unit ID, function code ou range especifico, nao em conectividade TCP basica."
+                "Criterio: transacao Modbus read-only completa. Resultado: request enviado e response valida recebida. Implicacao: socket TCP, MBAP, Unit ID e function code da linha testada estao funcionais; falhas em outras linhas devem ser isoladas por range, offset, FC ou quantidade."
             ]),
             "Envio e recebimento Modbus confirmados sem escrita. Para teste de escrita, configure futuramente um ponto seguro de teste.");
     }
@@ -1421,8 +1421,8 @@ public sealed partial class MainViewModel : ObservableObject
             InterpretObservedFailures(warnings, badChecks)
         ]);
         var recommendation = status == "OK"
-            ? "Nenhuma falha consolidada foi detectada nesta janela de teste."
-            : "Priorize itens com Falha/Erro, depois valide polling rapido, exceptions Modbus e acessos fora de mapa.";
+            ? "Nenhum evento classificado como falha/atencao foi consolidado na janela analisada."
+            : "Ordenar investigacao por severidade: erro/falha, exception Modbus, acesso fora de mapa, polling e carga.";
 
         return Task.FromResult(new FullTestStepResult(status, details, recommendation));
     }
@@ -1445,8 +1445,8 @@ public sealed partial class MainViewModel : ObservableObject
             InterpretConclusion(completed.Count, failures.Count, warnings.Count)
         ]);
         var recommendation = status == "OK"
-            ? "Use o relatorio como baseline. Para troubleshooting prolongado, deixe a captura ativa e reexecute o teste apos a falha ocorrer."
-            : "Corrija primeiro conectividade TCP/ARP e mapa Modbus; depois repita o teste com captura passiva ativa para confirmar estabilidade.";
+            ? "Relatorio apto como referencia tecnica da condicao analisada."
+            : "Executar nova coleta apos tratar itens criticos para comparar variacao de conectividade, mapa e carga.";
 
         return Task.FromResult(new FullTestStepResult(status, details, recommendation));
     }
@@ -1542,18 +1542,18 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (activeProfiles.Count == 0)
         {
-            return "Nao ha interface IPv4 operacional. O teste de rede nao e confiavel ate selecionar/ativar a placa ligada a rede industrial.";
+            return "Criterio: existencia de interface IPv4 operacional. Resultado: zero interfaces ativas. Implicacao: qualquer falha posterior de TCP/ARP/Modbus pode ser consequencia de conectividade local ausente.";
         }
 
         var industrialCandidates = activeProfiles.Where(x => IsPrivateIPv4(x.Address)).ToList();
         var gatewayText = activeProfiles.Any(x => IsIPv4(x.Gateway))
-            ? "ha gateway IPv4 configurado"
-            : "nao ha gateway IPv4 configurado";
+            ? "gateway IPv4 presente"
+            : "gateway IPv4 ausente";
         var routeText = defaultRouteFound
-            ? "rota default existe"
-            : "sem rota default detectada";
+            ? "rota default presente"
+            : "rota default ausente";
 
-        return $"Foram encontradas {activeProfiles.Count} interface(s) IPv4 ativa(s), {industrialCandidates.Count} em faixa privada. Isso indica que a maquina tem conectividade local; {gatewayText} e {routeText}. Em troubleshooting industrial, confirme que a interface privada listada e a mesma conectada ao PLC/switch industrial.";
+        return $"Criterio: interfaces IPv4, gateway e rota default. Resultado: {activeProfiles.Count} interface(s) ativa(s), {industrialCandidates.Count} em RFC1918/APIPA, {gatewayText}, {routeText}. Implicacao: se o alvo estiver fora da sub-rede local e nao houver gateway/rota, a comunicacao depende de roteamento ausente ou configuracao manual.";
     }
 
     private static string InterpretPassiveInventory(int packetCount, int endpointCount, int modbusRows, int publicEndpointCount, string dominantProtocol, int dominantProtocolCount)
@@ -1561,55 +1561,55 @@ public sealed partial class MainViewModel : ObservableObject
         var modbusPct = FormatPercent(modbusRows, packetCount);
         var dominantPct = FormatPercent(dominantProtocolCount, packetCount);
         var publicText = publicEndpointCount > 0
-            ? $"Ha {publicEndpointCount} endpoint(s) publico(s) observado(s); se essa rede deveria ser isolada, isso merece atencao."
-            : "Nao foram vistos endpoints publicos na amostra, o que e coerente com rede industrial segregada.";
+            ? $"Endpoint(s) publico(s): {publicEndpointCount}; isso indica trafego roteado/externo presente na interface capturada."
+            : "Endpoint(s) publico(s): 0; amostra sem trafego externo detectado.";
         var modbusText = modbusRows == 0
-            ? "Nao apareceu Modbus/TCP passivo nesta janela; isso pode ser normal se o teste esta em server substituto e o trafego Modbus nao passou pela interface/captura."
-            : $"Modbus/TCP representa {modbusPct} da amostra; se o foco e Modbus, esse percentual ajuda a medir quanto trafego concorrente existe.";
+            ? "Modbus/TCP passivo: 0 pacote; a captura nao observou ciclo Modbus nesta janela."
+            : $"Modbus/TCP passivo: {modbusPct} da amostra; o restante e trafego concorrente ou nao classificado como Modbus.";
 
-        return $"A amostra tem {packetCount} pacote(s), {endpointCount} endpoint(s) e protocolo dominante {dominantProtocol} ({dominantPct}). {modbusText} {publicText}";
+        return $"Criterio: distribuicao de protocolos/endpoints na janela passiva. Resultado: {packetCount} pacote(s), {endpointCount} endpoint(s), protocolo dominante {dominantProtocol} ({dominantPct}). Implicacao: {modbusText} {publicText}";
     }
 
     private static string InterpretArp(int entries, bool targetSeen)
     {
         if (entries == 0)
         {
-            return "Tabela ARP vazia ou sem entradas IPv4 parseaveis. Isso reduz a confianca do inventario local; gere trafego para os equipamentos ou confirme a VLAN/interface.";
+            return "Criterio: entradas ARP IPv4 locais. Resultado: zero entradas parseaveis. Implicacao: nao ha evidencia L2 suficiente para confirmar presenca do alvo ou dos ativos no mesmo segmento.";
         }
 
         return targetSeen
-            ? $"O alvo apareceu na tabela ARP. Isso confirma resolucao L2 local para o IP alvo e reduz suspeita de mascara/VLAN errada."
-            : $"Foram vistas {entries} entrada(s), mas o alvo nao apareceu. Se o alvo esta no mesmo segmento, isso pode indicar que ainda nao houve comunicacao L2, IP incorreto, VLAN errada, equipamento desligado ou firewall bloqueando resposta.";
+            ? $"Criterio: presenca do alvo na tabela ARP. Resultado: alvo presente em {entries} entrada(s). Implicacao: resolucao L2 do alvo confirmada; falhas restantes tendem a estar acima de ARP ou em conflito intermitente."
+            : $"Criterio: presenca do alvo na tabela ARP. Resultado: {entries} entrada(s), alvo ausente. Implicacao: sem evidencia de resolucao L2 para o alvo; causas provaveis incluem alvo fora do segmento, IP incorreto, VLAN/mascara incorreta ou ausencia de trafego ARP recente.";
     }
 
     private static string InterpretHostDiscovery(int candidates, int active, int modbusOpen)
     {
         if (candidates == 0)
         {
-            return "Nao houve base para varredura. Cadastre alvo, capture trafego ou use ARP antes de concluir algo sobre a rede.";
+            return "Criterio: lista de candidatos para probe. Resultado: zero candidatos. Implicacao: etapa inconclusiva por ausencia de universo de teste.";
         }
 
         var activePct = FormatPercent(active, candidates);
         if (active == 0)
         {
-            return $"0 de {candidates} candidatos responderam. Em rede industrial isso pode ser firewall/ICMP bloqueado, mas tambem pode indicar interface/VLAN incorreta.";
+            return $"Criterio: resposta por ICMP ou abertura TCP. Resultado: 0/{candidates} candidatos ativos. Implicacao: probe bloqueado por firewall/politica, candidatos fora de segmento, interface incorreta ou ausencia real de hosts.";
         }
 
         var modbusText = modbusOpen == 0
-            ? "Nenhum host ativo aceitou a porta Modbus/configurada; se deveria haver servidor Modbus, verifique porta, firewall ou se o equipamento esta em outro segmento."
-            : $"{modbusOpen} host(s) ativo(s) aceitaram porta Modbus/configurada.";
-        return $"{active} de {candidates} candidatos responderam ({activePct}). {modbusText} Investigue qualquer host ativo que nao esteja no inventario esperado.";
+            ? "Porta Modbus/configurada aberta: 0 nos hosts ativos."
+            : $"Porta Modbus/configurada aberta: {modbusOpen} host(s).";
+        return $"Criterio: resposta ICMP/TCP e abertura de porta. Resultado: {active}/{candidates} candidatos ativos ({activePct}). {modbusText} Implicacao: hosts ativos nao documentados indicam divergencia de inventario; porta Modbus aberta identifica superficie de comunicacao industrial.";
     }
 
     private static string InterpretModbusDiscovery(int hostCount, IReadOnlyCollection<(string Ip, int Port, bool Open)> openEndpoints, int passiveModbusHosts)
     {
         if (openEndpoints.Count == 0 && passiveModbusHosts == 0)
         {
-            return "Nenhum sinal de Modbus foi encontrado. Se a rede realmente deveria comunicar Modbus, isso aponta para porta diferente, filtro/captura incorreta, firewall, VLAN errada ou equipamento sem servico ativo.";
+            return "Criterio: porta TCP Modbus/configurada aberta ou Modbus passivo observado. Resultado: zero endpoints. Implicacao: sem evidencia de servico Modbus na amostra; causas incluem porta nao padrao, firewall, VLAN incorreta, filtro de captura ou servico inativo.";
         }
 
         var uniqueHosts = openEndpoints.Select(x => x.Ip).Distinct(StringComparer.OrdinalIgnoreCase).Count();
-        return $"{uniqueHosts} de {hostCount} host(s) avaliados aceitaram porta Modbus/configurada ({FormatPercent(uniqueHosts, Math.Max(1, hostCount))}); {passiveModbusHosts} host(s) apareceram com Modbus passivo. Em rede controlada, a lista deve bater com o inventario esperado. Host Modbus inesperado pode ser simulador, gateway, CLP reserva ou dispositivo indevido.";
+        return $"Criterio: abertura TCP em porta Modbus/configurada e assinatura passiva. Resultado: {uniqueHosts}/{hostCount} host(s) com porta aberta ({FormatPercent(uniqueHosts, Math.Max(1, hostCount))}); {passiveModbusHosts} host(s) com Modbus passivo. Implicacao: cada endpoint deve corresponder a PLC, gateway ou simulador conhecido; endpoint nao inventariado representa superficie Modbus nao documentada.";
     }
 
     private static string InterpretTrafficLoad(double packetsPerSecond, double bytesPerSecond, int totalPackets, int modbusPackets, int publicPackets, int broadcastOrMulticastPackets, IReadOnlyList<string> topTalkers)
@@ -1629,29 +1629,29 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (publicPackets > totalPackets * 0.25)
         {
-            attention.Add($"trafego com IP publico representa {publicPct}; se essa interface e industrial, isso pode indicar trafego corporativo/internet misturado.");
+            attention.Add($"trafego com IP publico={publicPct}, acima do limiar de 25%; indica mistura de trafego roteado/corporativo na interface capturada.");
         }
         if (broadcastOrMulticastPackets > totalPackets * 0.20)
         {
-            attention.Add($"broadcast/multicast representa {broadcastPct}; acima de 20% pode indicar descoberta excessiva, multicast ou ruido de rede.");
+            attention.Add($"broadcast/multicast={broadcastPct}, acima do limiar de 20%; indica carga de descoberta, multicast ou broadcast storm parcial.");
         }
         if (modbusPackets == 0)
         {
-            attention.Add("nenhum pacote Modbus foi observado na amostra; a carga medida pode nao representar o ciclo Modbus.");
+            attention.Add("Modbus/TCP=0%; a carga medida nao caracteriza ciclo Modbus nesta janela.");
         }
         if (packetsPerSecond > 1000)
         {
-            attention.Add("taxa acima de 1000 pkt/s ja merece correlacao com CPU do notebook, SPAN amplo ou broadcast storm.");
+            attention.Add("taxa >1000 pkt/s; correlacionar com abrangencia do SPAN, CPU local e eventos de broadcast/multicast.");
         }
 
         var topTalkerText = topTalkers.Count == 0
             ? "Sem conversa dominante."
             : $"Top conversa: {topTalkers[0]}.";
         var attentionText = attention.Count == 0
-            ? "Nao ha sinal obvio de excesso nesta amostra; use como baseline e compare quando a falha ocorrer."
+            ? "Nenhum limiar interno excedido nesta amostra."
             : string.Join(" ", attention);
 
-        return $"Carga {loadLevel}: {packetsPerSecond:0.0} pkt/s e {bytesPerSecond / 1024:0.0} KB/s. Modbus e {modbusPct} do total. {topTalkerText} {attentionText}";
+        return $"Criterio: taxa de pacotes, volume, composicao e top talkers. Resultado: carga {loadLevel}, {packetsPerSecond:0.0} pkt/s, {bytesPerSecond / 1024:0.0} KB/s, Modbus={modbusPct}. Implicacao: {topTalkerText} {attentionText}";
     }
 
     private static string InterpretTopology(int gatewayCount, int knownHosts, int modbusHosts, int passiveOnly)
@@ -1662,21 +1662,21 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var gatewayText = gatewayCount == 0
-            ? "Nao foi detectado gateway; isso pode ser normal em ilha industrial sem roteamento, mas limita diagnostico fora da sub-rede."
-            : $"{gatewayCount} gateway(s) detectado(s), possiveis pontos de saida/roteamento da celula.";
-        return $"{gatewayText} Foram consolidados {knownHosts} host(s), sendo {modbusHosts} possivel(is) Modbus e {passiveOnly} visto(s) apenas por captura. Switch L2 puro nao aparece com confianca sem SNMP/LLDP; para topologia fisica, o proximo teste deve consultar switch gerenciavel.";
+            ? "gateway=0; rede pode ser ilha L2 ou host sem rota configurada."
+            : $"gateway={gatewayCount}; ha ponto(s) de roteamento detectado(s).";
+        return $"Criterio: gateway, hosts consolidados, endpoints Modbus e hosts passivos. Resultado: {gatewayText} hosts={knownHosts}, possiveis Modbus={modbusHosts}, somente passivos={passiveOnly}. Implicacao: topologia logica parcial disponivel; topologia fisica de switch L2 requer SNMP/LLDP/CDP ou tabela MAC do switch.";
     }
 
     private static string InterpretMapValidation(int ok, int failures, int total, IReadOnlyList<string> failureMessages)
     {
         if (total == 0)
         {
-            return "Sem linhas habilitadas, entao nao houve validacao real de mapa.";
+            return "Criterio: linhas habilitadas no mapa. Resultado: zero linhas. Implicacao: etapa sem validade diagnostica para ranges Modbus.";
         }
 
         if (failures == 0)
         {
-            return $"100% do mapa habilitado respondeu. Isso indica que IP, porta, Unit ID, function code e ranges configurados estao coerentes para as linhas testadas.";
+            return $"Criterio: leitura read-only de todas as linhas habilitadas. Resultado: 100% sucesso. Implicacao: IP, porta, Unit ID, function code, endereco inicial e quantidade estao coerentes para as linhas testadas.";
         }
 
         var exception2 = failureMessages.Count(x => x.Contains("exception 2", StringComparison.OrdinalIgnoreCase));
@@ -1691,39 +1691,39 @@ public sealed partial class MainViewModel : ObservableObject
             causeHints.Add($"{timeout} falha(s) parecem timeout, normalmente conectividade, firewall, equipamento ocupado ou porta errada.");
         }
 
-        return $"{ok}/{total} linha(s) responderam ({FormatPercent(ok, total)}). {string.Join(" ", causeHints.DefaultIfEmpty("Revise os detalhes das falhas para separar erro de mapa de erro de comunicacao."))}";
+        return $"Criterio: leitura read-only por linha habilitada. Resultado: {ok}/{total} linha(s) responderam ({FormatPercent(ok, total)}). Implicacao: {string.Join(" ", causeHints.DefaultIfEmpty("classificar falhas por exception Modbus, timeout ou erro de socket para separar erro de mapa de erro de transporte."))}";
     }
 
     private static string InterpretObservedFailures(IReadOnlyList<ImportantWarningSummary> warnings, IReadOnlyList<VerificationCheck> badChecks)
     {
         if (warnings.Count == 0 && badChecks.Count == 0)
         {
-            return "Nenhum alerta consolidado nesta janela. Isso nao prova ausencia de problema, mas indica que os sintomas monitorados nao ocorreram durante o teste.";
+            return "Criterio: agregacao de warnings e checks automaticos. Resultado: zero eventos classificados. Implicacao: os sintomas monitorados nao ocorreram na janela analisada; diagnostico limitado a essa janela temporal.";
         }
 
         var critical = warnings.Count(x => x.Severity is "Falha" or "Erro") + badChecks.Count(x => x.Status is "Falha" or "Erro");
         var attention = warnings.Count + badChecks.Count - critical;
-        return $"Foram encontrados {critical} item(ns) criticos e {attention} item(ns) de atencao. Priorize falhas de mapa/exception e conectividade antes de otimizar taxa de polling ou carga de rede.";
+        return $"Criterio: severidade agregada. Resultado: criticos={critical}, atencao={attention}. Implicacao: falhas de transporte/mapa invalidam conclusao de estabilidade; itens de polling/carga devem ser analisados apos eliminar exceptions e timeouts.";
     }
 
     private static string InterpretConclusion(int total, int failures, int warnings)
     {
         if (total == 0)
         {
-            return "Teste sem etapas concluidas.";
+            return "Criterio: etapas concluidas. Resultado: zero etapas. Implicacao: relatorio sem validade diagnostica.";
         }
 
         if (failures > 0)
         {
-            return $"{failures}/{total} etapa(s) falharam. Nao trate o sistema como estavel ainda; corrija primeiro as falhas criticas e rode novamente com a mesma janela de observacao.";
+            return $"Criterio: etapas com status Falha/Erro. Resultado: {failures}/{total}. Implicacao: diagnostico reprovado; resultados posteriores podem estar contaminados por falha primaria de conectividade, mapa ou captura.";
         }
 
         if (warnings > 0)
         {
-            return $"{warnings}/{total} etapa(s) ficaram em atencao. O sistema pode comunicar, mas ha pontos a validar contra baseline, inventario e topologia real.";
+            return $"Criterio: etapas com status Atencao. Resultado: {warnings}/{total}. Implicacao: comunicacao parcialmente validada, com divergencias ou baixa confianca em inventario/captura/carga.";
         }
 
-        return "Todas as etapas concluidas sem atencao/falha. Use o relatorio como baseline operacional para comparar com futuras ocorrencias.";
+        return "Criterio: status final agregado. Resultado: zero falhas e zero atencoes. Implicacao: referencia tecnica valida apenas para as condicoes, filtros e janela de observacao executados.";
     }
 
     private List<string> BuildDiscoveryCandidates()
