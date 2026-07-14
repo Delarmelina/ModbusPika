@@ -39,10 +39,21 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private ClientMapRow? selectedClientMapRow;
     [ObservableProperty] private ServerMapRange? selectedServerMapRange;
     [ObservableProperty] private CaptureDeviceOption? selectedCaptureDevice;
-    [ObservableProperty] private string captureFilter = "tcp or udp or arp";
+    [ObservableProperty] private string selectedCaptureProtocol = "Todos";
+    [ObservableProperty] private string captureIp = "";
+    [ObservableProperty] private string selectedCaptureIpDirection = "Origem ou destino";
+    [ObservableProperty] private string capturePort = "";
+    [ObservableProperty] private string selectedCapturePortDirection = "Origem ou destino";
+    [ObservableProperty] private string generatedCaptureFilter = "tcp or udp or arp";
     [ObservableProperty] private string tcpViewFilter = "";
+    [ObservableProperty] private string sourceColumnFilter = "";
+    [ObservableProperty] private string destinationColumnFilter = "";
+    [ObservableProperty] private string protocolColumnFilter = "";
+    [ObservableProperty] private string infoColumnFilter = "";
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
+    public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "Modbus TCP"];
+    public ObservableCollection<string> CaptureDirections { get; } = ["Origem ou destino", "Somente origem", "Somente destino"];
     public ObservableCollection<CaptureDeviceOption> CaptureDevices { get; } = [];
     public ObservableCollection<ModbusPoint> ServerPoints { get; } = [];
     public ObservableCollection<ServerMapRange> ServerMapRanges { get; } = [];
@@ -294,7 +305,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            _networkCapture.Start(SelectedCaptureDevice, CaptureFilter);
+            GeneratedCaptureFilter = BuildCaptureFilter();
+            _networkCapture.Start(SelectedCaptureDevice, GeneratedCaptureFilter);
             IsNetworkCaptureRunning = true;
             Status = $"Captura TCP iniciada: {SelectedCaptureDevice.Description}";
         }
@@ -395,6 +407,51 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnTcpViewFilterChanged(string value)
     {
         ApplyTcpViewFilter();
+    }
+
+    partial void OnSourceColumnFilterChanged(string value)
+    {
+        ApplyTcpViewFilter();
+    }
+
+    partial void OnDestinationColumnFilterChanged(string value)
+    {
+        ApplyTcpViewFilter();
+    }
+
+    partial void OnProtocolColumnFilterChanged(string value)
+    {
+        ApplyTcpViewFilter();
+    }
+
+    partial void OnInfoColumnFilterChanged(string value)
+    {
+        ApplyTcpViewFilter();
+    }
+
+    partial void OnSelectedCaptureProtocolChanged(string value)
+    {
+        GeneratedCaptureFilter = BuildCaptureFilter();
+    }
+
+    partial void OnCaptureIpChanged(string value)
+    {
+        GeneratedCaptureFilter = BuildCaptureFilter();
+    }
+
+    partial void OnSelectedCaptureIpDirectionChanged(string value)
+    {
+        GeneratedCaptureFilter = BuildCaptureFilter();
+    }
+
+    partial void OnCapturePortChanged(string value)
+    {
+        GeneratedCaptureFilter = BuildCaptureFilter();
+    }
+
+    partial void OnSelectedCapturePortDirectionChanged(string value)
+    {
+        GeneratedCaptureFilter = BuildCaptureFilter();
     }
 
     private void LoadDefaultClientMap()
@@ -555,6 +612,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool MatchesTcpFilter(TcpTimelineRow row)
     {
+        if (!Contains(row.Source, SourceColumnFilter)
+            || !Contains(row.Destination, DestinationColumnFilter)
+            || !Contains(row.Protocol, ProtocolColumnFilter)
+            || !Contains(row.Info, InfoColumnFilter))
+        {
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(TcpViewFilter))
         {
             return true;
@@ -567,6 +632,51 @@ public sealed partial class MainViewModel : ObservableObject
             || row.Info.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || row.Length.ToString().Contains(filter, StringComparison.OrdinalIgnoreCase)
             || row.Number.ToString().Contains(filter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string BuildCaptureFilter()
+    {
+        var parts = new List<string>();
+
+        var protocol = SelectedCaptureProtocol switch
+        {
+            "TCP" => "tcp",
+            "UDP" => "udp",
+            "ARP" => "arp",
+            "Modbus TCP" => "tcp port 502",
+            _ => "tcp or udp or arp"
+        };
+        parts.Add($"({protocol})");
+
+        if (!string.IsNullOrWhiteSpace(CaptureIp))
+        {
+            var ipClause = SelectedCaptureIpDirection switch
+            {
+                "Somente origem" => $"src host {CaptureIp.Trim()}",
+                "Somente destino" => $"dst host {CaptureIp.Trim()}",
+                _ => $"host {CaptureIp.Trim()}"
+            };
+            parts.Add($"({ipClause})");
+        }
+
+        if (!string.IsNullOrWhiteSpace(CapturePort))
+        {
+            var portClause = SelectedCapturePortDirection switch
+            {
+                "Somente origem" => $"src port {CapturePort.Trim()}",
+                "Somente destino" => $"dst port {CapturePort.Trim()}",
+                _ => $"port {CapturePort.Trim()}"
+            };
+            parts.Add($"({portClause})");
+        }
+
+        return string.Join(" and ", parts);
+    }
+
+    private static bool Contains(string value, string filter)
+    {
+        return string.IsNullOrWhiteSpace(filter)
+            || value.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     private (string Source, string Destination) ResolveTcpEndpoints(TrafficEvent trafficEvent)

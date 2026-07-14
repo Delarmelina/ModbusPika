@@ -264,31 +264,77 @@
                         </TabItem>
                         <TabItem Header="TCP">
                             <DockPanel Margin="0,8,0,0">
-                                <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*" />
-                                        <ColumnDefinition Width="1.3*" />
-                                        <ColumnDefinition Width="1.3*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <TextBlock Text="Interface" />
-                                        <ComboBox ItemsSource="{Binding CaptureDevices}" SelectedItem="{Binding SelectedCaptureDevice}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                        <TextBlock Text="Filtro de captura (BPF)" />
-                                        <TextBox Text="{Binding CaptureFilter, UpdateSourceTrigger=PropertyChanged}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                        <TextBlock Text="Filtro visual" />
-                                        <TextBox Text="{Binding TcpViewFilter, UpdateSourceTrigger=PropertyChanged}" />
-                                    </StackPanel>
-                                    <WrapPanel Grid.Column="3" VerticalAlignment="Bottom">
-                                        <Button Content="Atualizar interfaces" Command="{Binding RefreshCaptureDevicesCommand}" />
-                                        <Button Content="Iniciar captura" Command="{Binding StartNetworkCaptureCommand}" />
-                                        <Button Content="Parar captura" Command="{Binding StopNetworkCaptureCommand}" />
-                                    </WrapPanel>
-                                </Grid>
+                                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.7*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Interface" />
+                                            <ComboBox ItemsSource="{Binding CaptureDevices}" SelectedItem="{Binding SelectedCaptureDevice}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                            <TextBlock Text="Protocolo" />
+                                            <ComboBox ItemsSource="{Binding CaptureProtocols}" SelectedItem="{Binding SelectedCaptureProtocol}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                            <TextBlock Text="IP" />
+                                            <TextBox Text="{Binding CaptureIp, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                                            <TextBlock Text="Direcao IP" />
+                                            <ComboBox ItemsSource="{Binding CaptureDirections}" SelectedItem="{Binding SelectedCaptureIpDirection}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4" Margin="0,0,8,0">
+                                            <TextBlock Text="Porta" />
+                                            <TextBox Text="{Binding CapturePort, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="5" Margin="0,0,8,0">
+                                            <TextBlock Text="Direcao porta" />
+                                            <ComboBox ItemsSource="{Binding CaptureDirections}" SelectedItem="{Binding SelectedCapturePortDirection}" />
+                                        </StackPanel>
+                                        <WrapPanel Grid.Column="6" VerticalAlignment="Bottom">
+                                            <Button Content="Atualizar interfaces" Command="{Binding RefreshCaptureDevicesCommand}" />
+                                            <Button Content="Iniciar captura" Command="{Binding StartNetworkCaptureCommand}" />
+                                            <Button Content="Parar captura" Command="{Binding StopNetworkCaptureCommand}" />
+                                        </WrapPanel>
+                                    </Grid>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1.6*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Filtro Source" />
+                                            <TextBox Text="{Binding SourceColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                            <TextBlock Text="Filtro Destination" />
+                                            <TextBox Text="{Binding DestinationColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                            <TextBlock Text="Filtro Protocol" />
+                                            <TextBox Text="{Binding ProtocolColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                                            <TextBlock Text="Filtro Info" />
+                                            <TextBox Text="{Binding InfoColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="BPF gerado" />
+                                            <TextBox Text="{Binding GeneratedCaptureFilter}" IsReadOnly="True" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
                                 <DataGrid ItemsSource="{Binding FilteredTcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="No." Binding="{Binding Number}" Width="55" />
