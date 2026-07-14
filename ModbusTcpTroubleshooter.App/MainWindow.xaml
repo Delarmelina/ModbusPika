@@ -82,7 +82,8 @@
                             <TextBlock Text="Use 1502 para teste local. A porta 502 pode exigir permissao/admin." TextWrapping="Wrap" Foreground="#6D756E" />
                         </StackPanel>
 
-                        <Button Content="Limpar timeline" Command="{Binding ClearTimelineCommand}" Margin="0,16,8,8" />
+                        <Button Content="TESTE COMPLETO" Command="{Binding StartFullTestCommand}" Margin="0,16,8,4" Background="#17312B" Foreground="White" FontWeight="SemiBold" />
+                        <Button Content="Limpar timeline" Command="{Binding ClearTimelineCommand}" Margin="0,4,8,8" />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -233,6 +234,48 @@
                                             <DataGridTextColumn Header="Hora" Binding="{Binding LastCheckedAt}" Width="75" />
                                         </DataGrid.Columns>
                                     </DataGrid>
+                                </DockPanel>
+                            </TabItem>
+                            <TabItem Header="Teste completo">
+                                <DockPanel Margin="0,8,0,0">
+                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="Varredura industrial guiada" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                        <Button Content="Executar teste completo" Command="{Binding StartFullTestCommand}" />
+                                        <Button Content="Exportar relatorio" Command="{Binding SaveFullTestReportCommand}" />
+                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="1.1*" />
+                                            <RowDefinition Height="6" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <DataGrid Grid.Row="0" ItemsSource="{Binding FullTestSteps}" SelectedItem="{Binding SelectedFullTestStep}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="#" Binding="{Binding Order}" Width="35" />
+                                                <DataGridTextColumn Header="Etapa" Binding="{Binding Name}" Width="150" />
+                                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="85" />
+                                                <DataGridTextColumn Header="Objetivo" Binding="{Binding Objective}" Width="*" />
+                                                <DataGridTextColumn Header="Recomendacao" Binding="{Binding Recommendation}" Width="240" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
+                                        <Grid Grid.Row="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1*" />
+                                                <ColumnDefinition Width="6" />
+                                                <ColumnDefinition Width="1*" />
+                                            </Grid.ColumnDefinitions>
+                                            <DockPanel Grid.Column="0" Margin="0,8,8,0">
+                                                <TextBlock DockPanel.Dock="Top" Text="Detalhe da etapa selecionada" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,4" />
+                                                <TextBox Text="{Binding SelectedFullTestStep.Result}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
+                                            </DockPanel>
+                                            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" Margin="0,8,0,0" />
+                                            <DockPanel Grid.Column="2" Margin="8,8,0,0">
+                                                <TextBlock DockPanel.Dock="Top" Text="Relatorio final" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,4" />
+                                                <TextBox Text="{Binding FullTestReport}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
+                                            </DockPanel>
+                                        </Grid>
+                                    </Grid>
                                 </DockPanel>
                             </TabItem>
                         </TabControl>
