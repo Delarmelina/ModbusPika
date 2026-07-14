@@ -264,8 +264,32 @@
                         </TabItem>
                         <TabItem Header="TCP">
                             <DockPanel Margin="0,8,0,0">
-                                <TextBlock DockPanel.Dock="Top" Text="Timeline TCP" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
-                                <DataGrid ItemsSource="{Binding TcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="1.3*" />
+                                        <ColumnDefinition Width="1.3*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Interface" />
+                                        <ComboBox ItemsSource="{Binding CaptureDevices}" SelectedItem="{Binding SelectedCaptureDevice}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                        <TextBlock Text="Filtro de captura (BPF)" />
+                                        <TextBox Text="{Binding CaptureFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                        <TextBlock Text="Filtro visual" />
+                                        <TextBox Text="{Binding TcpViewFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <WrapPanel Grid.Column="3" VerticalAlignment="Bottom">
+                                        <Button Content="Atualizar interfaces" Command="{Binding RefreshCaptureDevicesCommand}" />
+                                        <Button Content="Iniciar captura" Command="{Binding StartNetworkCaptureCommand}" />
+                                        <Button Content="Parar captura" Command="{Binding StopNetworkCaptureCommand}" />
+                                    </WrapPanel>
+                                </Grid>
+                                <DataGrid ItemsSource="{Binding FilteredTcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="No." Binding="{Binding Number}" Width="55" />
                                         <DataGridTextColumn Header="Time" Binding="{Binding RelativeTime, StringFormat=0.000000}" Width="95" />

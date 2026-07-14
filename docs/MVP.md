@@ -48,7 +48,20 @@ O MVP usa `1502` como porta padrao para teste local. A porta Modbus TCP oficial 
 - checklist automatico de socket TCP, resposta Modbus, transaction ID, function code, mapa/range e escritas
 - verificacao de padrao de polling e exceptions repetidas com base no trafego observado pelo app
 - timeline inferior com abas `Modbus` e `TCP`
+- timeline TCP com captura passiva via SharpPcap/PacketDotNet, quando Npcap estiver disponivel
+- selecao de interface de rede, filtro BPF de captura e filtro visual na timeline TCP
 - timeline TCP em formato semelhante ao Wireshark, com numero, tempo relativo, origem, destino, protocolo, tamanho e info
+
+## Captura passiva TCP
+
+A aba `TCP` pode capturar trafego real da interface de rede. No Windows, isso depende de Npcap instalado e permissao suficiente para captura.
+
+Filtros:
+
+- `Filtro de captura (BPF)`: aplicado pela biblioteca de captura, exemplo `tcp`, `tcp port 502`, `host 192.168.0.10`, `tcp or udp or arp`.
+- `Filtro visual`: aplicado na tabela ja capturada, buscando em origem, destino, protocolo, tamanho e info.
+
+Sem Npcap, o app continua funcionando como client/server Modbus, mas a captura passiva nao lista interfaces.
 - leitura FC03 e FC04 no cliente
 - leitura FC01 e FC02 no cliente
 - escrita FC06 no cliente

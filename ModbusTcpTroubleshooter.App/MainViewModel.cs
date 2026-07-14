@@ -13,6 +13,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ModbusDataMap _serverMap = new();
     private readonly DiagnosticsEngine _diagnostics = new();
     private readonly ModbusTcpClientProbe _client = new();
+    private readonly NetworkCaptureService _networkCapture = new();
     private ModbusTcpServer? _server;
     private CancellationTokenSource? _serverCts;
     private CancellationTokenSource? _scanCts;
@@ -34,15 +35,21 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string status = "Pronto.";
     [ObservableProperty] private bool isServerRunning;
     [ObservableProperty] private bool isClientScanning;
+    [ObservableProperty] private bool isNetworkCaptureRunning;
     [ObservableProperty] private ClientMapRow? selectedClientMapRow;
     [ObservableProperty] private ServerMapRange? selectedServerMapRange;
+    [ObservableProperty] private CaptureDeviceOption? selectedCaptureDevice;
+    [ObservableProperty] private string captureFilter = "tcp or udp or arp";
+    [ObservableProperty] private string tcpViewFilter = "";
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
+    public ObservableCollection<CaptureDeviceOption> CaptureDevices { get; } = [];
     public ObservableCollection<ModbusPoint> ServerPoints { get; } = [];
     public ObservableCollection<ServerMapRange> ServerMapRanges { get; } = [];
     public ObservableCollection<ClientMapRow> ClientMapRows { get; } = [];
     public ObservableCollection<TrafficEvent> Traffic { get; } = [];
     public ObservableCollection<TcpTimelineRow> TcpTimeline { get; } = [];
+    public ObservableCollection<TcpTimelineRow> FilteredTcpTimeline { get; } = [];
     public ObservableCollection<DiagnosticFinding> Diagnostics { get; } = [];
     public ObservableCollection<ImportantWarningSummary> ImportantWarnings { get; } = [];
     public ObservableCollection<VerificationCheck> VerificationChecks { get; } = [];
@@ -58,7 +65,9 @@ public sealed partial class MainViewModel : ObservableObject
         RefreshServerPoints();
         LoadDefaultClientMap();
         LoadVerificationChecks();
+        LoadCaptureDevices();
         _client.TrafficObserved += OnTrafficObserved;
+        _networkCapture.PacketCaptured += OnPassivePacketCaptured;
     }
 
     [RelayCommand]
@@ -256,6 +265,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Traffic.Clear();
         TcpTimeline.Clear();
+        FilteredTcpTimeline.Clear();
         Diagnostics.Clear();
         ImportantWarnings.Clear();
         _lastRequestBySignature.Clear();
@@ -265,6 +275,42 @@ public sealed partial class MainViewModel : ObservableObject
         _tcpPacketNumber = 0;
         LoadVerificationChecks();
         Status = "Timeline limpa.";
+    }
+
+    [RelayCommand]
+    private void RefreshCaptureDevices()
+    {
+        LoadCaptureDevices();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanStartNetworkCapture))]
+    private void StartNetworkCapture()
+    {
+        if (SelectedCaptureDevice is null)
+        {
+            Status = "Nenhuma interface de captura selecionada.";
+            return;
+        }
+
+        try
+        {
+            _networkCapture.Start(SelectedCaptureDevice, CaptureFilter);
+            IsNetworkCaptureRunning = true;
+            Status = $"Captura TCP iniciada: {SelectedCaptureDevice.Description}";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Falha ao iniciar captura. Verifique Npcap/permissao/admin: {ex.Message}";
+            Log.Error(ex, "Falha ao iniciar captura passiva");
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(IsNetworkCaptureRunning))]
+    private void StopNetworkCapture()
+    {
+        _networkCapture.Stop();
+        IsNetworkCaptureRunning = false;
+        Status = "Captura TCP parada.";
     }
 
     private async Task ReadEnabledClientRowsAsync(CancellationToken cancellationToken)
@@ -311,6 +357,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool CanReadOnce() => !IsClientScanning;
     private bool CanStartClientScan() => !IsClientScanning;
     private bool CanEditServerMap() => !IsServerRunning;
+    private bool CanStartNetworkCapture() => !IsNetworkCaptureRunning && SelectedCaptureDevice is not null;
 
     partial void OnSelectedModeChanged(string value)
     {
@@ -332,6 +379,22 @@ public sealed partial class MainViewModel : ObservableObject
         ReadOnceCommand.NotifyCanExecuteChanged();
         StartClientScanCommand.NotifyCanExecuteChanged();
         StopClientScanCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnIsNetworkCaptureRunningChanged(bool value)
+    {
+        StartNetworkCaptureCommand.NotifyCanExecuteChanged();
+        StopNetworkCaptureCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnSelectedCaptureDeviceChanged(CaptureDeviceOption? value)
+    {
+        StartNetworkCaptureCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnTcpViewFilterChanged(string value)
+    {
+        ApplyTcpViewFilter();
     }
 
     private void LoadDefaultClientMap()
@@ -375,6 +438,21 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    private void LoadCaptureDevices()
+    {
+        CaptureDevices.Clear();
+        foreach (var device in _networkCapture.GetDevices())
+        {
+            CaptureDevices.Add(device);
+        }
+
+        SelectedCaptureDevice = CaptureDevices.FirstOrDefault();
+        if (CaptureDevices.Count == 0)
+        {
+            Status = "Nenhuma interface de captura encontrada. Instale Npcap para captura passiva.";
+        }
+    }
+
     private void OnTrafficObserved(object? sender, TrafficEvent e)
     {
         App.Current.Dispatcher.Invoke(() =>
@@ -404,6 +482,11 @@ public sealed partial class MainViewModel : ObservableObject
         });
     }
 
+    private void OnPassivePacketCaptured(object? sender, TcpTimelineRow row)
+    {
+        App.Current.Dispatcher.Invoke(() => AddTcpTimelineRow(row));
+    }
+
     private void AddTcpTimelineRow(TrafficEvent trafficEvent)
     {
         if (trafficEvent.Direction == TrafficDirection.System)
@@ -429,10 +512,61 @@ public sealed partial class MainViewModel : ObservableObject
         };
 
         TcpTimeline.Insert(0, row);
+        if (MatchesTcpFilter(row))
+        {
+            FilteredTcpTimeline.Insert(0, row);
+        }
         while (TcpTimeline.Count > 1000)
         {
             TcpTimeline.RemoveAt(TcpTimeline.Count - 1);
         }
+        while (FilteredTcpTimeline.Count > 1000)
+        {
+            FilteredTcpTimeline.RemoveAt(FilteredTcpTimeline.Count - 1);
+        }
+    }
+
+    private void AddTcpTimelineRow(TcpTimelineRow row)
+    {
+        TcpTimeline.Insert(0, row);
+        if (MatchesTcpFilter(row))
+        {
+            FilteredTcpTimeline.Insert(0, row);
+        }
+
+        while (TcpTimeline.Count > 2000)
+        {
+            TcpTimeline.RemoveAt(TcpTimeline.Count - 1);
+        }
+        while (FilteredTcpTimeline.Count > 2000)
+        {
+            FilteredTcpTimeline.RemoveAt(FilteredTcpTimeline.Count - 1);
+        }
+    }
+
+    private void ApplyTcpViewFilter()
+    {
+        FilteredTcpTimeline.Clear();
+        foreach (var row in TcpTimeline.Where(MatchesTcpFilter))
+        {
+            FilteredTcpTimeline.Add(row);
+        }
+    }
+
+    private bool MatchesTcpFilter(TcpTimelineRow row)
+    {
+        if (string.IsNullOrWhiteSpace(TcpViewFilter))
+        {
+            return true;
+        }
+
+        var filter = TcpViewFilter.Trim();
+        return row.Source.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || row.Destination.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || row.Protocol.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || row.Info.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || row.Length.ToString().Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || row.Number.ToString().Contains(filter, StringComparison.OrdinalIgnoreCase);
     }
 
     private (string Source, string Destination) ResolveTcpEndpoints(TrafficEvent trafficEvent)
