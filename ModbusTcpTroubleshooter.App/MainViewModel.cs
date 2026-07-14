@@ -31,6 +31,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly Dictionary<string, Queue<double>> _pollingIntervalsBySignature = [];
     private readonly Dictionary<string, int> _exceptionCounts = [];
     private readonly Dictionary<string, int> _outOfMapCounts = [];
+    private readonly List<string> _fullTestStartupActions = [];
 
     [ObservableProperty] private string caseName = "Troubleshoot Modbus TCP";
     [ObservableProperty] private string selectedMode = "Client";
@@ -335,6 +336,9 @@ public sealed partial class MainViewModel : ObservableObject
         FullTestBandwidthSummary = "Coletando dados...";
         FullTestSteps.Clear();
         NetworkDiscoveryRows.Clear();
+        _fullTestStartupActions.Clear();
+
+        await EnsureFullTestRuntimeAsync();
 
         var steps = new List<(FullTestStep Step, Func<CancellationToken, Task<FullTestStepResult>> Action)>
         {
@@ -392,6 +396,80 @@ public sealed partial class MainViewModel : ObservableObject
     private void RefreshCaptureDevices()
     {
         LoadCaptureDevices();
+    }
+
+    private async Task EnsureFullTestRuntimeAsync()
+    {
+        EnsureNetworkCaptureForFullTest();
+
+        if (IsServerMode)
+        {
+            EnsureServerForFullTest();
+        }
+        else if (IsClientMode)
+        {
+            EnsureClientScanForFullTest();
+        }
+
+        await Task.Delay(500);
+    }
+
+    private void EnsureNetworkCaptureForFullTest()
+    {
+        if (IsNetworkCaptureRunning)
+        {
+            _fullTestStartupActions.Add("Captura passiva: ja estava ativa.");
+            return;
+        }
+
+        if (CaptureDevices.Count == 0)
+        {
+            LoadCaptureDevices();
+        }
+
+        if (SelectedCaptureDevice is null)
+        {
+            _fullTestStartupActions.Add("Captura passiva: nao iniciada; nenhuma interface Npcap disponivel/selecionada.");
+            return;
+        }
+
+        try
+        {
+            GeneratedCaptureFilter = BuildCaptureFilter();
+            _networkCapture.Start(SelectedCaptureDevice, GeneratedCaptureFilter);
+            IsNetworkCaptureRunning = true;
+            _fullTestStartupActions.Add($"Captura passiva: iniciada automaticamente em '{SelectedCaptureDevice.Description}' com BPF '{GeneratedCaptureFilter}'.");
+        }
+        catch (Exception ex)
+        {
+            _fullTestStartupActions.Add($"Captura passiva: falha ao iniciar automaticamente ({ex.Message}).");
+            Log.Error(ex, "Falha ao iniciar captura passiva automaticamente no teste completo");
+        }
+    }
+
+    private void EnsureServerForFullTest()
+    {
+        if (IsServerRunning)
+        {
+            _fullTestStartupActions.Add("Servidor Modbus: ja estava ativo.");
+            return;
+        }
+
+        ApplyServerMapRanges();
+        _ = StartServerAsync();
+        _fullTestStartupActions.Add($"Servidor Modbus: start automatico solicitado em {LocalIp}:{Port}, Unit ID {UnitId}.");
+    }
+
+    private void EnsureClientScanForFullTest()
+    {
+        if (IsClientScanning)
+        {
+            _fullTestStartupActions.Add("Scan do client: ja estava ativo.");
+            return;
+        }
+
+        _ = StartClientScanAsync();
+        _fullTestStartupActions.Add($"Scan do client: start automatico solicitado para {TargetIp}:{Port}, Unit ID {UnitId}, taxa {Math.Max(100, ScanRateMs)} ms.");
     }
 
     [RelayCommand(CanExecute = nameof(CanStartNetworkCapture))]
@@ -492,7 +570,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool CanStartClientScan() => !IsClientScanning;
     private bool CanEditServerMap() => !IsServerRunning;
     private bool CanStartNetworkCapture() => !IsNetworkCaptureRunning && SelectedCaptureDevice is not null;
-    private bool CanStartFullTest() => !IsFullTestRunning && !IsClientScanning;
+    private bool CanStartFullTest() => !IsFullTestRunning;
 
     partial void OnSelectedModeChanged(string value)
     {
@@ -872,8 +950,12 @@ public sealed partial class MainViewModel : ObservableObject
             $"Interface de captura: {interfaceName}",
             $"Filtro BPF atual: {GeneratedCaptureFilter}",
             $"Captura passiva ativa: {(IsNetworkCaptureRunning ? "sim" : "nao")}",
+            $"Servidor ativo: {(IsServerRunning ? "sim" : "nao")}",
+            $"Scan client ativo: {(IsClientScanning ? "sim" : "nao")}",
             $"Linhas habilitadas no mapa client: {enabledRows}",
             $"Faixas habilitadas no server simulado: {serverRanges}",
+            "Inicializacao automatica:",
+            _fullTestStartupActions.Count == 0 ? "Nenhuma acao automatica registrada." : string.Join(Environment.NewLine, _fullTestStartupActions),
             "Seguranca: o teste completo executa apenas leituras Modbus. Escritas sao puladas por padrao para nao alterar PLC/equipamento."
         ]);
 
