@@ -1,8 +1,12 @@
 # Build output
-bin/
 obj/
-**/bin/
 **/obj/
+**/bin/Release/
+
+# Keep Debug output versioned so a fresh clone can run the MVP directly.
+!**/bin/
+!**/bin/Debug/
+!**/bin/Debug/**
 
 # Visual Studio / Rider
 .vs/
