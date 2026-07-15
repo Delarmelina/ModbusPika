@@ -72,11 +72,19 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string fullTestBandwidthSummary = "Sem medicao de banda executada.";
     [ObservableProperty] private bool enableActiveSubnetScan = true;
     [ObservableProperty] private bool enableMapDiscovery;
+    [ObservableProperty] private bool enableMapDiscoveryUnitSweep;
     [ObservableProperty] private int activeScanTimeoutMs = 250;
     [ObservableProperty] private int activeScanConcurrency = 48;
     [ObservableProperty] private int passiveObservationSeconds = 12;
+    [ObservableProperty] private int mapDiscoveryUnitIdStart = 1;
+    [ObservableProperty] private int mapDiscoveryUnitIdEnd = 10;
     [ObservableProperty] private int mapDiscoveryMaxAddress = 120;
     [ObservableProperty] private int mapDiscoveryBlockSize = 10;
+    [ObservableProperty] private bool mapDiscoveryFc01 = true;
+    [ObservableProperty] private bool mapDiscoveryFc02 = true;
+    [ObservableProperty] private bool mapDiscoveryFc03 = true;
+    [ObservableProperty] private bool mapDiscoveryFc04 = true;
+    [ObservableProperty] private bool enableMapDiscoveryPointFallback = true;
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
     public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP"];
@@ -1325,87 +1333,99 @@ public sealed partial class MainViewModel : ObservableObject
         var maxAddress = Math.Clamp(MapDiscoveryMaxAddress, 0, ushort.MaxValue);
         var blockSize = Math.Clamp(MapDiscoveryBlockSize, 1, 120);
         var timeoutMs = Math.Clamp(ActiveScanTimeoutMs, 200, 3000);
+        var unitIds = BuildMapDiscoveryUnitIds();
+        var functions = BuildSelectedMapDiscoveryFunctions();
+        if (functions.Count == 0)
+        {
+            return new FullTestStepResult(
+                "Atencao",
+                "Nenhum function code foi selecionado para descoberta ativa de mapa.",
+                "Selecione ao menos um FC de leitura: FC01, FC02, FC03 ou FC04.");
+        }
+
         var requests = 0;
         var successfulRanges = 0;
         var failures = new List<string>();
-        var functions = new[] { ModbusProtocol.ReadCoils, ModbusProtocol.ReadDiscreteInputs, ModbusProtocol.ReadHoldingRegisters, ModbusProtocol.ReadInputRegisters };
 
         foreach (var endpoint in endpoints)
         {
-            foreach (var functionCode in functions)
+            foreach (var unitId in unitIds)
             {
-                var discovered = new List<MapRangeProbe>();
-                var unsupportedFunction = false;
-                var transportFailures = 0;
-
-                for (var start = 0; start <= maxAddress && !unsupportedFunction; start += blockSize)
+                foreach (var functionCode in functions)
                 {
-                    var quantity = (ushort)Math.Min(blockSize, maxAddress - start + 1);
-                    var startAddress = (ushort)start;
-                    requests++;
-                    var blockProbe = await ProbeMapRangeAsync(endpoint.Ip, endpoint.Port, functionCode, startAddress, quantity, timeoutMs, cancellationToken);
+                    var discovered = new List<MapRangeProbe>();
+                    var unsupportedFunction = false;
+                    var transportFailures = 0;
 
-                    if (blockProbe.Success)
+                    for (var start = 0; start <= maxAddress && !unsupportedFunction; start += blockSize)
                     {
-                        transportFailures = 0;
-                        discovered.Add(new MapRangeProbe(startAddress, (ushort)(startAddress + quantity - 1), blockProbe.Sample));
-                        continue;
-                    }
-
-                    if (IsUnsupportedFunction(blockProbe.Error))
-                    {
-                        unsupportedFunction = true;
-                        failures.Add($"{endpoint.Ip}:{endpoint.Port} FC{functionCode}: function code nao suportado.");
-                        break;
-                    }
-
-                    if (IsTransportFailure(blockProbe.Error))
-                    {
-                        transportFailures++;
-                        failures.Add($"{endpoint.Ip}:{endpoint.Port} FC{functionCode} addr={startAddress} qty={quantity}: {blockProbe.Error}");
-                        if (transportFailures >= 2)
-                        {
-                            break;
-                        }
-                        continue;
-                    }
-
-                    if (blockSize <= 1)
-                    {
-                        continue;
-                    }
-
-                    for (var address = start; address < start + quantity; address++)
-                    {
+                        var quantity = (ushort)Math.Min(blockSize, maxAddress - start + 1);
+                        var startAddress = (ushort)start;
                         requests++;
-                        var pointProbe = await ProbeMapRangeAsync(endpoint.Ip, endpoint.Port, functionCode, (ushort)address, 1, timeoutMs, cancellationToken);
-                        if (pointProbe.Success)
+                        var blockProbe = await ProbeMapRangeAsync(endpoint.Ip, endpoint.Port, unitId, functionCode, startAddress, quantity, timeoutMs, cancellationToken);
+
+                        if (blockProbe.Success)
                         {
-                            discovered.Add(new MapRangeProbe((ushort)address, (ushort)address, pointProbe.Sample));
+                            transportFailures = 0;
+                            discovered.Add(new MapRangeProbe(startAddress, (ushort)(startAddress + quantity - 1), blockProbe.Sample));
+                            continue;
                         }
-                        else if (IsUnsupportedFunction(pointProbe.Error))
+
+                        if (IsUnsupportedFunction(blockProbe.Error))
                         {
                             unsupportedFunction = true;
+                            failures.Add($"{endpoint.Ip}:{endpoint.Port} UID {unitId} FC{functionCode}: function code nao suportado.");
                             break;
                         }
-                    }
-                }
 
-                foreach (var range in MergeMapRanges(discovered))
-                {
-                    successfulRanges++;
-                    DiscoveredMapRows.Add(new MapDiscoveryRow
+                        if (IsTransportFailure(blockProbe.Error))
+                        {
+                            transportFailures++;
+                            failures.Add($"{endpoint.Ip}:{endpoint.Port} UID {unitId} FC{functionCode} addr={startAddress} qty={quantity}: {blockProbe.Error}");
+                            if (transportFailures >= 2)
+                            {
+                                break;
+                            }
+                            continue;
+                        }
+
+                        if (!EnableMapDiscoveryPointFallback || blockSize <= 1)
+                        {
+                            continue;
+                        }
+
+                        for (var address = start; address < start + quantity; address++)
+                        {
+                            requests++;
+                            var pointProbe = await ProbeMapRangeAsync(endpoint.Ip, endpoint.Port, unitId, functionCode, (ushort)address, 1, timeoutMs, cancellationToken);
+                            if (pointProbe.Success)
+                            {
+                                discovered.Add(new MapRangeProbe((ushort)address, (ushort)address, pointProbe.Sample));
+                            }
+                            else if (IsUnsupportedFunction(pointProbe.Error))
+                            {
+                                unsupportedFunction = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    foreach (var range in MergeMapRanges(discovered))
                     {
-                        Endpoint = $"{endpoint.Ip}:{endpoint.Port}",
-                        UnitId = UnitId.ToString(),
-                        Function = FormatFunctionCode(functionCode),
-                        StartAddress = range.Start,
-                        EndAddress = range.End,
-                        Quantity = range.End - range.Start + 1,
-                        DiscoveryMode = "Ativo/client",
-                        Confidence = range.Start == range.End ? "Ponto validado" : "Range validado",
-                        Notes = $"Leitura read-only OK. Amostra: {range.Sample}"
-                    });
+                        successfulRanges++;
+                        DiscoveredMapRows.Add(new MapDiscoveryRow
+                        {
+                            Endpoint = $"{endpoint.Ip}:{endpoint.Port}",
+                            UnitId = unitId.ToString(),
+                            Function = FormatFunctionCode(functionCode),
+                            StartAddress = range.Start,
+                            EndAddress = range.End,
+                            Quantity = range.End - range.Start + 1,
+                            DiscoveryMode = "Ativo/client",
+                            Confidence = range.Start == range.End ? "Ponto validado" : "Range validado",
+                            Notes = $"Leitura read-only OK. Amostra: {range.Sample}"
+                        });
+                    }
                 }
             }
         }
@@ -1414,10 +1434,12 @@ public sealed partial class MainViewModel : ObservableObject
         var details = string.Join(Environment.NewLine, [
             $"Modo: Client ativo/read-only",
             $"Endpoints avaliados: {endpoints.Count}",
-            $"Unit ID avaliado: {UnitId}",
+            $"Unit IDs avaliados: {FormatUnitIdList(unitIds)}",
+            $"Function codes avaliados: {string.Join(", ", functions.Select(x => FormatFunctionCode(x)))}",
             $"Endereco inicial: 0",
             $"Endereco maximo: {maxAddress}",
             $"Bloco de leitura: {blockSize}",
+            $"Fallback ponto a ponto: {(EnableMapDiscoveryPointFallback ? "habilitado" : "desabilitado")}",
             $"Timeout por request: {timeoutMs} ms",
             $"Requests executados: {requests}",
             $"Ranges descobertos: {successfulRanges}",
@@ -2209,9 +2231,52 @@ public sealed partial class MainViewModel : ObservableObject
             .ToList();
     }
 
+    private IReadOnlyList<byte> BuildMapDiscoveryUnitIds()
+    {
+        if (!EnableMapDiscoveryUnitSweep)
+        {
+            return [UnitId];
+        }
+
+        var start = Math.Clamp(MapDiscoveryUnitIdStart, byte.MinValue, byte.MaxValue);
+        var end = Math.Clamp(MapDiscoveryUnitIdEnd, byte.MinValue, byte.MaxValue);
+        if (start > end)
+        {
+            (start, end) = (end, start);
+        }
+
+        return Enumerable.Range(start, end - start + 1)
+            .Select(x => (byte)x)
+            .ToList();
+    }
+
+    private IReadOnlyList<byte> BuildSelectedMapDiscoveryFunctions()
+    {
+        var functions = new List<byte>();
+        if (MapDiscoveryFc01)
+        {
+            functions.Add(ModbusProtocol.ReadCoils);
+        }
+        if (MapDiscoveryFc02)
+        {
+            functions.Add(ModbusProtocol.ReadDiscreteInputs);
+        }
+        if (MapDiscoveryFc03)
+        {
+            functions.Add(ModbusProtocol.ReadHoldingRegisters);
+        }
+        if (MapDiscoveryFc04)
+        {
+            functions.Add(ModbusProtocol.ReadInputRegisters);
+        }
+
+        return functions;
+    }
+
     private async Task<MapProbeResult> ProbeMapRangeAsync(
         string ip,
         int endpointPort,
+        byte unitId,
         byte functionCode,
         ushort startAddress,
         ushort quantity,
@@ -2226,11 +2291,11 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (functionCode is ModbusProtocol.ReadCoils or ModbusProtocol.ReadDiscreteInputs)
             {
-                var bits = await probe.ReadBitsAsync(ip, endpointPort, UnitId, functionCode, startAddress, quantity, timeout.Token);
+                var bits = await probe.ReadBitsAsync(ip, endpointPort, unitId, functionCode, startAddress, quantity, timeout.Token);
                 return new MapProbeResult(true, string.Join(",", bits.Take(8).Select(x => x ? "1" : "0")), "");
             }
 
-            var registers = await probe.ReadRegistersAsync(ip, endpointPort, UnitId, functionCode, startAddress, quantity, timeout.Token);
+            var registers = await probe.ReadRegistersAsync(ip, endpointPort, unitId, functionCode, startAddress, quantity, timeout.Token);
             return new MapProbeResult(true, string.Join(",", registers.Take(6)), "");
         }
         catch (OperationCanceledException)
@@ -2509,6 +2574,22 @@ public sealed partial class MainViewModel : ObservableObject
         ModbusProtocol.WriteMultipleRegisters => "FC16 Write Multiple Registers",
         _ => $"FC{functionCode:00}"
     };
+
+    private static string FormatUnitIdList(IReadOnlyList<byte> unitIds)
+    {
+        if (unitIds.Count == 0)
+        {
+            return "nenhum";
+        }
+        if (unitIds.Count == 1)
+        {
+            return unitIds[0].ToString();
+        }
+
+        return unitIds.SequenceEqual(Enumerable.Range(unitIds[0], unitIds.Count).Select(x => (byte)x))
+            ? $"{unitIds[0]}-{unitIds[^1]}"
+            : string.Join(", ", unitIds);
+    }
 
     private static bool IsIPv4(string value)
     {

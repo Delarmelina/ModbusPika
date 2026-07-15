@@ -385,7 +385,7 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 - botao `TESTE COMPLETO` executa checklist guiado com contexto, inventario passivo TCP, ARP local, conectividade TCP, carga de trafego, validacao do mapa, teste read-only de envio/recebimento e consolidacao de falhas
 - o teste completo inicializa automaticamente a captura passiva e, conforme o modo operacional, inicia o server simulado ou o scan do client usando as configuracoes atuais
 - antes de iniciar a captura passiva do teste completo, o software amostra as interfaces Npcap disponiveis e seleciona a interface com maior trafego observado, em vez de depender apenas do driver default
-- descoberta de mapa opcional no teste completo: em modo client executa leitura read-only FC01-FC04 em endpoints Modbus encontrados; em modo server consolida os ranges que clientes requisitaram contra o server simulado
+- descoberta de mapa opcional no teste completo: em modo client executa leituras read-only nos FCs selecionados, com Unit ID unico ou sweep por faixa, limite de endereco, bloco de leitura e fallback ponto a ponto; em modo server consolida os ranges que clientes requisitaram contra o server simulado
 - o teste completo agora inclui interfaces/rotas IP, gateways, velocidade nominal de placas, medicao de banda por contadores da interface, varredura ativa limitada de hosts candidatos/sub-rede, descoberta de portas Modbus/configuradas e tabela visual de dispositivos encontrados
 - etapas dependentes de captura passiva usam janela de observacao configuravel antes de declarar amostra insuficiente
 - deteccao de polling rapido usa mediana de multiplas amostras e ignora bursts muito curtos para reduzir falso positivo

@@ -373,10 +373,24 @@
                                     <TextBox Text="{Binding ActiveScanConcurrency, UpdateSourceTrigger=PropertyChanged}" Width="48" />
                                     <TextBlock Text="Observacao s" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
                                     <TextBox Text="{Binding PassiveObservationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="48" />
-                                    <TextBlock Text="Mapa ate" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
+                                </WrapPanel>
+                                <WrapPanel Margin="0,0,0,10">
+                                    <TextBlock Text="Descoberta de mapa:" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock Text="Mapa ate" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#5B665F" />
                                     <TextBox Text="{Binding MapDiscoveryMaxAddress, UpdateSourceTrigger=PropertyChanged}" Width="54" />
                                     <TextBlock Text="Bloco" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
                                     <TextBox Text="{Binding MapDiscoveryBlockSize, UpdateSourceTrigger=PropertyChanged}" Width="42" />
+                                    <CheckBox Content="Fallback ponto a ponto" IsChecked="{Binding EnableMapDiscoveryPointFallback}" VerticalAlignment="Center" Margin="10,0,8,0" />
+                                    <CheckBox Content="Unit sweep" IsChecked="{Binding EnableMapDiscoveryUnitSweep}" VerticalAlignment="Center" Margin="8,0,4,0" />
+                                    <TextBlock Text="UID ini" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
+                                    <TextBox Text="{Binding MapDiscoveryUnitIdStart, UpdateSourceTrigger=PropertyChanged}" Width="38" />
+                                    <TextBlock Text="UID fim" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
+                                    <TextBox Text="{Binding MapDiscoveryUnitIdEnd, UpdateSourceTrigger=PropertyChanged}" Width="38" />
+                                    <TextBlock Text="FCs" VerticalAlignment="Center" Margin="12,0,4,0" Foreground="#5B665F" />
+                                    <CheckBox Content="01" IsChecked="{Binding MapDiscoveryFc01}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                    <CheckBox Content="02" IsChecked="{Binding MapDiscoveryFc02}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                    <CheckBox Content="03" IsChecked="{Binding MapDiscoveryFc03}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                    <CheckBox Content="04" IsChecked="{Binding MapDiscoveryFc04}" VerticalAlignment="Center" Margin="4,0,0,0" />
                                 </WrapPanel>
                                 <UniformGrid Columns="3" Margin="0,0,0,8">
                                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,0">
