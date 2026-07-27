@@ -142,7 +142,7 @@ public sealed partial class MainViewModel : ObservableObject
             Enabled = true
         };
 
-        ClientMapRows.Add(row);
+        AddClientMapRowToCollection(row);
         SelectedClientMapRow = row;
     }
 
@@ -154,9 +154,10 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        RemoveClientCommunicationPoints(SelectedClientMapRow);
+        SelectedClientMapRow.PropertyChanged -= OnClientMapRowPropertyChanged;
         ClientMapRows.Remove(SelectedClientMapRow);
         SelectedClientMapRow = ClientMapRows.FirstOrDefault();
+        RefreshClientCommunicationMapFromConfiguration();
     }
 
     [RelayCommand(CanExecute = nameof(CanEditServerMap))]
@@ -400,6 +401,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void UpsertClientCommunicationPoints(ClientMapRow row, IReadOnlyList<ushort> values, string quality)
     {
+        RefreshClientCommunicationMapFromConfiguration();
         var now = DateTime.Now.ToString("HH:mm:ss.fff");
         for (var i = 0; i < values.Count; i++)
         {
@@ -437,6 +439,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void MarkClientCommunicationRangeFailed(ClientMapRow row, string error)
     {
+        RefreshClientCommunicationMapFromConfiguration();
         var now = DateTime.Now.ToString("HH:mm:ss.fff");
         for (var i = 0; i < row.Quantity; i++)
         {
@@ -468,6 +471,100 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         SyncClientCommunicationPointViews();
+    }
+
+    private void AddClientMapRowToCollection(ClientMapRow row)
+    {
+        row.PropertyChanged += OnClientMapRowPropertyChanged;
+        ClientMapRows.Add(row);
+        RefreshClientCommunicationMapFromConfiguration();
+    }
+
+    private void OnClientMapRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not ClientMapRow row)
+        {
+            return;
+        }
+
+        if (e.PropertyName is nameof(ClientMapRow.Enabled)
+            or nameof(ClientMapRow.Function)
+            or nameof(ClientMapRow.StartAddress)
+            or nameof(ClientMapRow.Quantity))
+        {
+            row.LastValue = "";
+            row.LastStatus = "Nao lido";
+            row.LastReadAt = "";
+            RefreshClientCommunicationMapFromConfiguration();
+            return;
+        }
+
+        if (e.PropertyName == nameof(ClientMapRow.Name))
+        {
+            RefreshClientCommunicationMapFromConfiguration();
+        }
+    }
+
+    private void RefreshClientCommunicationMapFromConfiguration()
+    {
+        var configuredKeys = new HashSet<string>();
+
+        foreach (var row in ClientMapRows.Where(x => x.Enabled))
+        {
+            var quantity = Math.Max(1, (int)row.Quantity);
+            for (var i = 0; i < quantity; i++)
+            {
+                var addressValue = row.StartAddress + i;
+                if (addressValue > ushort.MaxValue)
+                {
+                    break;
+                }
+
+                var address = (ushort)addressValue;
+                configuredKeys.Add(ClientCommunicationPointKey(row.Name, row.FunctionCode, address));
+
+                var point = ClientCommunicationPoints.FirstOrDefault(x =>
+                    x.SourceLine == row.Name
+                    && x.FunctionCode == row.FunctionCode
+                    && x.Address == address);
+
+                if (point is null)
+                {
+                    ClientCommunicationPoints.Add(new ClientCommunicationPointRow
+                    {
+                        SourceLine = row.Name,
+                        Function = FormatFunctionCode(row.FunctionCode),
+                        FunctionCode = row.FunctionCode,
+                        Type = ClientPointType(row.FunctionCode),
+                        Address = address,
+                        Value = 0,
+                        Quality = "Nao lido",
+                        LastUpdatedAt = "",
+                        Writable = IsClientWritableFunction(row.FunctionCode)
+                    });
+                    continue;
+                }
+
+                point.Function = FormatFunctionCode(row.FunctionCode);
+                point.Type = ClientPointType(row.FunctionCode);
+                point.Writable = IsClientWritableFunction(row.FunctionCode);
+            }
+        }
+
+        var stalePoints = ClientCommunicationPoints
+            .Where(x => !configuredKeys.Contains(ClientCommunicationPointKey(x.SourceLine, x.FunctionCode, x.Address)))
+            .ToList();
+        foreach (var point in stalePoints)
+        {
+            ClientCommunicationPoints.Remove(point);
+        }
+
+        SyncClientCommunicationPointViews();
+    }
+
+    private static string ClientCommunicationPointKey(string sourceLine, byte functionCode, ushort address)
+    {
+        return $"{sourceLine}\u001f{functionCode}\u001f{address}";
     }
 
     private void UpdateClientCommunicationPointAfterWrite(ClientMapRow row, ushort address, ushort value)
@@ -984,8 +1081,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void LoadDefaultClientMap()
     {
-        ClientMapRows.Add(new ClientMapRow { Name = "Holding 0-9", Function = "FC03 Holding Registers", StartAddress = 0, Quantity = 10, Enabled = true });
-        ClientMapRows.Add(new ClientMapRow { Name = "Input 0-9", Function = "FC04 Input Registers", StartAddress = 0, Quantity = 10, Enabled = false });
+        AddClientMapRowToCollection(new ClientMapRow { Name = "Holding 0-9", Function = "FC03 Holding Registers", StartAddress = 0, Quantity = 10, Enabled = true });
+        AddClientMapRowToCollection(new ClientMapRow { Name = "Input 0-9", Function = "FC04 Input Registers", StartAddress = 0, Quantity = 10, Enabled = false });
         SelectedClientMapRow = ClientMapRows[0];
     }
 
