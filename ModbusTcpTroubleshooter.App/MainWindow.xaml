@@ -58,13 +58,6 @@
                                 <Button Content="Iniciar scan" Command="{Binding StartClientScanCommand}" />
                                 <Button Content="Parar scan" Command="{Binding StopClientScanCommand}" />
                             </WrapPanel>
-
-                            <TextBlock Text="Escrita FC06" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,10,0,8" />
-                            <TextBlock Text="Endereco HR" />
-                            <TextBox Text="{Binding WriteAddress, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="Valor" />
-                            <TextBox Text="{Binding WriteValue, UpdateSourceTrigger=PropertyChanged}" />
-                            <Button Content="Escrever HR" Command="{Binding WriteRegisterCommand}" />
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}">
@@ -113,8 +106,9 @@
                                 <TextBlock Text="Mapa do client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
                                 <Button Content="Adicionar linha" Command="{Binding AddClientMapRowCommand}" />
                                 <Button Content="Remover linha" Command="{Binding RemoveClientMapRowCommand}" />
+                                <TextBlock Text="Duplo clique em Ultimo valor para escrever FC06 em HR." Foreground="#6D756E" VerticalAlignment="Center" Margin="12,0,0,0" />
                             </StackPanel>
-                            <DataGrid ItemsSource="{Binding ClientMapRows}" SelectedItem="{Binding SelectedClientMapRow}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                            <DataGrid ItemsSource="{Binding ClientMapRows}" SelectedItem="{Binding SelectedClientMapRow}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="ClientMapGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
                                     <DataGridCheckBoxColumn Header="On" Binding="{Binding Enabled}" Width="45" />
                                     <DataGridTextColumn Header="Nome" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="130" />

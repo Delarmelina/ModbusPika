@@ -39,8 +39,6 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string targetIp = "127.0.0.1";
     [ObservableProperty] private int port = 1502;
     [ObservableProperty] private byte unitId = 1;
-    [ObservableProperty] private ushort writeAddress;
-    [ObservableProperty] private ushort writeValue = 1234;
     [ObservableProperty] private int scanRateMs = 1000;
     [ObservableProperty] private string status = "Pronto.";
     [ObservableProperty] private bool isServerRunning;
@@ -269,20 +267,54 @@ public sealed partial class MainViewModel : ObservableObject
         Status = "Scan parado.";
     }
 
-    [RelayCommand]
-    private async Task WriteRegisterAsync()
+    public async Task WriteHoldingRegisterFromMapAsync(ClientMapRow row, ushort address, ushort value)
     {
+        var rangeEnd = row.StartAddress + Math.Max(1, (int)row.Quantity) - 1;
+        if (address < row.StartAddress || address > rangeEnd)
+        {
+            Status = $"Escrita bloqueada: endereco {address} fora da linha {row.StartAddress}-{rangeEnd}.";
+            return;
+        }
+
         try
         {
-            await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, WriteAddress, WriteValue, CancellationToken.None);
-            Status = $"Escrita OK: HR {WriteAddress} = {WriteValue}";
+            await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, address, value, CancellationToken.None);
+            row.LastValue = ReplaceRegisterValue(row.LastValue, row.StartAddress, row.Quantity, address, value);
+            row.LastStatus = $"Escrita OK FC06 HR {address}";
+            row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
+            Status = $"Escrita OK: HR {address} = {value}";
         }
         catch (Exception ex)
         {
             AddSystemFinding($"Falha/timeout na escrita: {ex.Message}");
+            row.LastStatus = ex.Message;
+            row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
             Status = $"Falha na escrita: {ex.Message}";
             Log.Error(ex, "Falha na escrita Modbus");
         }
+    }
+
+    private static string ReplaceRegisterValue(string currentValue, ushort startAddress, ushort quantity, ushort writtenAddress, ushort value)
+    {
+        var index = writtenAddress - startAddress;
+        var values = currentValue
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            return index == 0 ? value.ToString() : $"HR {writtenAddress}={value}";
+        }
+
+        if (index < values.Count)
+        {
+            values[index] = value.ToString();
+            return string.Join(", ", values);
+        }
+
+        return quantity > 1
+            ? $"{currentValue} | HR {writtenAddress}={value}"
+            : value.ToString();
     }
 
     [RelayCommand]
