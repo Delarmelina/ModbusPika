@@ -101,37 +101,58 @@
 
                     <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,8"
                             Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBlock Text="Mapa do client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
-                                <Button Content="Adicionar linha" Command="{Binding AddClientMapRowCommand}" />
-                                <Button Content="Remover linha" Command="{Binding RemoveClientMapRowCommand}" />
-                                <TextBlock Text="Duplo clique em Ultimo valor para escrever FC06 em HR." Foreground="#6D756E" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            </StackPanel>
-                            <DataGrid ItemsSource="{Binding ClientMapRows}" SelectedItem="{Binding SelectedClientMapRow}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="ClientMapGrid_MouseDoubleClick">
-                                <DataGrid.Columns>
-                                    <DataGridCheckBoxColumn Header="On" Binding="{Binding Enabled}" Width="45" />
-                                    <DataGridTextColumn Header="Nome" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="130" />
-                                    <DataGridTemplateColumn Header="FC" Width="160">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding Function}" />
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                        <DataGridTemplateColumn.CellEditingTemplate>
-                                            <DataTemplate>
-                                                <ComboBox ItemsSource="{Binding Functions}" SelectedItem="{Binding Function, UpdateSourceTrigger=PropertyChanged}" />
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellEditingTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Endereco" Binding="{Binding StartAddress, UpdateSourceTrigger=PropertyChanged}" Width="80" />
-                                    <DataGridTextColumn Header="Qtd" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="55" />
-                                    <DataGridTextColumn Header="Ultimo valor" Binding="{Binding LastValue}" Width="*" IsReadOnly="True" />
-                                    <DataGridTextColumn Header="Status" Binding="{Binding LastStatus}" Width="150" IsReadOnly="True" />
-                                    <DataGridTextColumn Header="Hora" Binding="{Binding LastReadAt}" Width="90" IsReadOnly="True" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </DockPanel>
+                        <TabControl>
+                            <TabItem Header="Configurar leituras">
+                                <DockPanel Margin="0,8,0,0">
+                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="Mapa do client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                        <Button Content="Adicionar linha" Command="{Binding AddClientMapRowCommand}" />
+                                        <Button Content="Remover linha" Command="{Binding RemoveClientMapRowCommand}" />
+                                        <TextBlock Text="Duplo clique em Ultimo valor para escrever FC06 em HR." Foreground="#6D756E" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                    </StackPanel>
+                                    <DataGrid ItemsSource="{Binding ClientMapRows}" SelectedItem="{Binding SelectedClientMapRow}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="ClientMapGrid_MouseDoubleClick">
+                                        <DataGrid.Columns>
+                                            <DataGridCheckBoxColumn Header="On" Binding="{Binding Enabled}" Width="45" />
+                                            <DataGridTextColumn Header="Nome" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="130" />
+                                            <DataGridTemplateColumn Header="FC" Width="160">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Function}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                                <DataGridTemplateColumn.CellEditingTemplate>
+                                                    <DataTemplate>
+                                                        <ComboBox ItemsSource="{Binding Functions}" SelectedItem="{Binding Function, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellEditingTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Header="Endereco" Binding="{Binding StartAddress, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                                            <DataGridTextColumn Header="Qtd" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="55" />
+                                            <DataGridTextColumn Header="Ultimo valor" Binding="{Binding LastValue}" Width="*" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Status" Binding="{Binding LastStatus}" Width="150" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Hora" Binding="{Binding LastReadAt}" Width="90" IsReadOnly="True" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </DockPanel>
+                            </TabItem>
+                            <TabItem Header="Mapa de comunicacao">
+                                <DockPanel Margin="0,8,0,0">
+                                    <TextBlock DockPanel.Dock="Top" Text="Pontos lidos pelo client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <DataGrid ItemsSource="{Binding ClientCommunicationPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Linha" Binding="{Binding SourceLine}" Width="130" />
+                                            <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="130" />
+                                            <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="75" />
+                                            <DataGridTextColumn Header="Valor" Binding="{Binding Value}" Width="75" />
+                                            <DataGridTextColumn Header="Qualidade" Binding="{Binding Quality}" Width="130" />
+                                            <DataGridTextColumn Header="Hora" Binding="{Binding LastUpdatedAt}" Width="95" />
+                                            <DataGridCheckBoxColumn Header="Escr." Binding="{Binding Writable}" Width="55" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="FC" Binding="{Binding Function}" Width="160" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </DockPanel>
+                            </TabItem>
+                        </TabControl>
                     </Border>
 
                     <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,8"
@@ -172,13 +193,15 @@
                             </TabItem>
                             <TabItem Header="Visualizar mapa">
                                 <DockPanel Margin="0,8,0,0">
-                                    <TextBlock DockPanel.Dock="Top" Text="Mapa efetivo do server simulado" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
-                                    <DataGrid ItemsSource="{Binding ServerPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                    <TextBlock DockPanel.Dock="Top" Text="Mapa efetivo do server simulado - edite a coluna Valor para alterar a resposta do server" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <DataGrid ItemsSource="{Binding ServerPoints}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="130" />
-                                            <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="80" />
-                                            <DataGridTextColumn Header="Nome" Binding="{Binding Name}" Width="*" />
-                                            <DataGridTextColumn Header="Valor" Binding="{Binding Value}" Width="80" />
+                                            <DataGridTextColumn Header="Tipo" Binding="{Binding TypeLabel}" Width="130" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="80" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Nome" Binding="{Binding Name}" Width="*" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Valor" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                                            <DataGridTextColumn Header="Acesso" Binding="{Binding Access}" Width="65" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Atualizado" Binding="{Binding LastUpdatedAt}" Width="95" IsReadOnly="True" />
                                         </DataGrid.Columns>
                                     </DataGrid>
                                 </DockPanel>

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -88,9 +89,10 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP"];
     public ObservableCollection<string> CaptureDirections { get; } = ["Origem ou destino", "Somente origem", "Somente destino"];
     public ObservableCollection<CaptureDeviceOption> CaptureDevices { get; } = [];
-    public ObservableCollection<ModbusPoint> ServerPoints { get; } = [];
+    public ObservableCollection<ServerPointRow> ServerPoints { get; } = [];
     public ObservableCollection<ServerMapRange> ServerMapRanges { get; } = [];
     public ObservableCollection<ClientMapRow> ClientMapRows { get; } = [];
+    public ObservableCollection<ClientCommunicationPointRow> ClientCommunicationPoints { get; } = [];
     public ObservableCollection<TrafficEvent> Traffic { get; } = [];
     public ObservableCollection<TcpTimelineRow> TcpTimeline { get; } = [];
     public ObservableCollection<TcpTimelineRow> FilteredTcpTimeline { get; } = [];
@@ -148,6 +150,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
+        RemoveClientCommunicationPoints(SelectedClientMapRow);
         ClientMapRows.Remove(SelectedClientMapRow);
         SelectedClientMapRow = ClientMapRows.FirstOrDefault();
     }
@@ -280,6 +283,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, address, value, CancellationToken.None);
             row.LastValue = ReplaceRegisterValue(row.LastValue, row.StartAddress, row.Quantity, address, value);
+            UpdateClientCommunicationPointAfterWrite(row, address, value);
             row.LastStatus = $"Escrita OK FC06 HR {address}";
             row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
             Status = $"Escrita OK: HR {address} = {value}";
@@ -317,6 +321,113 @@ public sealed partial class MainViewModel : ObservableObject
             : value.ToString();
     }
 
+    private void UpsertClientCommunicationPoints(ClientMapRow row, IReadOnlyList<ushort> values, string quality)
+    {
+        var now = DateTime.Now.ToString("HH:mm:ss.fff");
+        for (var i = 0; i < values.Count; i++)
+        {
+            var address = (ushort)(row.StartAddress + i);
+            var point = ClientCommunicationPoints.FirstOrDefault(x =>
+                x.SourceLine == row.Name
+                && x.FunctionCode == row.FunctionCode
+                && x.Address == address);
+
+            if (point is null)
+            {
+                ClientCommunicationPoints.Add(new ClientCommunicationPointRow
+                {
+                    SourceLine = row.Name,
+                    Function = FormatFunctionCode(row.FunctionCode),
+                    FunctionCode = row.FunctionCode,
+                    Type = ClientPointType(row.FunctionCode),
+                    Address = address,
+                    Value = values[i],
+                    Quality = quality,
+                    LastUpdatedAt = now,
+                    Writable = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters
+                });
+                continue;
+            }
+
+            point.Value = values[i];
+            point.Quality = quality;
+            point.LastUpdatedAt = now;
+            point.Writable = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters;
+        }
+    }
+
+    private void MarkClientCommunicationRangeFailed(ClientMapRow row, string error)
+    {
+        var now = DateTime.Now.ToString("HH:mm:ss.fff");
+        for (var i = 0; i < row.Quantity; i++)
+        {
+            var address = (ushort)(row.StartAddress + i);
+            var point = ClientCommunicationPoints.FirstOrDefault(x =>
+                x.SourceLine == row.Name
+                && x.FunctionCode == row.FunctionCode
+                && x.Address == address);
+
+            if (point is null)
+            {
+                ClientCommunicationPoints.Add(new ClientCommunicationPointRow
+                {
+                    SourceLine = row.Name,
+                    Function = FormatFunctionCode(row.FunctionCode),
+                    FunctionCode = row.FunctionCode,
+                    Type = ClientPointType(row.FunctionCode),
+                    Address = address,
+                    Value = 0,
+                    Quality = error,
+                    LastUpdatedAt = now,
+                    Writable = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters
+                });
+                continue;
+            }
+
+            point.Quality = error;
+            point.LastUpdatedAt = now;
+        }
+    }
+
+    private void UpdateClientCommunicationPointAfterWrite(ClientMapRow row, ushort address, ushort value)
+    {
+        var point = ClientCommunicationPoints.FirstOrDefault(x =>
+            x.SourceLine == row.Name
+            && x.FunctionCode == row.FunctionCode
+            && x.Address == address);
+        if (point is null)
+        {
+            ClientCommunicationPoints.Add(new ClientCommunicationPointRow
+            {
+                SourceLine = row.Name,
+                Function = FormatFunctionCode(row.FunctionCode),
+                FunctionCode = row.FunctionCode,
+                Type = ClientPointType(row.FunctionCode),
+                Address = address,
+                Value = value,
+                Quality = "Escrita OK",
+                LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff"),
+                Writable = true
+            });
+            return;
+        }
+
+        point.Value = value;
+        point.Quality = "Escrita OK";
+        point.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
+    }
+
+    private void RemoveClientCommunicationPoints(ClientMapRow row)
+    {
+        var rows = ClientCommunicationPoints
+            .Where(x => x.SourceLine == row.Name && x.FunctionCode == row.FunctionCode)
+            .ToList();
+        foreach (var point in rows)
+        {
+            ClientCommunicationPoints.Remove(point);
+        }
+    }
+
     [RelayCommand]
     private async Task SaveCaseAsync()
     {
@@ -338,7 +449,7 @@ public sealed partial class MainViewModel : ObservableObject
             TargetIp = TargetIp,
             Port = Port,
             UnitId = UnitId,
-            Map = ServerPoints.ToList(),
+            Map = ServerPoints.Select(x => x.ToModbusPoint()).ToList(),
             Traffic = Traffic.ToList(),
             Diagnostics = Diagnostics.ToList()
         };
@@ -634,11 +745,13 @@ public sealed partial class MainViewModel : ObservableObject
                 {
                     var values = await _client.ReadBitsAsync(TargetIp, Port, UnitId, functionCode, row.StartAddress, row.Quantity, cancellationToken);
                     row.LastValue = string.Join(", ", values.Select(x => x ? "1" : "0"));
+                    UpsertClientCommunicationPoints(row, values.Select(x => x ? (ushort)1 : (ushort)0).ToList(), "OK");
                 }
                 else
                 {
                     var values = await _client.ReadRegistersAsync(TargetIp, Port, UnitId, functionCode, row.StartAddress, row.Quantity, cancellationToken);
                     row.LastValue = string.Join(", ", values);
+                    UpsertClientCommunicationPoints(row, values, "OK");
                 }
 
                 row.LastStatus = "OK";
@@ -648,6 +761,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 row.LastStatus = ex.Message;
                 row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
+                MarkClientCommunicationRangeFailed(row, ex.Message);
                 AddSystemFinding($"Falha/timeout na leitura '{row.Name}': {ex.Message}");
                 Log.Error(ex, "Falha na linha de mapa client {MapRow}", row.Name);
             }
@@ -798,11 +912,30 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void RefreshServerPoints()
     {
+        foreach (var row in ServerPoints)
+        {
+            row.PropertyChanged -= OnServerPointChanged;
+        }
+
         ServerPoints.Clear();
         foreach (var point in _serverMap.ToPoints())
         {
-            ServerPoints.Add(point);
+            var row = new ServerPointRow(point);
+            row.PropertyChanged += OnServerPointChanged;
+            ServerPoints.Add(row);
         }
+    }
+
+    private void OnServerPointChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ServerPointRow.Value) || sender is not ServerPointRow row)
+        {
+            return;
+        }
+
+        _serverMap.AddPoint(row.Type, row.Address, row.Value);
+        row.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
+        Status = $"Valor do server atualizado: {row.Type} {row.Address} = {row.Value}";
     }
 
     private void LoadCaptureDevices()
@@ -1732,11 +1865,13 @@ public sealed partial class MainViewModel : ObservableObject
                 {
                     var values = await _client.ReadBitsAsync(TargetIp, Port, UnitId, row.FunctionCode, row.StartAddress, row.Quantity, cancellationToken);
                     row.LastValue = string.Join(", ", values.Select(x => x ? "1" : "0"));
+                    UpsertClientCommunicationPoints(row, values.Select(x => x ? (ushort)1 : (ushort)0).ToList(), "OK");
                 }
                 else
                 {
                     var values = await _client.ReadRegistersAsync(TargetIp, Port, UnitId, row.FunctionCode, row.StartAddress, row.Quantity, cancellationToken);
                     row.LastValue = string.Join(", ", values);
+                    UpsertClientCommunicationPoints(row, values, "OK");
                 }
 
                 row.LastStatus = "OK";
@@ -1747,6 +1882,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 row.LastStatus = ex.Message;
                 row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
+                MarkClientCommunicationRangeFailed(row, ex.Message);
                 failures.Add($"{row.Name} FC{row.FunctionCode} addr={row.StartAddress} qty={row.Quantity}: {ex.Message}");
             }
         }
@@ -2607,6 +2743,15 @@ public sealed partial class MainViewModel : ObservableObject
         _ => $"FC{functionCode:00}"
     };
 
+    private static string ClientPointType(int functionCode) => functionCode switch
+    {
+        ModbusProtocol.ReadCoils => "Coil",
+        ModbusProtocol.ReadDiscreteInputs => "Discrete Input",
+        ModbusProtocol.ReadHoldingRegisters => "Holding Register",
+        ModbusProtocol.ReadInputRegisters => "Input Register",
+        _ => "Ponto"
+    };
+
     private static string FormatUnitIdList(IReadOnlyList<byte> unitIds)
     {
         if (unitIds.Count == 0)
@@ -3047,6 +3192,52 @@ public sealed partial class ClientMapRow : ObservableObject
         "FC04 Input Registers" => ModbusProtocol.ReadInputRegisters,
         _ => ModbusProtocol.ReadHoldingRegisters
     };
+}
+
+public sealed partial class ClientCommunicationPointRow : ObservableObject
+{
+    [ObservableProperty] private string sourceLine = "";
+    [ObservableProperty] private string function = "";
+    [ObservableProperty] private byte functionCode;
+    [ObservableProperty] private string type = "";
+    [ObservableProperty] private ushort address;
+    [ObservableProperty] private ushort value;
+    [ObservableProperty] private string quality = "";
+    [ObservableProperty] private string lastUpdatedAt = "";
+    [ObservableProperty] private bool writable;
+}
+
+public sealed partial class ServerPointRow : ObservableObject
+{
+    public ServerPointRow(ModbusPoint point)
+    {
+        Type = point.Type;
+        Address = point.Address;
+        Name = point.Name;
+        Value = point.Value;
+        IsWritable = point.IsWritable;
+        LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
+    }
+
+    public ModbusPointType Type { get; }
+    public ushort Address { get; }
+    public string Name { get; }
+    public bool IsWritable { get; }
+    [ObservableProperty] private ushort value;
+    [ObservableProperty] private string lastUpdatedAt = "";
+
+    public string TypeLabel => Type switch
+    {
+        ModbusPointType.Coil => "Coil",
+        ModbusPointType.DiscreteInput => "Discrete Input",
+        ModbusPointType.HoldingRegister => "Holding Register",
+        ModbusPointType.InputRegister => "Input Register",
+        _ => Type.ToString()
+    };
+
+    public string Access => IsWritable ? "R/W" : "R";
+
+    public ModbusPoint ToModbusPoint() => new(Type, Address, Name, Value, IsWritable);
 }
 
 public sealed partial class ServerMapRange : ObservableObject
