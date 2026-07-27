@@ -138,18 +138,57 @@
                             <TabItem Header="Mapa de comunicacao">
                                 <DockPanel Margin="0,8,0,0">
                                     <TextBlock DockPanel.Dock="Top" Text="Pontos lidos pelo client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
-                                    <DataGrid ItemsSource="{Binding ClientCommunicationPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
-                                        <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Linha" Binding="{Binding SourceLine}" Width="130" />
-                                            <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="130" />
-                                            <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="75" />
-                                            <DataGridTextColumn Header="Valor" Binding="{Binding Value}" Width="75" />
-                                            <DataGridTextColumn Header="Qualidade" Binding="{Binding Quality}" Width="130" />
-                                            <DataGridTextColumn Header="Hora" Binding="{Binding LastUpdatedAt}" Width="95" />
-                                            <DataGridCheckBoxColumn Header="Escr." Binding="{Binding Writable}" Width="55" IsReadOnly="True" />
-                                            <DataGridTextColumn Header="FC" Binding="{Binding Function}" Width="160" />
-                                        </DataGrid.Columns>
-                                    </DataGrid>
+                                    <TabControl>
+                                        <TabItem Header="HR">
+                                            <DataGrid Margin="0,8,0,0" ItemsSource="{Binding ClientHoldingRegisterPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="ClientCommunicationGrid_MouseDoubleClick">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Linha" Binding="{Binding SourceLine}" Width="130" />
+                                                    <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="75" />
+                                                    <DataGridTextColumn Header="Valor" Binding="{Binding Value}" Width="75" />
+                                                    <DataGridTextColumn Header="Qualidade" Binding="{Binding Quality}" Width="130" />
+                                                    <DataGridTextColumn Header="Hora" Binding="{Binding LastUpdatedAt}" Width="95" />
+                                                    <DataGridCheckBoxColumn Header="Escr." Binding="{Binding Writable}" Width="55" IsReadOnly="True" />
+                                                    <DataGridTextColumn Header="FC" Binding="{Binding Function}" Width="160" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </TabItem>
+                                        <TabItem Header="IR">
+                                            <DataGrid Margin="0,8,0,0" ItemsSource="{Binding ClientInputRegisterPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Linha" Binding="{Binding SourceLine}" Width="130" />
+                                                    <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="75" />
+                                                    <DataGridTextColumn Header="Valor" Binding="{Binding Value}" Width="75" />
+                                                    <DataGridTextColumn Header="Qualidade" Binding="{Binding Quality}" Width="130" />
+                                                    <DataGridTextColumn Header="Hora" Binding="{Binding LastUpdatedAt}" Width="95" />
+                                                    <DataGridTextColumn Header="FC" Binding="{Binding Function}" Width="160" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </TabItem>
+                                        <TabItem Header="COIL">
+                                            <DataGrid Margin="0,8,0,0" ItemsSource="{Binding ClientCoilPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Linha" Binding="{Binding SourceLine}" Width="130" />
+                                                    <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="75" />
+                                                    <DataGridTextColumn Header="Valor" Binding="{Binding Value}" Width="75" />
+                                                    <DataGridTextColumn Header="Qualidade" Binding="{Binding Quality}" Width="130" />
+                                                    <DataGridTextColumn Header="Hora" Binding="{Binding LastUpdatedAt}" Width="95" />
+                                                    <DataGridTextColumn Header="FC" Binding="{Binding Function}" Width="160" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </TabItem>
+                                        <TabItem Header="DISCRETE">
+                                            <DataGrid Margin="0,8,0,0" ItemsSource="{Binding ClientDiscreteInputPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Linha" Binding="{Binding SourceLine}" Width="130" />
+                                                    <DataGridTextColumn Header="Endereco" Binding="{Binding Address}" Width="75" />
+                                                    <DataGridTextColumn Header="Valor" Binding="{Binding Value}" Width="75" />
+                                                    <DataGridTextColumn Header="Qualidade" Binding="{Binding Quality}" Width="130" />
+                                                    <DataGridTextColumn Header="Hora" Binding="{Binding LastUpdatedAt}" Width="95" />
+                                                    <DataGridTextColumn Header="FC" Binding="{Binding Function}" Width="160" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </TabItem>
+                                    </TabControl>
                                 </DockPanel>
                             </TabItem>
                         </TabControl>

@@ -31,8 +31,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var cell = FindVisualParent<DataGridCell>(e.OriginalSource as DependencyObject);
-        if (cell?.Column.Header?.ToString() != "Ultimo valor")
+        if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is null)
         {
             return;
         }
@@ -54,18 +53,63 @@ public partial class MainWindow : Window
         }
 
         var initialValue = TryGetFirstRegisterValue(row.LastValue, out var parsedValue) ? parsedValue : (ushort)0;
-        var context = $"{viewModel.TargetIp}:{viewModel.Port} | UID {viewModel.UnitId} | {row.Name} | HR {row.StartAddress}";
-        var dialog = new WriteRegisterDialog(context, row.StartAddress, initialValue)
-        {
-            Owner = this
-        };
-
-        if (dialog.ShowDialog() != true)
+        var result = ShowWriteRegisterDialog(viewModel, row.Name, row.StartAddress, initialValue);
+        if (result is null)
         {
             return;
         }
 
-        await viewModel.WriteHoldingRegisterFromMapAsync(row, dialog.Address, dialog.Value);
+        await viewModel.WriteHoldingRegisterFromMapAsync(row, result.Value.Address, result.Value.Value);
+    }
+
+    private async void ClientCommunicationGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid { SelectedItem: ClientCommunicationPointRow point })
+        {
+            return;
+        }
+
+        if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is null)
+        {
+            return;
+        }
+
+        if (!point.Writable || point.FunctionCode != ModbusProtocol.ReadHoldingRegisters)
+        {
+            MessageBox.Show(
+                this,
+                "Escrita pela tabela usa FC06 e esta disponivel apenas para Holding Registers.",
+                "Escrita indisponivel para este ponto",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        if (DataContext is not MainViewModel viewModel)
+        {
+            return;
+        }
+
+        var result = ShowWriteRegisterDialog(viewModel, point.SourceLine, point.Address, point.Value);
+        if (result is null)
+        {
+            return;
+        }
+
+        await viewModel.WriteHoldingRegisterFromCommunicationPointAsync(point, result.Value.Value);
+    }
+
+    private (ushort Address, ushort Value)? ShowWriteRegisterDialog(MainViewModel viewModel, string sourceName, ushort address, ushort value)
+    {
+        var context = $"{viewModel.TargetIp}:{viewModel.Port} | UID {viewModel.UnitId} | {sourceName} | HR {address}";
+        var dialog = new WriteRegisterDialog(context, address, value)
+        {
+            Owner = this
+        };
+
+        return dialog.ShowDialog() == true
+            ? (dialog.Address, dialog.Value)
+            : null;
     }
 
     private static bool TryGetFirstRegisterValue(string valueText, out ushort value)

@@ -382,8 +382,8 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 
 - build da solution completa passando
 - smoke test local passando com FC03 e FC06
-- escrita FC06 em Holding Register feita diretamente pelo mapa do client: duplo clique em `Ultimo valor`, informe endereco/valor e confirme no popup
-- modo client agora tem sub-aba `Mapa de comunicacao` com pontos lidos por linha, tipo, endereco, valor, qualidade, horario e indicacao de escrita
+- escrita FC06 em Holding Register feita diretamente pelo mapa do client ou pela sub-aba HR do mapa de comunicacao: duplo clique na linha, informe endereco/valor e confirme no popup
+- modo client agora tem sub-aba `Mapa de comunicacao` separada por `HR`, `IR`, `COIL` e `DISCRETE`, com pontos lidos por linha, endereco, valor, qualidade e horario
 - modo server agora permite alterar valores diretamente na tabela `Visualizar mapa`; a edicao atualiza o mapa simulado usado nas respostas
 - botao `TESTE COMPLETO` executa checklist guiado com contexto, inventario passivo TCP, ARP local, conectividade TCP, carga de trafego, validacao do mapa, teste read-only de envio/recebimento e consolidacao de falhas
 - o teste completo inicializa automaticamente a captura passiva e, conforme o modo operacional, inicia o server simulado ou o scan do client usando as configuracoes atuais

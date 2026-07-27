@@ -93,6 +93,10 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<ServerMapRange> ServerMapRanges { get; } = [];
     public ObservableCollection<ClientMapRow> ClientMapRows { get; } = [];
     public ObservableCollection<ClientCommunicationPointRow> ClientCommunicationPoints { get; } = [];
+    public ObservableCollection<ClientCommunicationPointRow> ClientHoldingRegisterPoints { get; } = [];
+    public ObservableCollection<ClientCommunicationPointRow> ClientInputRegisterPoints { get; } = [];
+    public ObservableCollection<ClientCommunicationPointRow> ClientCoilPoints { get; } = [];
+    public ObservableCollection<ClientCommunicationPointRow> ClientDiscreteInputPoints { get; } = [];
     public ObservableCollection<TrafficEvent> Traffic { get; } = [];
     public ObservableCollection<TcpTimelineRow> TcpTimeline { get; } = [];
     public ObservableCollection<TcpTimelineRow> FilteredTcpTimeline { get; } = [];
@@ -298,6 +302,43 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    public async Task WriteHoldingRegisterFromCommunicationPointAsync(ClientCommunicationPointRow point, ushort value)
+    {
+        if (point.FunctionCode != ModbusProtocol.ReadHoldingRegisters)
+        {
+            Status = $"Escrita bloqueada: {point.Type} nao usa FC06.";
+            return;
+        }
+
+        var row = ClientMapRows.FirstOrDefault(x =>
+            x.FunctionCode == point.FunctionCode
+            && x.StartAddress <= point.Address
+            && point.Address <= x.StartAddress + Math.Max(1, (int)x.Quantity) - 1);
+        if (row is not null)
+        {
+            await WriteHoldingRegisterFromMapAsync(row, point.Address, value);
+            return;
+        }
+
+        try
+        {
+            await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, point.Address, value, CancellationToken.None);
+            point.Value = value;
+            point.Quality = "Escrita OK";
+            point.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
+            Status = $"Escrita OK: HR {point.Address} = {value}";
+            SyncClientCommunicationPointViews();
+        }
+        catch (Exception ex)
+        {
+            AddSystemFinding($"Falha/timeout na escrita: {ex.Message}");
+            point.Quality = ex.Message;
+            point.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
+            Status = $"Falha na escrita: {ex.Message}";
+            Log.Error(ex, "Falha na escrita Modbus via mapa de comunicacao");
+        }
+    }
+
     private static string ReplaceRegisterValue(string currentValue, ushort startAddress, ushort quantity, ushort writtenAddress, ushort value)
     {
         var index = writtenAddress - startAddress;
@@ -354,6 +395,8 @@ public sealed partial class MainViewModel : ObservableObject
             point.LastUpdatedAt = now;
             point.Writable = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters;
         }
+
+        SyncClientCommunicationPointViews();
     }
 
     private void MarkClientCommunicationRangeFailed(ClientMapRow row, string error)
@@ -387,6 +430,8 @@ public sealed partial class MainViewModel : ObservableObject
             point.Quality = error;
             point.LastUpdatedAt = now;
         }
+
+        SyncClientCommunicationPointViews();
     }
 
     private void UpdateClientCommunicationPointAfterWrite(ClientMapRow row, ushort address, ushort value)
@@ -415,6 +460,7 @@ public sealed partial class MainViewModel : ObservableObject
         point.Value = value;
         point.Quality = "Escrita OK";
         point.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
+        SyncClientCommunicationPointViews();
     }
 
     private void RemoveClientCommunicationPoints(ClientMapRow row)
@@ -425,6 +471,28 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (var point in rows)
         {
             ClientCommunicationPoints.Remove(point);
+        }
+
+        SyncClientCommunicationPointViews();
+    }
+
+    private void SyncClientCommunicationPointViews()
+    {
+        ReplaceClientCommunicationPointView(ClientHoldingRegisterPoints, ModbusProtocol.ReadHoldingRegisters);
+        ReplaceClientCommunicationPointView(ClientInputRegisterPoints, ModbusProtocol.ReadInputRegisters);
+        ReplaceClientCommunicationPointView(ClientCoilPoints, ModbusProtocol.ReadCoils);
+        ReplaceClientCommunicationPointView(ClientDiscreteInputPoints, ModbusProtocol.ReadDiscreteInputs);
+    }
+
+    private void ReplaceClientCommunicationPointView(ObservableCollection<ClientCommunicationPointRow> target, byte functionCode)
+    {
+        target.Clear();
+        foreach (var point in ClientCommunicationPoints
+            .Where(x => x.FunctionCode == functionCode)
+            .OrderBy(x => x.Address)
+            .ThenBy(x => x.SourceLine))
+        {
+            target.Add(point);
         }
     }
 
