@@ -381,8 +381,9 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 ### Status
 
 - build da solution completa passando
-- smoke test local passando com FC03 e FC06
-- escrita FC06 em Holding Register feita diretamente pelo mapa do client ou pela sub-aba HR do mapa de comunicacao: duplo clique na linha, informe endereco/valor e confirme no popup
+- smoke test local passando com FC01, FC03, FC05 e FC06
+- escrita FC05 em Coil e FC06 em Holding Register feita diretamente pelo mapa do client ou pelas sub-abas HR/COIL do mapa de comunicacao: duplo clique na linha, informe range/valor e confirme com `OK`
+- novos blocos de leitura criados no client usam nome padrao `Bloco X`
 - modo client agora tem sub-aba `Mapa de comunicacao` separada por `HR`, `IR`, `COIL` e `DISCRETE`, com pontos lidos por linha, endereco, valor, qualidade e horario
 - modo server agora permite alterar valores diretamente na tabela `Visualizar mapa`; a edicao atualiza o mapa simulado usado nas respostas
 - botao `TESTE COMPLETO` executa checklist guiado com contexto, inventario passivo TCP, ARP local, conectividade TCP, carga de trafego, validacao do mapa, teste read-only de envio/recebimento e consolidacao de falhas

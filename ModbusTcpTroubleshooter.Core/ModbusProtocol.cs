@@ -33,6 +33,16 @@ public static class ModbusProtocol
         return frame;
     }
 
+    public static byte[] BuildWriteSingleCoilRequest(ushort transactionId, byte unitId, ushort address, bool value)
+    {
+        var frame = new byte[12];
+        WriteMbap(frame, transactionId, unitId, 6);
+        frame[7] = WriteSingleCoil;
+        BinaryPrimitives.WriteUInt16BigEndian(frame.AsSpan(8), address);
+        BinaryPrimitives.WriteUInt16BigEndian(frame.AsSpan(10), value ? (ushort)0xFF00 : (ushort)0x0000);
+        return frame;
+    }
+
     public static ModbusTcpFrame Parse(ReadOnlySpan<byte> frame)
     {
         if (frame.Length < 8)

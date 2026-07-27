@@ -36,11 +36,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (row.FunctionCode != ModbusProtocol.ReadHoldingRegisters)
+        if (row.FunctionCode is not (ModbusProtocol.ReadHoldingRegisters or ModbusProtocol.ReadCoils))
         {
             MessageBox.Show(
                 this,
-                "Escrita pela tabela usa FC06 e esta disponivel apenas para linhas FC03 Holding Registers.",
+                "Escrita pela tabela esta disponivel apenas para FC03 Holding Registers e FC01 Coils.",
                 "Escrita indisponivel para este FC",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -53,13 +53,14 @@ public partial class MainWindow : Window
         }
 
         var initialValue = TryGetFirstRegisterValue(row.LastValue, out var parsedValue) ? parsedValue : (ushort)0;
-        var result = ShowWriteRegisterDialog(viewModel, row.Name, row.StartAddress, initialValue);
+        var endAddress = (ushort)(row.StartAddress + Math.Max(1, (int)row.Quantity) - 1);
+        var result = ShowWriteDialog(viewModel, row.Name, row.StartAddress, endAddress, initialValue, row.FunctionCode);
         if (result is null)
         {
             return;
         }
 
-        await viewModel.WriteHoldingRegisterFromMapAsync(row, result.Value.Address, result.Value.Value);
+        await viewModel.WriteRangeFromMapAsync(row, result.Value.Address, result.Value.EndAddress, result.Value.Value);
     }
 
     private async void ClientCommunicationGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -74,11 +75,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!point.Writable || point.FunctionCode != ModbusProtocol.ReadHoldingRegisters)
+        if (!point.Writable || point.FunctionCode is not (ModbusProtocol.ReadHoldingRegisters or ModbusProtocol.ReadCoils))
         {
             MessageBox.Show(
                 this,
-                "Escrita pela tabela usa FC06 e esta disponivel apenas para Holding Registers.",
+                "Escrita pela tabela esta disponivel apenas para Holding Registers e Coils.",
                 "Escrita indisponivel para este ponto",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -90,25 +91,33 @@ public partial class MainWindow : Window
             return;
         }
 
-        var result = ShowWriteRegisterDialog(viewModel, point.SourceLine, point.Address, point.Value);
+        var result = ShowWriteDialog(viewModel, point.SourceLine, point.Address, point.Address, point.Value, point.FunctionCode);
         if (result is null)
         {
             return;
         }
 
-        await viewModel.WriteHoldingRegisterFromCommunicationPointAsync(point, result.Value.Value);
+        await viewModel.WritePointFromCommunicationPointAsync(point, result.Value.Value);
     }
 
-    private (ushort Address, ushort Value)? ShowWriteRegisterDialog(MainViewModel viewModel, string sourceName, ushort address, ushort value)
+    private (ushort Address, ushort EndAddress, ushort Value)? ShowWriteDialog(MainViewModel viewModel, string sourceName, ushort address, ushort endAddress, ushort value, byte functionCode)
     {
-        var context = $"{viewModel.TargetIp}:{viewModel.Port} | UID {viewModel.UnitId} | {sourceName} | HR {address}";
-        var dialog = new WriteRegisterDialog(context, address, value)
+        var pointLabel = functionCode == ModbusProtocol.ReadCoils ? "COIL" : "HR";
+        var writeCode = functionCode == ModbusProtocol.ReadCoils ? "FC05" : "FC06";
+        var context = $"{viewModel.TargetIp}:{viewModel.Port} | UID {viewModel.UnitId} | {sourceName} | {pointLabel} {address}-{endAddress}";
+        var dialog = new WriteRegisterDialog(
+            context,
+            address,
+            endAddress,
+            functionCode == ModbusProtocol.ReadCoils && value != 0 ? (ushort)1 : value,
+            $"Escrita {writeCode} pela tabela do mapa",
+            functionCode == ModbusProtocol.ReadCoils ? "Novo valor (0=OFF, diferente de 0=ON)" : "Novo valor")
         {
             Owner = this
         };
 
         return dialog.ShowDialog() == true
-            ? (dialog.Address, dialog.Value)
+            ? (dialog.Address, dialog.EndAddress, dialog.Value)
             : null;
     }
 

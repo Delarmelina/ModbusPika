@@ -26,6 +26,14 @@ if (afterWrite.Count != 1 || afterWrite[0] != 4321)
     throw new InvalidOperationException($"Escrita FC06 nao refletiu no mapa: {string.Join(",", afterWrite)}");
 }
 
+await client.WriteSingleCoilAsync("127.0.0.1", 1502, 1, 0, false, CancellationToken.None);
+var coilAfterWrite = await client.ReadBitsAsync("127.0.0.1", 1502, 1, ModbusProtocol.ReadCoils, 0, 1, CancellationToken.None);
+
+if (coilAfterWrite.Count != 1 || coilAfterWrite[0])
+{
+    throw new InvalidOperationException($"Escrita FC05 nao refletiu no mapa: {string.Join(",", coilAfterWrite.Select(x => x ? "1" : "0"))}");
+}
+
 await cts.CancelAsync();
 server.Stop();
 
@@ -37,4 +45,4 @@ catch (OperationCanceledException)
 {
 }
 
-Console.WriteLine("Smoke test OK: FC03 e FC06 funcionando contra servidor local.");
+Console.WriteLine("Smoke test OK: FC01, FC03, FC05 e FC06 funcionando contra servidor local.");

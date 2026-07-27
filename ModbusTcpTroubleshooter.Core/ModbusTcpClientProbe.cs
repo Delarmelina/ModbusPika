@@ -66,6 +66,19 @@ public sealed class ModbusTcpClientProbe
         }
     }
 
+    public async Task WriteSingleCoilAsync(string host, int port, byte unitId, ushort address, bool value, CancellationToken cancellationToken)
+    {
+        var transactionId = NextTransactionId();
+        var request = ModbusProtocol.BuildWriteSingleCoilRequest(transactionId, unitId, address, value);
+        var response = await SendAsync(host, port, request, transactionId, unitId, ModbusProtocol.WriteSingleCoil, address, 1, cancellationToken);
+        var frame = ModbusProtocol.Parse(response);
+
+        if ((frame.FunctionCode & 0x80) != 0)
+        {
+            throw new InvalidOperationException($"Modbus exception {frame.Pdu.ElementAtOrDefault(1)}.");
+        }
+    }
+
     private async Task<byte[]> SendAsync(string host, int port, byte[] request, ushort transactionId, byte unitId, byte functionCode, ushort startAddress, ushort quantity, CancellationToken cancellationToken)
     {
         using var client = new TcpClient();

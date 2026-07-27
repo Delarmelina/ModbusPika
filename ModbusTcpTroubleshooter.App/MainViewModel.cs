@@ -135,7 +135,7 @@ public sealed partial class MainViewModel : ObservableObject
         var nextAddress = ClientMapRows.Count == 0 ? 0 : ClientMapRows.Max(x => x.StartAddress + x.Quantity);
         var row = new ClientMapRow
         {
-            Name = $"Leitura {ClientMapRows.Count + 1}",
+            Name = $"Bloco {ClientMapRows.Count + 1}",
             Function = "FC03 Holding Registers",
             StartAddress = (ushort)Math.Min(ushort.MaxValue, nextAddress),
             Quantity = 1,
@@ -274,23 +274,49 @@ public sealed partial class MainViewModel : ObservableObject
         Status = "Scan parado.";
     }
 
-    public async Task WriteHoldingRegisterFromMapAsync(ClientMapRow row, ushort address, ushort value)
+    public async Task WriteRangeFromMapAsync(ClientMapRow row, ushort address, ushort endAddress, ushort value)
     {
         var rangeEnd = row.StartAddress + Math.Max(1, (int)row.Quantity) - 1;
-        if (address < row.StartAddress || address > rangeEnd)
+        if (address < row.StartAddress || endAddress > rangeEnd)
         {
-            Status = $"Escrita bloqueada: endereco {address} fora da linha {row.StartAddress}-{rangeEnd}.";
+            Status = $"Escrita bloqueada: range {address}-{endAddress} fora da linha {row.StartAddress}-{rangeEnd}.";
+            return;
+        }
+
+        if (row.FunctionCode is not (ModbusProtocol.ReadHoldingRegisters or ModbusProtocol.ReadCoils))
+        {
+            Status = $"Escrita bloqueada: {FormatFunctionCode(row.FunctionCode)} nao e gravavel por este popup.";
             return;
         }
 
         try
         {
-            await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, address, value, CancellationToken.None);
-            row.LastValue = ReplaceRegisterValue(row.LastValue, row.StartAddress, row.Quantity, address, value);
-            UpdateClientCommunicationPointAfterWrite(row, address, value);
-            row.LastStatus = $"Escrita OK FC06 HR {address}";
+            var writes = 0;
+            for (var current = (int)address; current <= endAddress; current++)
+            {
+                var currentAddress = (ushort)current;
+                var displayValue = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters
+                    ? value
+                    : value != 0 ? (ushort)1 : (ushort)0;
+
+                if (row.FunctionCode == ModbusProtocol.ReadHoldingRegisters)
+                {
+                    await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, currentAddress, value, CancellationToken.None);
+                }
+                else
+                {
+                    await _client.WriteSingleCoilAsync(TargetIp, Port, UnitId, currentAddress, value != 0, CancellationToken.None);
+                }
+
+                row.LastValue = ReplaceRegisterValue(row.LastValue, row.StartAddress, row.Quantity, currentAddress, displayValue);
+                UpdateClientCommunicationPointAfterWrite(row, currentAddress, displayValue);
+                writes++;
+            }
+
+            var writeFunction = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters ? "FC06 HR" : "FC05 COIL";
+            row.LastStatus = $"Escrita OK {writeFunction} {address}-{endAddress}";
             row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
-            Status = $"Escrita OK: HR {address} = {value}";
+            Status = $"Escrita OK: {writeFunction} {address}-{endAddress} = {value} ({writes} ponto(s)).";
         }
         catch (Exception ex)
         {
@@ -302,11 +328,11 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    public async Task WriteHoldingRegisterFromCommunicationPointAsync(ClientCommunicationPointRow point, ushort value)
+    public async Task WritePointFromCommunicationPointAsync(ClientCommunicationPointRow point, ushort value)
     {
-        if (point.FunctionCode != ModbusProtocol.ReadHoldingRegisters)
+        if (point.FunctionCode is not (ModbusProtocol.ReadHoldingRegisters or ModbusProtocol.ReadCoils))
         {
-            Status = $"Escrita bloqueada: {point.Type} nao usa FC06.";
+            Status = $"Escrita bloqueada: {point.Type} nao usa FC05/FC06.";
             return;
         }
 
@@ -316,17 +342,27 @@ public sealed partial class MainViewModel : ObservableObject
             && point.Address <= x.StartAddress + Math.Max(1, (int)x.Quantity) - 1);
         if (row is not null)
         {
-            await WriteHoldingRegisterFromMapAsync(row, point.Address, value);
+            await WriteRangeFromMapAsync(row, point.Address, point.Address, value);
             return;
         }
 
         try
         {
-            await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, point.Address, value, CancellationToken.None);
-            point.Value = value;
+            if (point.FunctionCode == ModbusProtocol.ReadHoldingRegisters)
+            {
+                await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, point.Address, value, CancellationToken.None);
+            }
+            else
+            {
+                await _client.WriteSingleCoilAsync(TargetIp, Port, UnitId, point.Address, value != 0, CancellationToken.None);
+            }
+
+            point.Value = point.FunctionCode == ModbusProtocol.ReadHoldingRegisters
+                ? value
+                : value != 0 ? (ushort)1 : (ushort)0;
             point.Quality = "Escrita OK";
             point.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
-            Status = $"Escrita OK: HR {point.Address} = {value}";
+            Status = $"Escrita OK: {point.Type} {point.Address} = {value}";
             SyncClientCommunicationPointViews();
         }
         catch (Exception ex)
@@ -385,7 +421,7 @@ public sealed partial class MainViewModel : ObservableObject
                     Value = values[i],
                     Quality = quality,
                     LastUpdatedAt = now,
-                    Writable = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters
+                    Writable = IsClientWritableFunction(row.FunctionCode)
                 });
                 continue;
             }
@@ -393,7 +429,7 @@ public sealed partial class MainViewModel : ObservableObject
             point.Value = values[i];
             point.Quality = quality;
             point.LastUpdatedAt = now;
-            point.Writable = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters;
+            point.Writable = IsClientWritableFunction(row.FunctionCode);
         }
 
         SyncClientCommunicationPointViews();
@@ -422,7 +458,7 @@ public sealed partial class MainViewModel : ObservableObject
                     Value = 0,
                     Quality = error,
                     LastUpdatedAt = now,
-                    Writable = row.FunctionCode == ModbusProtocol.ReadHoldingRegisters
+                    Writable = IsClientWritableFunction(row.FunctionCode)
                 });
                 continue;
             }
@@ -452,7 +488,7 @@ public sealed partial class MainViewModel : ObservableObject
                 Value = value,
                 Quality = "Escrita OK",
                 LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff"),
-                Writable = true
+                Writable = IsClientWritableFunction(row.FunctionCode)
             });
             return;
         }
@@ -2819,6 +2855,11 @@ public sealed partial class MainViewModel : ObservableObject
         ModbusProtocol.ReadInputRegisters => "Input Register",
         _ => "Ponto"
     };
+
+    private static bool IsClientWritableFunction(int functionCode)
+    {
+        return functionCode is ModbusProtocol.ReadCoils or ModbusProtocol.ReadHoldingRegisters;
+    }
 
     private static string FormatUnitIdList(IReadOnlyList<byte> unitIds)
     {
