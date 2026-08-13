@@ -9,10 +9,25 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <Style x:Key="CompactToolButton" TargetType="Button">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="30" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="32" />
             <Setter Property="Margin" Value="1" />
             <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style x:Key="ScanStateText" TargetType="TextBlock">
+            <Setter Property="Text" Value="Stopped" />
+            <Setter Property="Foreground" Value="#6D756E" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsClientScanning}" Value="True"><Setter Property="Text" Value="Running" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="ServerStateText" TargetType="TextBlock">
+            <Setter Property="Text" Value="Stopped" />
+            <Setter Property="Foreground" Value="#6D756E" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsServerRunning}" Value="True"><Setter Property="Text" Value="Running" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="CaptureStateText" TargetType="TextBlock">
+            <Setter Property="Text" Value="Off" />
+            <Setter Property="Foreground" Value="#6D756E" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsNetworkCaptureRunning}" Value="True"><Setter Property="Text" Value="Active" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -66,7 +81,6 @@
                 <MenuItem Header="Abas na esquerda" Click="TabsLeftMenuItem_Click" />
             </MenuItem>
             <MenuItem Header="_Window">
-                <MenuItem Header="Connect" Click="ShowConnectMenuItem_Click" />
                 <MenuItem Header="Operation" Click="ShowOperationMenuItem_Click" />
                 <MenuItem Header="Full Test" Click="ShowFullTestMenuItem_Click" />
             </MenuItem>
@@ -77,69 +91,32 @@
 
         <ToolBarTray Grid.Row="1" Background="#E7ECE8" IsLocked="True">
             <ToolBar Background="#F7F9F7">
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding SaveCaseCommand}" ToolTip="Export Case"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE105;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding SaveFullTestReportCommand}" ToolTip="Export Full Test Report"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE8A5;" /></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding SaveCaseCommand}" ToolTip="Export Case"><Viewbox Width="16" Height="16"><Path Data="M3,1 H11 L14,4 V15 H3 Z M11,1 V4 H14 M5,9 H12 M5,12 H10" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding SaveFullTestReportCommand}" ToolTip="Export Full Test Report"><Viewbox Width="16" Height="16"><Path Data="M3,1 H11 L14,4 V15 H3 Z M11,1 V4 H14 M5,9 H12 M8.5,6.5 V12 M6.5,10 L8.5,12 L10.5,10" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /></Viewbox></Button>
                 <Separator />
-                <Button Style="{StaticResource CompactToolButton}" Click="ConfigureClient_Click" ToolTip="Configure Modbus TCP Client"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE8B7;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Click="ConfigureServer_Click" ToolTip="Configure Modbus TCP Server"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE8B7;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding ReadOnceCommand}" ToolTip="Read Once"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE72C;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartClientScanCommand}" ToolTip="Start Client Scan"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE768;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopClientScanCommand}" ToolTip="Stop Client Scan"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE71A;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartServerCommand}" ToolTip="Start Server"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE768;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopServerCommand}" ToolTip="Stop Server"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE71A;" /></Button>
+                <Button Style="{StaticResource CompactToolButton}" Click="ConfigureClient_Click" ToolTip="Configure Modbus TCP Client"><Viewbox Width="16" Height="16"><Path Data="M1,3 H10 V10 H1 Z M4,13 H15 V15 H4 Z M5,10 V13 M10,6.5 H15 M12.5,4 V9" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Click="ConfigureServer_Click" ToolTip="Configure Modbus TCP Server"><Viewbox Width="16" Height="16"><Path Data="M2,2 H14 V14 H2 Z M5,5 H7 M9,5 H11 M5,8 H7 M9,8 H11 M5,11 H11" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding ReadOnceCommand}" ToolTip="Read Once"><Viewbox Width="16" Height="16"><Path Data="M2,2 H11 V12 H2 Z M5,5 H13 M10,2 V5 M6,7 H9 M6,9 H9" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartClientScanCommand}" ToolTip="Start Client Scan"><Viewbox Width="16" Height="16"><Path Data="M3,1 V15 L14,8 Z" Fill="#247A4D" /></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopClientScanCommand}" ToolTip="Stop Client Scan"><Viewbox Width="16" Height="16"><Rectangle Width="11" Height="11" Fill="#A9413B" /></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartServerCommand}" ToolTip="Start Server"><Viewbox Width="16" Height="16"><Canvas Width="16" Height="16"><Path Data="M2,2 H9 V7 H2 Z M2,9 H9 V14 H2 Z M11,3 V13 M11,8 H15" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /><Path Data="M11,5 V12 L15,8.5 Z" Fill="#247A4D" /></Canvas></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopServerCommand}" ToolTip="Stop Server"><Viewbox Width="16" Height="16"><Path Data="M2,2 H9 V7 H2 Z M2,9 H9 V14 H2 Z M11,6 H15 V10 H11 Z" Stroke="#17312B" StrokeThickness="1.4" Fill="#A9413B" /></Viewbox></Button>
                 <Separator />
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartNetworkCaptureCommand}" ToolTip="Start Network Capture"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE7C3;" /></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopNetworkCaptureCommand}" ToolTip="Stop Network Capture"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE71A;" /></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartNetworkCaptureCommand}" ToolTip="Start Network Capture"><Viewbox Width="16" Height="16"><Canvas Width="16" Height="16"><Path Data="M1,4 H6 L8,2 H11 L13,4 H15 V14 H1 Z M8,6 A3,3 0 1 1 7.99,6" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /><Path Data="M8,5 V11 L12,8 Z" Fill="#247A4D" /></Canvas></Viewbox></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopNetworkCaptureCommand}" ToolTip="Stop Network Capture"><Viewbox Width="16" Height="16"><Canvas Width="16" Height="16"><Path Data="M1,4 H6 L8,2 H11 L13,4 H15 V14 H1 Z M8,6 A3,3 0 1 1 7.99,6" Stroke="#17312B" StrokeThickness="1.4" Fill="None" /><Rectangle Width="4" Height="4" Canvas.Left="6" Canvas.Top="6" Fill="#A9413B" /></Canvas></Viewbox></Button>
                 <Separator />
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartFullTestCommand}" ToolTip="Run Full Test"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE9D9;" /></Button>
+                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartFullTestCommand}" ToolTip="Run Full Test"><Viewbox Width="16" Height="16"><Path Data="M2,1 H12 L14,3 V15 H2 Z M5,8 L7,10 L11,5" Stroke="#17312B" StrokeThickness="1.5" Fill="None" /></Viewbox></Button>
             </ToolBar>
         </ToolBarTray>
 
         <DockPanel Grid.Row="2" Margin="16,10,16,10">
             <StackPanel DockPanel.Dock="Left">
                 <TextBlock Text="Modbus TCP Troubleshooter" FontSize="24" FontWeight="SemiBold" Foreground="#17312B" />
-                <TextBlock Text="{Binding Status}" Foreground="#5B665F" Margin="0,3,0,0" />
             </StackPanel>
         </DockPanel>
 
         <Grid x:Name="ShellGrid" Grid.Row="3" Margin="16,0,16,0">
             <TabControl x:Name="MainTabs">
-                <TabItem Header="Connect">
-                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="20">
-                        <StackPanel MaxWidth="860">
-                            <TextBlock Text="Connection" FontSize="18" FontWeight="SemiBold" Foreground="#17312B" />
-                            <TextBlock Text="Select a role, configure its endpoint, then start the required operation from the toolbar or this page." Foreground="#5B665F" Margin="0,3,0,18" />
-                            <Grid Margin="0,0,0,14">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="360" /></Grid.ColumnDefinitions>
-                                <TextBlock Text="Case name" VerticalAlignment="Center" />
-                                <TextBox Grid.Column="1" Text="{Binding CaseName, UpdateSourceTrigger=PropertyChanged}" />
-                            </Grid>
-                            <UniformGrid Columns="2" Margin="0,0,0,16">
-                                <Border Background="#F7F9F7" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,8,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Modbus TCP Client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" />
-                                        <TextBlock Foreground="#5B665F" Margin="0,10,0,2"><Run Text="Target: " /><Run Text="{Binding TargetIp}" /></TextBlock>
-                                        <TextBlock Foreground="#5B665F"><Run Text="Port: " /><Run Text="{Binding Port}" /></TextBlock>
-                                        <TextBlock Foreground="#5B665F"><Run Text="Unit ID: " /><Run Text="{Binding UnitId}" /></TextBlock>
-                                        <Button Content="Configure Client..." Click="ConfigureClient_Click" HorizontalAlignment="Left" Margin="0,16,0,0" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#F7F9F7" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="4" Padding="16" Margin="8,0,0,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Modbus TCP Server" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" />
-                                        <TextBlock Foreground="#5B665F" Margin="0,10,0,2"><Run Text="Listen: " /><Run Text="{Binding LocalIp}" /></TextBlock>
-                                        <TextBlock Foreground="#5B665F"><Run Text="Port: " /><Run Text="{Binding Port}" /></TextBlock>
-                                        <TextBlock Foreground="#5B665F"><Run Text="Unit ID: " /><Run Text="{Binding UnitId}" /></TextBlock>
-                                        <Button Content="Configure Server..." Click="ConfigureServer_Click" HorizontalAlignment="Left" Margin="0,16,0,0" />
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
-                            <Border Background="#EEF4EF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="4" Padding="12">
-                                <TextBlock Text="{Binding Status}" Foreground="#17312B" />
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                </TabItem>
                 <TabItem Header="Operation">
                     <Grid x:Name="OperationLayoutGrid">
                 <Grid.RowDefinitions>
@@ -613,7 +590,19 @@
             </TabControl>
         </Grid>
 
-        <TextBlock Grid.Row="4" Margin="16,10,16,12" Foreground="#6D756E"
-                   Text="Client e Server agora sao configurados separadamente. O mapa do client suporta leitura unica e scan ritmado." />
+        <StatusBar Grid.Row="4" Background="#E7ECE8" BorderBrush="#D5DDD6" BorderThickness="0,1,0,0" Padding="8,3">
+            <StatusBarItem><TextBlock Foreground="#17312B"><Run Text="Mode: " /><Run Text="{Binding SelectedMode}" /></TextBlock></StatusBarItem>
+            <Separator />
+            <StatusBarItem Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}"><TextBlock Foreground="#17312B"><Run Text="Target: " /><Run Text="{Binding TargetIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StatusBarItem>
+            <StatusBarItem Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}"><TextBlock Foreground="#17312B"><Run Text="Listen: " /><Run Text="{Binding LocalIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StatusBarItem>
+            <Separator />
+            <StatusBarItem><TextBlock Foreground="#17312B"><Run Text="Unit ID: " /><Run Text="{Binding UnitId}" /></TextBlock></StatusBarItem>
+            <Separator />
+            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Scan: " Foreground="#17312B" /><TextBlock Style="{StaticResource ScanStateText}" /></StackPanel></StatusBarItem>
+            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Server: " Foreground="#17312B" /><TextBlock Style="{StaticResource ServerStateText}" /></StackPanel></StatusBarItem>
+            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Capture: " Foreground="#17312B" /><TextBlock Style="{StaticResource CaptureStateText}" /></StackPanel></StatusBarItem>
+            <Separator />
+            <StatusBarItem><TextBlock Foreground="#5B665F" Text="{Binding Status}" /></StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>

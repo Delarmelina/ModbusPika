@@ -385,8 +385,9 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 - escrita FC05 em Coil e FC06 em Holding Register feita diretamente pelo mapa do client ou pelas sub-abas HR/COIL do mapa de comunicacao: duplo clique na linha, informe range/valor e confirme com `OK`
 - novos blocos de leitura criados no client usam nome padrao `Bloco X`
 - mapa de comunicacao do client espelha os blocos habilitados: ao alterar FC, endereco, quantidade, nome ou habilitacao, pontos antigos sao removidos e novos pontos entram como `Nao lido`
-- interface organizada em abas principais: `Connect`, `Operation` e `Full Test`; `Connect` exibe os perfis atuais e abre janelas modais separadas para configurar Client ou Server, enquanto `Operation` preserva mapa, diagnosticos e timelines redimensionaveis
-- menu superior no padrao de ferramentas industriais: `File`, `Connection`, `Setup`, `Capture`, `View`, `Window` e `Help`; a toolbar compacta usa grupos de icones com tooltip para exportacao, configuracao, scan/server, captura e teste completo
+- interface organizada em abas principais: `Operation` e `Full Test`; a configuracao de Client e Server fica exclusivamente em janelas modais abertas pelo menu `Connection` ou pela toolbar
+- menu superior no padrao de ferramentas industriais: `File`, `Connection`, `Setup`, `Capture`, `View`, `Window` e `Help`; a toolbar compacta usa icones vetoriais proprios, com tooltip, para exportacao, configuracao, scan/server, captura e teste completo
+- barra de status tecnica persistente: modo, endpoint configurado, Unit ID, estado de scan, server, captura e ultima mensagem operacional
 - em `View` e possivel ocultar mapa, diagnosticos e timeline, focar um painel, aumentar a timeline, restaurar layout e alternar abas no topo/esquerda
 - modo client agora tem sub-aba `Mapa de comunicacao` separada por `HR`, `IR`, `COIL` e `DISCRETE`, com pontos lidos por linha, endereco, valor, qualidade e horario
 - modo server agora permite alterar valores diretamente na tabela `Visualizar mapa`; a edicao atualiza o mapa simulado usado nas respostas

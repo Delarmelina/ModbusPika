@@ -34,19 +34,14 @@ public partial class MainWindow : Window
         ApplyLayoutVisibility();
     }
 
-    private void ShowConnectMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ShowOperationMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MainTabs.SelectedIndex = 0;
     }
 
-    private void ShowOperationMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 1;
-    }
-
     private void ShowFullTestMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 2;
+        MainTabs.SelectedIndex = 1;
     }
 
     private void ConfigureClient_Click(object sender, RoutedEventArgs e)
@@ -98,7 +93,7 @@ public partial class MainWindow : Window
 
     private void FocusMapMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 0;
         ShowMapMenuItem.IsChecked = true;
         ShowDiagnosticsMenuItem.IsChecked = false;
         ShowTimelineMenuItem.IsChecked = false;
@@ -107,7 +102,7 @@ public partial class MainWindow : Window
 
     private void FocusDiagnosticsMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 0;
         ShowMapMenuItem.IsChecked = false;
         ShowDiagnosticsMenuItem.IsChecked = true;
         ShowTimelineMenuItem.IsChecked = false;
@@ -116,7 +111,7 @@ public partial class MainWindow : Window
 
     private void FocusTimelineMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 0;
         ShowMapMenuItem.IsChecked = false;
         ShowDiagnosticsMenuItem.IsChecked = false;
         ShowTimelineMenuItem.IsChecked = true;
@@ -125,7 +120,7 @@ public partial class MainWindow : Window
 
     private void LargeTimelineMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 0;
         ShowMapMenuItem.IsChecked = true;
         ShowDiagnosticsMenuItem.IsChecked = true;
         ShowTimelineMenuItem.IsChecked = true;
