@@ -37,13 +37,11 @@ public partial class MainWindow : Window
     private void ShowConnectMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MainTabs.SelectedIndex = 0;
-        OperationTabs.SelectedIndex = 0;
     }
 
     private void FocusMapMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 0;
-        OperationTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = true;
         ShowDiagnosticsMenuItem.IsChecked = false;
         ShowTimelineMenuItem.IsChecked = false;
@@ -52,8 +50,7 @@ public partial class MainWindow : Window
 
     private void FocusDiagnosticsMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 0;
-        OperationTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = false;
         ShowDiagnosticsMenuItem.IsChecked = true;
         ShowTimelineMenuItem.IsChecked = false;
@@ -62,8 +59,7 @@ public partial class MainWindow : Window
 
     private void FocusTimelineMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 0;
-        OperationTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = false;
         ShowDiagnosticsMenuItem.IsChecked = false;
         ShowTimelineMenuItem.IsChecked = true;
@@ -72,8 +68,7 @@ public partial class MainWindow : Window
 
     private void LargeTimelineMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 0;
-        OperationTabs.SelectedIndex = 1;
+        MainTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = true;
         ShowDiagnosticsMenuItem.IsChecked = true;
         ShowTimelineMenuItem.IsChecked = true;
@@ -170,10 +165,7 @@ public partial class MainWindow : Window
 
     private void SetTabPlacement(Dock placement)
     {
-        foreach (var tabControl in FindVisualChildren<TabControl>(this))
-        {
-            tabControl.TabStripPlacement = placement;
-        }
+        MainTabs.TabStripPlacement = placement;
     }
 
     private void TcpTimelineGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)

@@ -385,8 +385,8 @@ dotnet run --project .\ModbusTcpTroubleshooter.SmokeTests\ModbusTcpTroubleshoote
 - escrita FC05 em Coil e FC06 em Holding Register feita diretamente pelo mapa do client ou pelas sub-abas HR/COIL do mapa de comunicacao: duplo clique na linha, informe range/valor e confirme com `OK`
 - novos blocos de leitura criados no client usam nome padrao `Bloco X`
 - mapa de comunicacao do client espelha os blocos habilitados: ao alterar FC, endereco, quantidade, nome ou habilitacao, pontos antigos sao removidos e novos pontos entram como `Nao lido`
-- interface reorganizada: `Operation` contem as sub-abas `Connect` e `Workspace`; `Connect` concentra caso, modo operacional e parametros client/server, enquanto o workspace preserva mapa, diagnosticos e timelines redimensionaveis
-- menu superior com `File`, `View`, `Tools` e `Help`; a toolbar traz acoes padrao em ingles, contextuais ao modo (`Read Once`/`Start Scan` para client e `Start Server` para server), alem de captura, teste completo e exportacao
+- interface organizada em abas principais: `Connect`, `Operation` e `Full Test`; `Connect` concentra caso, modo operacional e parametros client/server, enquanto `Operation` preserva mapa, diagnosticos e timelines redimensionaveis
+- menu superior com `File`, `View`, `Tools` e `Help`; a faixa de cabecalho foi reduzida a acoes globais de `Full Test` e exportacao, e as acoes de conexao/scan permanecem no contexto tecnico onde sao configuradas
 - em `View` e possivel ocultar mapa, diagnosticos e timeline, focar um painel, aumentar a timeline, restaurar layout e alternar abas no topo/esquerda
 - modo client agora tem sub-aba `Mapa de comunicacao` separada por `HR`, `IR`, `COIL` e `DISCRETE`, com pontos lidos por linha, endereco, valor, qualidade e horario
 - modo server agora permite alterar valores diretamente na tabela `Visualizar mapa`; a edicao atualiza o mapa simulado usado nas respostas

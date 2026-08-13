@@ -66,28 +66,14 @@
                 <TextBlock Text="{Binding Status}" Foreground="#5B665F" Margin="0,3,0,0" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Connect" Click="ShowConnectMenuItem_Click" />
-                <StackPanel Orientation="Horizontal" Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}">
-                    <Button Content="Read Once" Command="{Binding ReadOnceCommand}" />
-                    <Button Content="Start Scan" Command="{Binding StartClientScanCommand}" />
-                    <Button Content="Stop Scan" Command="{Binding StopClientScanCommand}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}">
-                    <Button Content="Start Server" Command="{Binding StartServerCommand}" />
-                    <Button Content="Stop Server" Command="{Binding StopServerCommand}" />
-                </StackPanel>
-                <Button Content="Start Capture" Command="{Binding StartNetworkCaptureCommand}" />
-                <Button Content="Stop Capture" Command="{Binding StopNetworkCaptureCommand}" />
                 <Button Content="Full Test" Command="{Binding StartFullTestCommand}" />
-                <Button Content="Export" Command="{Binding SaveCaseCommand}" />
+                <Button Content="Export Report" Command="{Binding SaveFullTestReportCommand}" />
             </StackPanel>
         </DockPanel>
 
         <Grid x:Name="ShellGrid" Grid.Row="2" Margin="16,0,16,0">
             <TabControl x:Name="MainTabs">
-                <TabItem Header="Operacao">
-                    <TabControl x:Name="OperationTabs" Margin="0,8,0,0">
-                        <TabItem Header="Connect">
+                <TabItem Header="Connect">
                             <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="18">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <StackPanel MaxWidth="760" HorizontalAlignment="Left">
@@ -138,8 +124,8 @@
                                     </StackPanel>
                                 </ScrollViewer>
                             </Border>
-                        </TabItem>
-                        <TabItem Header="Workspace">
+                </TabItem>
+                <TabItem Header="Operation">
                     <Grid x:Name="OperationLayoutGrid">
                 <Grid.RowDefinitions>
                     <RowDefinition x:Name="TopPanelsRow" Height="1.05*" />
@@ -469,8 +455,6 @@
                     </TabControl>
                 </Border>
                     </Grid>
-                        </TabItem>
-                    </TabControl>
                 </TabItem>
                 <TabItem Header="Teste completo">
                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0">
