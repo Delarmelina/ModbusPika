@@ -11,19 +11,15 @@ public partial class ConnectionSettingsDialog : Window
         InitializeComponent();
         _isClient = isClient;
         Title = isClient ? "Configure Modbus TCP Client" : "Configure Modbus TCP Server";
-        HeadingText.Text = isClient ? "Modbus TCP Client" : "Modbus TCP Server";
-        DescriptionText.Text = isClient
-            ? "Configure the remote Modbus TCP endpoint used for reads and writes."
-            : "Configure the local endpoint exposed by the simulated Modbus TCP server.";
-        AddressLabel.Text = isClient ? "Target IP address" : "Listen IP address";
+        AddressLabel.Text = isClient ? "IP address" : "Listen address";
         AddressTextBox.Text = address;
         PortTextBox.Text = port.ToString();
         UnitIdTextBox.Text = unitId.ToString();
         ScanRateTextBox.Text = scanRateMs.ToString();
         ScanRateLabel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
-        ScanRateTextBox.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
-        ScanRateRow.Height = isClient ? new GridLength(34) : new GridLength(0);
-        Height = isClient ? 355 : 320;
+        ScanRatePanel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
+        ScanRateRow.Height = isClient ? new GridLength(30) : new GridLength(0);
+        Height = isClient ? 285 : 245;
         AddressTextBox.SelectAll();
         AddressTextBox.Focus();
     }
