@@ -10,29 +10,75 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </Window.Resources>
 
-    <Grid Margin="16">
+    <Grid Margin="0">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+        <Menu Grid.Row="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="0,0,0,1">
+            <MenuItem Header="_File">
+                <MenuItem Header="Exportar caso" Command="{Binding SaveCaseCommand}" />
+                <MenuItem Header="Exportar relatorio do teste completo" Command="{Binding SaveFullTestReportCommand}" />
+                <Separator />
+                <MenuItem Header="Sair" Click="ExitMenuItem_Click" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem x:Name="ShowConfigMenuItem" Header="Mostrar configuracao lateral" IsCheckable="True" IsChecked="True" Click="ShowConfigMenuItem_Click" />
+                <MenuItem x:Name="ShowMapMenuItem" Header="Mostrar mapa/operacao" IsCheckable="True" IsChecked="True" Click="ShowMapMenuItem_Click" />
+                <MenuItem x:Name="ShowDiagnosticsMenuItem" Header="Mostrar diagnosticos" IsCheckable="True" IsChecked="True" Click="ShowDiagnosticsMenuItem_Click" />
+                <MenuItem x:Name="ShowTimelineMenuItem" Header="Mostrar timeline" IsCheckable="True" IsChecked="True" Click="ShowTimelineMenuItem_Click" />
+                <Separator />
+                <MenuItem Header="Focar mapa/operacao" Click="FocusMapMenuItem_Click" />
+                <MenuItem Header="Focar diagnosticos" Click="FocusDiagnosticsMenuItem_Click" />
+                <MenuItem Header="Focar timeline" Click="FocusTimelineMenuItem_Click" />
+                <MenuItem Header="Timeline maior" Click="LargeTimelineMenuItem_Click" />
+                <MenuItem Header="Layout padrao" Click="ResetLayoutMenuItem_Click" />
+                <Separator />
+                <MenuItem Header="Abas no topo" Click="TabsTopMenuItem_Click" />
+                <MenuItem Header="Abas na esquerda" Click="TabsLeftMenuItem_Click" />
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="Leitura unica" Command="{Binding ReadOnceCommand}" />
+                <MenuItem Header="Iniciar scan" Command="{Binding StartClientScanCommand}" />
+                <MenuItem Header="Parar scan" Command="{Binding StopClientScanCommand}" />
+                <Separator />
+                <MenuItem Header="Iniciar servidor" Command="{Binding StartServerCommand}" />
+                <MenuItem Header="Parar servidor" Command="{Binding StopServerCommand}" />
+                <Separator />
+                <MenuItem Header="Iniciar captura" Command="{Binding StartNetworkCaptureCommand}" />
+                <MenuItem Header="Parar captura" Command="{Binding StopNetworkCaptureCommand}" />
+                <MenuItem Header="Limpar timeline" Command="{Binding ClearTimelineCommand}" />
+                <Separator />
+                <MenuItem Header="Teste completo" Command="{Binding StartFullTestCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="Sobre" Click="AboutMenuItem_Click" />
+            </MenuItem>
+        </Menu>
+
+        <DockPanel Grid.Row="1" Margin="16,12,16,12">
             <StackPanel DockPanel.Dock="Left">
                 <TextBlock Text="Modbus TCP Troubleshooter" FontSize="24" FontWeight="SemiBold" Foreground="#17312B" />
                 <TextBlock Text="{Binding Status}" Foreground="#5B665F" Margin="0,3,0,0" />
             </StackPanel>
-            <Button DockPanel.Dock="Right" Content="Exportar caso" Command="{Binding SaveCaseCommand}" HorizontalAlignment="Right" />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Config" Click="ToggleConfigButton_Click" />
+                <Button Content="Layout padrao" Click="ResetLayoutMenuItem_Click" />
+                <Button Content="Exportar caso" Command="{Binding SaveCaseCommand}" />
+            </StackPanel>
         </DockPanel>
 
-        <Grid Grid.Row="1">
+        <Grid x:Name="ShellGrid" Grid.Row="2" Margin="16,0,16,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="360" />
-                <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="ConfigColumn" Width="360" />
+                <ColumnDefinition x:Name="ConfigSplitterColumn" Width="6" />
+                <ColumnDefinition x:Name="MainColumn" Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,12,0">
+            <Border x:Name="ConfigPanel" Grid.Column="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,12,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock Text="Caso" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
@@ -81,25 +127,26 @@
                 </ScrollViewer>
             </Border>
 
-            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
+            <GridSplitter x:Name="ConfigSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
 
-            <TabControl Grid.Column="2">
+            <TabControl x:Name="MainTabs" Grid.Column="2">
                 <TabItem Header="Operacao">
-                    <Grid>
+                    <Grid x:Name="OperationLayoutGrid">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1.05*" />
-                    <RowDefinition Height="6" />
-                    <RowDefinition Height="1.25*" />
+                    <RowDefinition x:Name="TopPanelsRow" Height="1.05*" />
+                    <RowDefinition x:Name="TimelineSplitterRow" Height="6" />
+                    <RowDefinition x:Name="TimelineRow" Height="1.25*" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0">
+                <Grid x:Name="TopPanelsGrid" Grid.Row="0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.35*" />
-                        <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="MapColumn" Width="1.35*" />
+                        <ColumnDefinition x:Name="MapSplitterColumn" Width="6" />
+                        <ColumnDefinition x:Name="DiagnosticsColumn" Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,8"
+                    <Grid x:Name="MapPane" Grid.Column="0" Margin="0,0,8,8">
+                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10"
                             Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}">
                         <TabControl>
                             <TabItem Header="Configurar leituras">
@@ -194,7 +241,7 @@
                         </TabControl>
                     </Border>
 
-                    <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,8"
+                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10"
                             Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}">
                         <TabControl>
                             <TabItem Header="Configurar faixas">
@@ -247,10 +294,11 @@
                             </TabItem>
                         </TabControl>
                     </Border>
+                    </Grid>
 
-                    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" Margin="0,0,0,8" />
+                    <GridSplitter x:Name="MapDiagnosticsSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" Margin="0,0,0,8" />
 
-                    <Border Grid.Column="2" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="8,0,0,8">
+                    <Border x:Name="DiagnosticsPane" Grid.Column="2" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="8,0,0,8">
                         <TabControl>
                             <TabItem Header="Todos">
                                 <DockPanel Margin="0,8,0,0">
@@ -298,9 +346,9 @@
                     </Border>
                 </Grid>
 
-                <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
+                <GridSplitter x:Name="TimelineSplitter" Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
 
-                <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                <Border x:Name="TimelinePane" Grid.Row="2" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
                     <TabControl>
                         <TabItem Header="Modbus">
                             <DockPanel Margin="0,8,0,0">
@@ -555,7 +603,7 @@
             </TabControl>
         </Grid>
 
-        <TextBlock Grid.Row="2" Margin="0,10,0,0" Foreground="#6D756E"
+        <TextBlock Grid.Row="3" Margin="16,10,16,12" Foreground="#6D756E"
                    Text="Client e Server agora sao configurados separadamente. O mapa do client suporta leitura unica e scan ritmado." />
     </Grid>
 </Window>
