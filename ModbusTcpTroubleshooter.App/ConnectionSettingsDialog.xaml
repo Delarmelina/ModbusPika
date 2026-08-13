@@ -3,42 +3,43 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Connection Settings"
         Width="455"
-        Height="330"
+        Height="355"
+        MinHeight="300"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="#F2F4F1">
     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="16" Margin="12">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="135" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <TextBlock x:Name="HeadingText" Grid.ColumnSpan="2" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" />
-            <TextBlock x:Name="DescriptionText" Grid.Row="1" Grid.ColumnSpan="2" Foreground="#5B665F" TextWrapping="Wrap" Margin="0,4,0,14" />
-
-            <TextBlock x:Name="AddressLabel" Grid.Row="2" VerticalAlignment="Center" Text="IP address" />
-            <TextBox x:Name="AddressTextBox" Grid.Row="2" Grid.Column="1" />
-            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Service port" />
-            <TextBox x:Name="PortTextBox" Grid.Row="3" Grid.Column="1" />
-            <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Unit ID" />
-            <TextBox x:Name="UnitIdTextBox" Grid.Row="4" Grid.Column="1" />
-            <TextBlock x:Name="ScanRateLabel" Grid.Row="5" VerticalAlignment="Center" Text="Scan rate (ms)" />
-            <TextBox x:Name="ScanRateTextBox" Grid.Row="5" Grid.Column="1" VerticalAlignment="Top" />
-            <TextBlock x:Name="ValidationText" Grid.Row="6" Grid.ColumnSpan="2" Foreground="#B3261E" TextWrapping="Wrap" Margin="0,0,0,36" />
-            <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
-                <Button Content="Cancel" Width="82" Margin="0,0,8,0" Click="Cancel_Click" />
-                <Button Content="OK" Width="92" Background="#17312B" Foreground="White" FontWeight="SemiBold" Click="Confirm_Click" />
+        <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                <Button Content="Cancel" Width="82" Height="30" Margin="0,0,8,0" Click="Cancel_Click" />
+                <Button Content="OK" Width="92" Height="30" Margin="0" Background="#17312B" Foreground="White" FontWeight="SemiBold" Click="Confirm_Click" />
             </StackPanel>
-        </Grid>
+            <TextBlock x:Name="ValidationText" DockPanel.Dock="Bottom" Foreground="#B3261E" TextWrapping="Wrap" MinHeight="18" Margin="0,10,0,0" />
+            <StackPanel>
+                <TextBlock x:Name="HeadingText" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" />
+                <TextBlock x:Name="DescriptionText" Foreground="#5B665F" TextWrapping="Wrap" Margin="0,4,0,14" />
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="34" />
+                        <RowDefinition Height="34" />
+                        <RowDefinition Height="34" />
+                        <RowDefinition x:Name="ScanRateRow" Height="34" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="135" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="AddressLabel" VerticalAlignment="Center" Text="IP address" />
+                    <TextBox x:Name="AddressTextBox" Grid.Column="1" Margin="0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Service port" />
+                    <TextBox x:Name="PortTextBox" Grid.Row="1" Grid.Column="1" Margin="0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Unit ID" />
+                    <TextBox x:Name="UnitIdTextBox" Grid.Row="2" Grid.Column="1" Margin="0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="ScanRateLabel" Grid.Row="3" VerticalAlignment="Center" Text="Scan rate (ms)" />
+                    <TextBox x:Name="ScanRateTextBox" Grid.Row="3" Grid.Column="1" Margin="0" VerticalAlignment="Center" />
+                </Grid>
+            </StackPanel>
+        </DockPanel>
     </Border>
 </Window>

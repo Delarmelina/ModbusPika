@@ -22,7 +22,8 @@ public partial class ConnectionSettingsDialog : Window
         ScanRateTextBox.Text = scanRateMs.ToString();
         ScanRateLabel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
         ScanRateTextBox.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
-        Height = isClient ? 330 : 285;
+        ScanRateRow.Height = isClient ? new GridLength(34) : new GridLength(0);
+        Height = isClient ? 355 : 320;
         AddressTextBox.SelectAll();
         AddressTextBox.Focus();
     }
