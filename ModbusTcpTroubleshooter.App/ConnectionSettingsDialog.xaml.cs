@@ -19,7 +19,9 @@ public partial class ConnectionSettingsDialog : Window
         ScanRateLabel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
         ScanRatePanel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
         ScanRateRow.Height = isClient ? new GridLength(32) : new GridLength(0);
-        Height = isClient ? 295 : 255;
+        // Window height includes title bar, validation area and button row.
+        // Keep enough usable space for every field at Windows' default DPI.
+        Height = isClient ? 365 : 330;
         AddressTextBox.SelectAll();
         AddressTextBox.Focus();
     }
