@@ -8,7 +8,6 @@ namespace ModbusTcpTroubleshooter.App;
 
 public partial class MainWindow : Window
 {
-    private readonly GridLength _defaultConfigWidth = new(360);
     private readonly GridLength _defaultMapWidth = new(1.35, GridUnitType.Star);
     private readonly GridLength _defaultDiagnosticsWidth = new(1, GridUnitType.Star);
     private readonly GridLength _defaultTopHeight = new(1.05, GridUnitType.Star);
@@ -18,11 +17,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainViewModel();
-    }
-
-    private void ShowConfigMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        ApplyLayoutVisibility();
     }
 
     private void ShowMapMenuItem_Click(object sender, RoutedEventArgs e)
@@ -40,15 +34,16 @@ public partial class MainWindow : Window
         ApplyLayoutVisibility();
     }
 
-    private void ToggleConfigButton_Click(object sender, RoutedEventArgs e)
+    private void ShowConnectMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        ShowConfigMenuItem.IsChecked = !ShowConfigMenuItem.IsChecked;
-        ApplyLayoutVisibility();
+        MainTabs.SelectedIndex = 0;
+        OperationTabs.SelectedIndex = 0;
     }
 
     private void FocusMapMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        ShowConfigMenuItem.IsChecked = false;
+        MainTabs.SelectedIndex = 0;
+        OperationTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = true;
         ShowDiagnosticsMenuItem.IsChecked = false;
         ShowTimelineMenuItem.IsChecked = false;
@@ -57,7 +52,8 @@ public partial class MainWindow : Window
 
     private void FocusDiagnosticsMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        ShowConfigMenuItem.IsChecked = false;
+        MainTabs.SelectedIndex = 0;
+        OperationTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = false;
         ShowDiagnosticsMenuItem.IsChecked = true;
         ShowTimelineMenuItem.IsChecked = false;
@@ -66,7 +62,8 @@ public partial class MainWindow : Window
 
     private void FocusTimelineMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        ShowConfigMenuItem.IsChecked = false;
+        MainTabs.SelectedIndex = 0;
+        OperationTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = false;
         ShowDiagnosticsMenuItem.IsChecked = false;
         ShowTimelineMenuItem.IsChecked = true;
@@ -75,6 +72,8 @@ public partial class MainWindow : Window
 
     private void LargeTimelineMenuItem_Click(object sender, RoutedEventArgs e)
     {
+        MainTabs.SelectedIndex = 0;
+        OperationTabs.SelectedIndex = 1;
         ShowMapMenuItem.IsChecked = true;
         ShowDiagnosticsMenuItem.IsChecked = true;
         ShowTimelineMenuItem.IsChecked = true;
@@ -85,7 +84,6 @@ public partial class MainWindow : Window
 
     private void ResetLayoutMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        ShowConfigMenuItem.IsChecked = true;
         ShowMapMenuItem.IsChecked = true;
         ShowDiagnosticsMenuItem.IsChecked = true;
         ShowTimelineMenuItem.IsChecked = true;
@@ -120,7 +118,6 @@ public partial class MainWindow : Window
 
     private void ApplyLayoutVisibility()
     {
-        var showConfig = ShowConfigMenuItem.IsChecked;
         var showMap = ShowMapMenuItem.IsChecked;
         var showDiagnostics = ShowDiagnosticsMenuItem.IsChecked;
         var showTimeline = ShowTimelineMenuItem.IsChecked;
@@ -130,11 +127,6 @@ public partial class MainWindow : Window
             showMap = true;
             ShowMapMenuItem.IsChecked = true;
         }
-
-        ConfigPanel.Visibility = showConfig ? Visibility.Visible : Visibility.Collapsed;
-        ConfigSplitter.Visibility = showConfig ? Visibility.Visible : Visibility.Collapsed;
-        ConfigColumn.Width = showConfig ? _defaultConfigWidth : new GridLength(0);
-        ConfigSplitterColumn.Width = showConfig ? new GridLength(6) : new GridLength(0);
 
         MapPane.Visibility = showMap ? Visibility.Visible : Visibility.Collapsed;
         DiagnosticsPane.Visibility = showDiagnostics ? Visibility.Visible : Visibility.Collapsed;
