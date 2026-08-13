@@ -17,10 +17,10 @@
         <GroupBox Header="Connection settings" Padding="12" Margin="0,0,0,8">
             <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="30" />
-                        <RowDefinition Height="30" />
-                        <RowDefinition Height="30" />
-                        <RowDefinition x:Name="ScanRateRow" Height="30" />
+                        <RowDefinition Height="32" />
+                        <RowDefinition Height="32" />
+                        <RowDefinition Height="32" />
+                        <RowDefinition x:Name="ScanRateRow" Height="32" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="125" />
@@ -28,14 +28,14 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock x:Name="AddressLabel" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="IP address" />
-                    <TextBox x:Name="AddressTextBox" Grid.Column="1" Width="200" Height="23" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <TextBox x:Name="AddressTextBox" Grid.Column="1" Width="200" Height="26" Padding="4,2" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
                     <TextBlock Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="Service port" />
-                    <TextBox x:Name="PortTextBox" Grid.Row="1" Grid.Column="1" Width="100" Height="23" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <TextBox x:Name="PortTextBox" Grid.Row="1" Grid.Column="1" Width="100" Height="26" Padding="4,2" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
                     <TextBlock Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="Unit ID" />
-                    <TextBox x:Name="UnitIdTextBox" Grid.Row="2" Grid.Column="1" Width="100" Height="23" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <TextBox x:Name="UnitIdTextBox" Grid.Row="2" Grid.Column="1" Width="100" Height="26" Padding="4,2" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
                     <TextBlock x:Name="ScanRateLabel" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="Scan rate" />
                     <StackPanel x:Name="ScanRatePanel" Grid.Row="3" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBox x:Name="ScanRateTextBox" Width="100" Height="23" Margin="0" />
+                        <TextBox x:Name="ScanRateTextBox" Width="100" Height="26" Padding="4,2" Margin="0" />
                         <TextBlock Text="ms" VerticalAlignment="Center" Margin="8,0,0,0" />
                     </StackPanel>
             </Grid>

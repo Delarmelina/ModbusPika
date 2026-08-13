@@ -18,8 +18,8 @@ public partial class ConnectionSettingsDialog : Window
         ScanRateTextBox.Text = scanRateMs.ToString();
         ScanRateLabel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
         ScanRatePanel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
-        ScanRateRow.Height = isClient ? new GridLength(30) : new GridLength(0);
-        Height = isClient ? 285 : 245;
+        ScanRateRow.Height = isClient ? new GridLength(32) : new GridLength(0);
+        Height = isClient ? 295 : 255;
         AddressTextBox.SelectAll();
         AddressTextBox.Focus();
     }
