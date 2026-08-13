@@ -39,6 +39,63 @@ public partial class MainWindow : Window
         MainTabs.SelectedIndex = 0;
     }
 
+    private void ShowOperationMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 1;
+    }
+
+    private void ShowFullTestMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 2;
+    }
+
+    private void ConfigureClient_Click(object sender, RoutedEventArgs e)
+    {
+        ShowConnectionSettings(isClient: true);
+    }
+
+    private void ConfigureServer_Click(object sender, RoutedEventArgs e)
+    {
+        ShowConnectionSettings(isClient: false);
+    }
+
+    private void ShowConnectionSettings(bool isClient)
+    {
+        if (DataContext is not MainViewModel viewModel)
+        {
+            return;
+        }
+
+        var dialog = new ConnectionSettingsDialog(
+            isClient,
+            isClient ? viewModel.TargetIp : viewModel.LocalIp,
+            viewModel.Port,
+            viewModel.UnitId,
+            viewModel.ScanRateMs)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        viewModel.SelectedMode = isClient ? "Client" : "Server";
+        if (isClient)
+        {
+            viewModel.TargetIp = dialog.Address;
+            viewModel.ScanRateMs = dialog.ScanRateMs;
+        }
+        else
+        {
+            viewModel.LocalIp = dialog.Address;
+        }
+
+        viewModel.Port = dialog.Port;
+        viewModel.UnitId = dialog.UnitId;
+    }
+
     private void FocusMapMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MainTabs.SelectedIndex = 1;
@@ -299,26 +356,4 @@ public partial class MainWindow : Window
         return null;
     }
 
-    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent)
-        where T : DependencyObject
-    {
-        if (parent is null)
-        {
-            yield break;
-        }
-
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T typed)
-            {
-                yield return typed;
-            }
-
-            foreach (var descendant in FindVisualChildren<T>(child))
-            {
-                yield return descendant;
-            }
-        }
-    }
 }
