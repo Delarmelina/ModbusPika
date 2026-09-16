@@ -81,6 +81,7 @@
                 <MenuItem Header="Abas na esquerda" Click="TabsLeftMenuItem_Click" />
             </MenuItem>
             <MenuItem Header="_Window">
+                <MenuItem Header="Home" Click="ShowHomeMenuItem_Click" />
                 <MenuItem Header="Operation" Click="ShowOperationMenuItem_Click" />
                 <MenuItem Header="Full Test" Click="ShowFullTestMenuItem_Click" />
             </MenuItem>
@@ -117,6 +118,18 @@
 
         <Grid x:Name="ShellGrid" Grid.Row="3" Margin="16,0,16,0">
             <TabControl x:Name="MainTabs">
+                <TabItem Header="Home">
+                    <Border Background="White" BorderBrush="#D5DDD6" BorderThickness="1" Padding="24">
+                        <StackPanel MaxWidth="620" HorizontalAlignment="Left">
+                            <TextBlock Text="Basic tutorial" FontSize="18" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,16" />
+                            <TextBlock Text="1. Open Connection and choose Configure Client or Configure Server." Margin="0,0,0,8" />
+                            <TextBlock Text="2. Configure the IP address, port and Unit ID, then confirm with OK." Margin="0,0,0,8" />
+                            <TextBlock Text="3. Use Operation to configure the map and monitor Modbus communication." Margin="0,0,0,8" />
+                            <TextBlock Text="4. Use Capture for passive network traffic and Full Test for guided diagnostics." Margin="0,0,0,8" />
+                            <TextBlock Text="Toolbar buttons provide quick access to configuration, scan, server, capture and full test." Margin="0,12,0,0" Foreground="#5B665F" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </TabItem>
                 <TabItem Header="Operation">
                     <Grid x:Name="OperationLayoutGrid">
                 <Grid.RowDefinitions>
