@@ -8,45 +8,36 @@ namespace ModbusTcpTroubleshooter.App;
 
 public partial class MainWindow : Window
 {
-    private readonly GridLength _defaultMapWidth = new(1.35, GridUnitType.Star);
-    private readonly GridLength _defaultDiagnosticsWidth = new(1, GridUnitType.Star);
-    private readonly GridLength _defaultTopHeight = new(1.05, GridUnitType.Star);
-    private readonly GridLength _defaultTimelineHeight = new(1.25, GridUnitType.Star);
-
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainViewModel();
     }
 
-    private void ShowMapMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ShowCommunicationMap_Click(object sender, RoutedEventArgs e)
     {
-        ApplyLayoutVisibility();
+        ActivateTab(CommunicationMapTab);
     }
 
-    private void ShowDiagnosticsMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ShowTimeline_Click(object sender, RoutedEventArgs e)
     {
-        ApplyLayoutVisibility();
+        ActivateTab(TimelineTab);
     }
 
-    private void ShowTimelineMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ShowIssueLogs_Click(object sender, RoutedEventArgs e)
     {
-        ApplyLayoutVisibility();
+        ActivateTab(IssueLogsTab);
     }
 
-    private void ShowOperationMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ShowFullTest_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 1;
+        ActivateTab(FullTestTab);
     }
 
-    private void ShowFullTestMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ActivateTab(TabItem tab)
     {
-        MainTabs.SelectedIndex = 2;
-    }
-
-    private void ShowHomeMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 0;
+        tab.Visibility = Visibility.Visible;
+        MainTabs.SelectedItem = tab;
     }
 
     private void ConfigureClient_Click(object sender, RoutedEventArgs e)
@@ -96,62 +87,6 @@ public partial class MainWindow : Window
         viewModel.UnitId = dialog.UnitId;
     }
 
-    private void FocusMapMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 1;
-        ShowMapMenuItem.IsChecked = true;
-        ShowDiagnosticsMenuItem.IsChecked = false;
-        ShowTimelineMenuItem.IsChecked = false;
-        ApplyLayoutVisibility();
-    }
-
-    private void FocusDiagnosticsMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 1;
-        ShowMapMenuItem.IsChecked = false;
-        ShowDiagnosticsMenuItem.IsChecked = true;
-        ShowTimelineMenuItem.IsChecked = false;
-        ApplyLayoutVisibility();
-    }
-
-    private void FocusTimelineMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 1;
-        ShowMapMenuItem.IsChecked = false;
-        ShowDiagnosticsMenuItem.IsChecked = false;
-        ShowTimelineMenuItem.IsChecked = true;
-        ApplyLayoutVisibility();
-    }
-
-    private void LargeTimelineMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 1;
-        ShowMapMenuItem.IsChecked = true;
-        ShowDiagnosticsMenuItem.IsChecked = true;
-        ShowTimelineMenuItem.IsChecked = true;
-        ApplyLayoutVisibility();
-        TopPanelsRow.Height = new GridLength(0.55, GridUnitType.Star);
-        TimelineRow.Height = new GridLength(1.45, GridUnitType.Star);
-    }
-
-    private void ResetLayoutMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        ShowMapMenuItem.IsChecked = true;
-        ShowDiagnosticsMenuItem.IsChecked = true;
-        ShowTimelineMenuItem.IsChecked = true;
-        ApplyLayoutVisibility();
-        SetTabPlacement(Dock.Top);
-    }
-
-    private void TabsTopMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        SetTabPlacement(Dock.Top);
-    }
-
-    private void TabsLeftMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        SetTabPlacement(Dock.Left);
-    }
 
     private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -166,63 +101,6 @@ public partial class MainWindow : Window
             "Sobre",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
-    }
-
-    private void ApplyLayoutVisibility()
-    {
-        var showMap = ShowMapMenuItem.IsChecked;
-        var showDiagnostics = ShowDiagnosticsMenuItem.IsChecked;
-        var showTimeline = ShowTimelineMenuItem.IsChecked;
-
-        if (!showMap && !showDiagnostics && !showTimeline)
-        {
-            showMap = true;
-            ShowMapMenuItem.IsChecked = true;
-        }
-
-        MapPane.Visibility = showMap ? Visibility.Visible : Visibility.Collapsed;
-        DiagnosticsPane.Visibility = showDiagnostics ? Visibility.Visible : Visibility.Collapsed;
-        TimelinePane.Visibility = showTimeline ? Visibility.Visible : Visibility.Collapsed;
-
-        var hasTopPanel = showMap || showDiagnostics;
-        TopPanelsRow.Height = hasTopPanel ? _defaultTopHeight : new GridLength(0);
-        TimelineSplitterRow.Height = hasTopPanel && showTimeline ? new GridLength(6) : new GridLength(0);
-        TimelineSplitter.Visibility = hasTopPanel && showTimeline ? Visibility.Visible : Visibility.Collapsed;
-        TimelineRow.Height = showTimeline ? _defaultTimelineHeight : new GridLength(0);
-
-        if (showMap && showDiagnostics)
-        {
-            MapColumn.Width = _defaultMapWidth;
-            MapSplitterColumn.Width = new GridLength(6);
-            DiagnosticsColumn.Width = _defaultDiagnosticsWidth;
-            MapDiagnosticsSplitter.Visibility = Visibility.Visible;
-        }
-        else if (showMap)
-        {
-            MapColumn.Width = new GridLength(1, GridUnitType.Star);
-            MapSplitterColumn.Width = new GridLength(0);
-            DiagnosticsColumn.Width = new GridLength(0);
-            MapDiagnosticsSplitter.Visibility = Visibility.Collapsed;
-        }
-        else if (showDiagnostics)
-        {
-            MapColumn.Width = new GridLength(0);
-            MapSplitterColumn.Width = new GridLength(0);
-            DiagnosticsColumn.Width = new GridLength(1, GridUnitType.Star);
-            MapDiagnosticsSplitter.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            MapColumn.Width = new GridLength(0);
-            MapSplitterColumn.Width = new GridLength(0);
-            DiagnosticsColumn.Width = new GridLength(0);
-            MapDiagnosticsSplitter.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    private void SetTabPlacement(Dock placement)
-    {
-        MainTabs.TabStripPlacement = placement;
     }
 
     private void TcpTimelineGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)

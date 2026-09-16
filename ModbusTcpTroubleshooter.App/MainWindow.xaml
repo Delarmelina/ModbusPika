@@ -41,74 +41,26 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="0,0,0,1">
-            <MenuItem Header="_File">
-                <MenuItem Header="Export Case" Command="{Binding SaveCaseCommand}" />
-                <MenuItem Header="Export Full Test Report" Command="{Binding SaveFullTestReportCommand}" />
-                <Separator />
-                <MenuItem Header="Sair" Click="ExitMenuItem_Click" />
-            </MenuItem>
-            <MenuItem Header="_Connection">
-                <MenuItem Header="Configure Client..." Click="ConfigureClient_Click" />
-                <MenuItem Header="Configure Server..." Click="ConfigureServer_Click" />
-                <Separator />
-                <MenuItem Header="Read Once" Command="{Binding ReadOnceCommand}" />
-                <MenuItem Header="Start Scan" Command="{Binding StartClientScanCommand}" />
-                <MenuItem Header="Stop Scan" Command="{Binding StopClientScanCommand}" />
-                <MenuItem Header="Start Server" Command="{Binding StartServerCommand}" />
-                <MenuItem Header="Stop Server" Command="{Binding StopServerCommand}" />
-            </MenuItem>
-            <MenuItem Header="_Setup">
-                <MenuItem Header="Client Map" Click="ShowOperationMenuItem_Click" />
-                <MenuItem Header="Server Map" Click="ShowOperationMenuItem_Click" />
-            </MenuItem>
-            <MenuItem Header="_Capture">
-                <MenuItem Header="Start Capture" Command="{Binding StartNetworkCaptureCommand}" />
-                <MenuItem Header="Stop Capture" Command="{Binding StopNetworkCaptureCommand}" />
-                <MenuItem Header="Clear Timeline" Command="{Binding ClearTimelineCommand}" />
+            <MenuItem Header="_File"><MenuItem Header="Exit" Click="ExitMenuItem_Click" /></MenuItem>
+            <MenuItem Header="_Connections">
+                <MenuItem Header="Client (Master)">
+                    <MenuItem Header="Configure Client..." Click="ConfigureClient_Click" />
+                    <MenuItem Header="Connect..." Command="{Binding ReadOnceCommand}" />
+                    <MenuItem Header="Read Once" Command="{Binding ReadOnceCommand}" />
+                </MenuItem>
+                <MenuItem Header="Server (Slave)">
+                    <MenuItem Header="Configure Server..." Click="ConfigureServer_Click" />
+                    <MenuItem Header="Start Server..." Command="{Binding StartServerCommand}" />
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_View">
-                <MenuItem x:Name="ShowMapMenuItem" Header="Show Map" IsCheckable="True" IsChecked="True" Click="ShowMapMenuItem_Click" />
-                <MenuItem x:Name="ShowDiagnosticsMenuItem" Header="Show Diagnostics" IsCheckable="True" IsChecked="True" Click="ShowDiagnosticsMenuItem_Click" />
-                <MenuItem x:Name="ShowTimelineMenuItem" Header="Show Timeline" IsCheckable="True" IsChecked="True" Click="ShowTimelineMenuItem_Click" />
-                <Separator />
-                <MenuItem Header="Focus Map" Click="FocusMapMenuItem_Click" />
-                <MenuItem Header="Focus Diagnostics" Click="FocusDiagnosticsMenuItem_Click" />
-                <MenuItem Header="Focus Timeline" Click="FocusTimelineMenuItem_Click" />
-                <MenuItem Header="Large Timeline" Click="LargeTimelineMenuItem_Click" />
-                <MenuItem Header="Reset Layout" Click="ResetLayoutMenuItem_Click" />
-                <Separator />
-                <MenuItem Header="Abas no topo" Click="TabsTopMenuItem_Click" />
-                <MenuItem Header="Abas na esquerda" Click="TabsLeftMenuItem_Click" />
+                <MenuItem Header="Communication Map" Click="ShowCommunicationMap_Click" />
+                <MenuItem Header="Timeline" Click="ShowTimeline_Click" />
+                <MenuItem Header="Issue Logs" Click="ShowIssueLogs_Click" />
+                <MenuItem Header="Full Test" Click="ShowFullTest_Click" />
             </MenuItem>
-            <MenuItem Header="_Window">
-                <MenuItem Header="Home" Click="ShowHomeMenuItem_Click" />
-                <MenuItem Header="Operation" Click="ShowOperationMenuItem_Click" />
-                <MenuItem Header="Full Test" Click="ShowFullTestMenuItem_Click" />
-            </MenuItem>
-            <MenuItem Header="_Help">
-                <MenuItem Header="Sobre" Click="AboutMenuItem_Click" />
-            </MenuItem>
+            <MenuItem Header="_Help"><MenuItem Header="About" Click="AboutMenuItem_Click" /></MenuItem>
         </Menu>
-
-        <ToolBarTray Grid.Row="1" Background="#E7ECE8" IsLocked="True">
-            <ToolBar Background="#F7F9F7">
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding SaveCaseCommand}" ToolTip="Export Case"><Viewbox Width="16" Height="16"><Path Data="M3,1 H11 L14,4 V15 H3 Z M11,1 V4 H14 M5,9 H12 M5,12 H10" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding SaveFullTestReportCommand}" ToolTip="Export Full Test Report"><Viewbox Width="16" Height="16"><Path Data="M3,1 H11 L14,4 V15 H3 Z M11,1 V4 H14 M5,9 H12 M8.5,6.5 V12 M6.5,10 L8.5,12 L10.5,10" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /></Viewbox></Button>
-                <Separator />
-                <Button Style="{StaticResource CompactToolButton}" Click="ConfigureClient_Click" ToolTip="Configure Modbus TCP Client"><Viewbox Width="16" Height="16"><Path Data="M1,3 H10 V10 H1 Z M4,13 H15 V15 H4 Z M5,10 V13 M10,6.5 H15 M12.5,4 V9" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Click="ConfigureServer_Click" ToolTip="Configure Modbus TCP Server"><Viewbox Width="16" Height="16"><Path Data="M2,2 H14 V14 H2 Z M5,5 H7 M9,5 H11 M5,8 H7 M9,8 H11 M5,11 H11" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding ReadOnceCommand}" ToolTip="Read Once"><Viewbox Width="16" Height="16"><Path Data="M2,2 H11 V12 H2 Z M5,5 H13 M10,2 V5 M6,7 H9 M6,9 H9" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartClientScanCommand}" ToolTip="Start Client Scan"><Viewbox Width="16" Height="16"><Path Data="M3,1 V15 L14,8 Z" Fill="#247A4D" /></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopClientScanCommand}" ToolTip="Stop Client Scan"><Viewbox Width="16" Height="16"><Rectangle Width="11" Height="11" Fill="#A9413B" /></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartServerCommand}" ToolTip="Start Server"><Viewbox Width="16" Height="16"><Canvas Width="16" Height="16"><Path Data="M2,2 H9 V7 H2 Z M2,9 H9 V14 H2 Z M11,3 V13 M11,8 H15" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /><Path Data="M11,5 V12 L15,8.5 Z" Fill="#247A4D" /></Canvas></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopServerCommand}" ToolTip="Stop Server"><Viewbox Width="16" Height="16"><Path Data="M2,2 H9 V7 H2 Z M2,9 H9 V14 H2 Z M11,6 H15 V10 H11 Z" Stroke="#17312B" StrokeThickness="1.4" Fill="#A9413B" /></Viewbox></Button>
-                <Separator />
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartNetworkCaptureCommand}" ToolTip="Start Network Capture"><Viewbox Width="16" Height="16"><Canvas Width="16" Height="16"><Path Data="M1,4 H6 L8,2 H11 L13,4 H15 V14 H1 Z M8,6 A3,3 0 1 1 7.99,6" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /><Path Data="M8,5 V11 L12,8 Z" Fill="#247A4D" /></Canvas></Viewbox></Button>
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StopNetworkCaptureCommand}" ToolTip="Stop Network Capture"><Viewbox Width="16" Height="16"><Canvas Width="16" Height="16"><Path Data="M1,4 H6 L8,2 H11 L13,4 H15 V14 H1 Z M8,6 A3,3 0 1 1 7.99,6" Stroke="#17312B" StrokeThickness="1.4" Fill="Transparent" /><Rectangle Width="4" Height="4" Canvas.Left="6" Canvas.Top="6" Fill="#A9413B" /></Canvas></Viewbox></Button>
-                <Separator />
-                <Button Style="{StaticResource CompactToolButton}" Command="{Binding StartFullTestCommand}" ToolTip="Run Full Test"><Viewbox Width="16" Height="16"><Path Data="M2,1 H12 L14,3 V15 H2 Z M5,8 L7,10 L11,5" Stroke="#17312B" StrokeThickness="1.5" Fill="Transparent" /></Viewbox></Button>
-            </ToolBar>
-        </ToolBarTray>
 
         <DockPanel Grid.Row="2" Margin="16,10,16,10">
             <StackPanel DockPanel.Dock="Left">
@@ -126,26 +78,12 @@
                             <TextBlock Text="2. Configure the IP address, port and Unit ID, then confirm with OK." Margin="0,0,0,8" />
                             <TextBlock Text="3. Use Operation to configure the map and monitor Modbus communication." Margin="0,0,0,8" />
                             <TextBlock Text="4. Use Capture for passive network traffic and Full Test for guided diagnostics." Margin="0,0,0,8" />
-                            <TextBlock Text="Toolbar buttons provide quick access to configuration, scan, server, capture and full test." Margin="0,12,0,0" Foreground="#5B665F" TextWrapping="Wrap" />
+                            <TextBlock Text="Use the View menu to open Communication Map, Timeline, Issue Logs and Full Test." Margin="0,12,0,0" Foreground="#5B665F" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                 </TabItem>
-                <TabItem Header="Operation">
-                    <Grid x:Name="OperationLayoutGrid">
-                <Grid.RowDefinitions>
-                    <RowDefinition x:Name="TopPanelsRow" Height="1.05*" />
-                    <RowDefinition x:Name="TimelineSplitterRow" Height="6" />
-                    <RowDefinition x:Name="TimelineRow" Height="1.25*" />
-                </Grid.RowDefinitions>
-
-                <Grid x:Name="TopPanelsGrid" Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition x:Name="MapColumn" Width="1.35*" />
-                        <ColumnDefinition x:Name="MapSplitterColumn" Width="6" />
-                        <ColumnDefinition x:Name="DiagnosticsColumn" Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <Grid x:Name="MapPane" Grid.Column="0" Margin="0,0,8,8">
+                <TabItem x:Name="CommunicationMapTab" Header="Communication Map" Visibility="Collapsed">
+                    <Grid Margin="0,8,0,0">
                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10"
                             Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}">
                         <TabControl>
@@ -295,10 +233,10 @@
                         </TabControl>
                     </Border>
                     </Grid>
+                </TabItem>
 
-                    <GridSplitter x:Name="MapDiagnosticsSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" Margin="0,0,0,8" />
-
-                    <Border x:Name="DiagnosticsPane" Grid.Column="2" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="8,0,0,8">
+                <TabItem x:Name="IssueLogsTab" Header="Issue Logs" Visibility="Collapsed">
+                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
                         <TabControl>
                             <TabItem Header="Todos">
                                 <DockPanel Margin="0,8,0,0">
@@ -344,11 +282,10 @@
                             </TabItem>
                         </TabControl>
                     </Border>
-                </Grid>
+                </TabItem>
 
-                <GridSplitter x:Name="TimelineSplitter" Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
-
-                <Border x:Name="TimelinePane" Grid.Row="2" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                <TabItem x:Name="TimelineTab" Header="Timeline" Visibility="Collapsed">
+                <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
                     <TabControl>
                         <TabItem Header="Modbus">
                             <DockPanel Margin="0,8,0,0">
@@ -459,9 +396,8 @@
                         </TabItem>
                     </TabControl>
                 </Border>
-                    </Grid>
                 </TabItem>
-                <TabItem Header="Teste completo">
+                <TabItem x:Name="FullTestTab" Header="Full Test" Visibility="Collapsed">
                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0">
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
