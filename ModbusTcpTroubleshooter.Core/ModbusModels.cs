@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace ModbusTcpTroubleshooter.Core;
 
 public enum ModbusPointType
@@ -54,10 +56,11 @@ public sealed class TroubleshootCase
 
 public sealed class ModbusDataMap
 {
-    private readonly Dictionary<ushort, bool> _coils = [];
-    private readonly Dictionary<ushort, bool> _discreteInputs = [];
-    private readonly Dictionary<ushort, ushort> _holdingRegisters = [];
-    private readonly Dictionary<ushort, ushort> _inputRegisters = [];
+    private readonly ConcurrentDictionary<ushort, bool> _coils = [];
+    private readonly ConcurrentDictionary<ushort, bool> _discreteInputs = [];
+    private readonly ConcurrentDictionary<ushort, ushort> _holdingRegisters = [];
+    private readonly ConcurrentDictionary<ushort, ushort> _inputRegisters = [];
+    private readonly ConcurrentDictionary<(ModbusPointType Type, ushort Address), bool> _readOnly = [];
 
     public IReadOnlyDictionary<ushort, bool> Coils => _coils;
     public IReadOnlyDictionary<ushort, bool> DiscreteInputs => _discreteInputs;
@@ -70,10 +73,12 @@ public sealed class ModbusDataMap
         _discreteInputs.Clear();
         _holdingRegisters.Clear();
         _inputRegisters.Clear();
+        _readOnly.Clear();
     }
 
-    public void AddPoint(ModbusPointType type, ushort address, ushort value)
+    public void AddPoint(ModbusPointType type, ushort address, ushort value, bool writable = true)
     {
+        _readOnly[(type, address)] = !writable;
         switch (type)
         {
             case ModbusPointType.Coil:
@@ -111,8 +116,14 @@ public sealed class ModbusDataMap
         points.AddRange(_discreteInputs.Select(x => new ModbusPoint(ModbusPointType.DiscreteInput, x.Key, $"Discrete {x.Key}", x.Value ? (ushort)1 : (ushort)0, false)));
         points.AddRange(_holdingRegisters.Select(x => new ModbusPoint(ModbusPointType.HoldingRegister, x.Key, $"HR {x.Key}", x.Value)));
         points.AddRange(_inputRegisters.Select(x => new ModbusPoint(ModbusPointType.InputRegister, x.Key, $"IR {x.Key}", x.Value, false)));
-        return points.OrderBy(x => x.Type).ThenBy(x => x.Address).ToList();
+        return points.Select(x => x with { IsWritable = CanWrite(x.Type, x.Address) })
+            .OrderBy(x => x.Type).ThenBy(x => x.Address).ToList();
     }
+
+    public bool CanWrite(ModbusPointType type, ushort address) =>
+        (type == ModbusPointType.Coil && _coils.ContainsKey(address) ||
+         type == ModbusPointType.HoldingRegister && _holdingRegisters.ContainsKey(address)) &&
+        !_readOnly.GetValueOrDefault((type, address));
 
     public bool TryReadBit(ModbusPointType type, ushort address, out bool value)
     {
@@ -127,6 +138,7 @@ public sealed class ModbusDataMap
 
     public bool TryWriteCoil(ushort address, bool value)
     {
+        if (!CanWrite(ModbusPointType.Coil, address)) return false;
         _coils[address] = value;
         return true;
     }
@@ -144,6 +156,7 @@ public sealed class ModbusDataMap
 
     public bool TryWriteHoldingRegister(ushort address, ushort value)
     {
+        if (!CanWrite(ModbusPointType.HoldingRegister, address)) return false;
         _holdingRegisters[address] = value;
         return true;
     }

@@ -28,6 +28,11 @@ public sealed partial class MainViewModel : ObservableObject
     private ModbusTcpServer? _server;
     private CancellationTokenSource? _serverCts;
     private CancellationTokenSource? _scanCts;
+    private TaskCompletionSource? _scanStopped;
+    private CancellationTokenSource? _fullTestCts;
+    private DateTimeOffset _fullTestStartedAt;
+    private long _droppedPassivePackets;
+    private long _reportedDroppedPassivePackets;
     private readonly Dictionary<string, DateTimeOffset> _lastRequestBySignature = [];
     private readonly Dictionary<string, Queue<double>> _pollingIntervalsBySignature = [];
     private readonly Dictionary<string, int> _exceptionCounts = [];
@@ -41,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private int port = 1502;
     [ObservableProperty] private byte unitId = 1;
     [ObservableProperty] private int scanRateMs = 1000;
+    [ObservableProperty] private bool keepClientConnectionOpen = true;
     [ObservableProperty] private string status = "Pronto.";
     [ObservableProperty] private bool isServerRunning;
     [ObservableProperty] private bool isClientScanning;
@@ -65,6 +71,15 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string fullTestReport = "";
     [ObservableProperty] private string fullTestOverallStatus = "Aguardando";
     [ObservableProperty] private string fullTestScore = "0/0";
+    [ObservableProperty] private int fullTestCompletedSteps;
+    [ObservableProperty] private int fullTestTotalSteps;
+    [ObservableProperty] private int fullTestProgressPercent;
+    [ObservableProperty] private string fullTestProgressLabel = "Aguardando início";
+    [ObservableProperty] private int fullTestOkCount;
+    [ObservableProperty] private int fullTestWarningCount;
+    [ObservableProperty] private int fullTestFailureCount;
+    [ObservableProperty] private string fullTestStartedAtText = "-";
+    [ObservableProperty] private string fullTestFinishedAtText = "-";
     [ObservableProperty] private string fullTestNetworkSummary = "Sem varredura executada.";
     [ObservableProperty] private string fullTestModbusSummary = "Sem descoberta Modbus executada.";
     [ObservableProperty] private string fullTestRouteSummary = "Sem analise de rota executada.";
@@ -109,6 +124,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsClientMode => SelectedMode == "Client";
     public bool IsServerMode => SelectedMode == "Server";
+    public string SelectedModeLabel => IsClientMode ? "Cliente" : "Servidor";
+    public bool CanConfigureClient => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
+    public bool CanConfigureServer => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
+    public bool CanUseClientOperations => !IsServerRunning && !IsFullTestRunning;
+    public bool CanDisconnectClient => CanUseClientOperations;
+    public bool CanConfigureFullTest => !IsFullTestRunning;
+    public bool CanOpenFullTestReport => !string.IsNullOrWhiteSpace(FullTestReport);
+    public string ActiveEndpoint => $"{(IsServerMode ? LocalIp : TargetIp)}:{Port}";
 
     public MainViewModel()
     {
@@ -119,6 +142,8 @@ public sealed partial class MainViewModel : ObservableObject
         LoadDefaultClientMap();
         LoadVerificationChecks();
         LoadCaptureDevices();
+        CreateFullTestPlan();
+        UpdateFullTestSummaryCards();
         _client.TrafficObserved += OnTrafficObserved;
         _networkCapture.PacketCaptured += OnPassivePacketCaptured;
         _passivePacketFlushTimer = new DispatcherTimer
@@ -127,6 +152,21 @@ public sealed partial class MainViewModel : ObservableObject
         };
         _passivePacketFlushTimer.Tick += (_, _) => FlushPassivePackets();
         _passivePacketFlushTimer.Start();
+    }
+
+    public void StopAllOperations()
+    {
+        _passivePacketFlushTimer.Stop();
+        _client.TrafficObserved -= OnTrafficObserved;
+        _networkCapture.PacketCaptured -= OnPassivePacketCaptured;
+        if (_server is not null) _server.TrafficObserved -= OnTrafficObserved;
+        _fullTestCts?.Cancel();
+        _scanCts?.Cancel();
+        _serverCts?.Cancel();
+        _server?.Stop();
+        _ = _client.DisconnectAsync();
+        try { _networkCapture.Dispose(); }
+        catch (Exception ex) { Log.Warning(ex, "Falha ao encerrar captura"); }
     }
 
     [RelayCommand]
@@ -201,6 +241,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanStartServer))]
     private async Task StartServerAsync()
     {
+        SelectedMode = "Server";
         _serverCts = new CancellationTokenSource();
         _server = new ModbusTcpServer(_serverMap);
         _server.TrafficObserved += OnTrafficObserved;
@@ -232,47 +273,76 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _serverCts?.Cancel();
         _server?.Stop();
-        IsServerRunning = false;
-        Status = "Servidor parado.";
+        Status = "Encerrando servidor...";
     }
 
     [RelayCommand(CanExecute = nameof(CanReadOnce))]
     private async Task ReadOnceAsync()
     {
+        SelectedMode = "Client";
         await ReadEnabledClientRowsAsync(CancellationToken.None);
     }
 
     [RelayCommand(CanExecute = nameof(CanStartClientScan))]
     private async Task StartClientScanAsync()
     {
-        _scanCts = new CancellationTokenSource();
+        SelectedMode = "Client";
+        using var scanCts = new CancellationTokenSource();
+        _scanCts = scanCts;
+        _scanStopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         IsClientScanning = true;
-        Status = $"Scan iniciado a cada {ScanRateMs} ms.";
+        Status = KeepClientConnectionOpen
+            ? $"Conectando a {TargetIp}:{Port}; scan a cada {ScanRateMs} ms..."
+            : $"Scan iniciado a cada {ScanRateMs} ms; cada requisicao abrira e fechara a conexao.";
 
         try
         {
-            while (!_scanCts.IsCancellationRequested)
+            if (KeepClientConnectionOpen)
             {
-                await ReadEnabledClientRowsAsync(_scanCts.Token);
-                await Task.Delay(Math.Max(100, ScanRateMs), _scanCts.Token);
+                await _client.ConnectAsync(TargetIp, Port, scanCts.Token);
+                Status = $"Conectado a {TargetIp}:{Port}; scan a cada {ScanRateMs} ms.";
+            }
+
+            while (!scanCts.IsCancellationRequested)
+            {
+                await ReadEnabledClientRowsAsync(scanCts.Token);
+                await Task.Delay(Math.Max(100, ScanRateMs), scanCts.Token);
             }
         }
         catch (OperationCanceledException)
         {
             Status = "Scan parado.";
         }
+        catch (Exception ex)
+        {
+            Status = $"Falha ao conectar no client: {ex.Message}";
+            Log.Error(ex, "Falha ao iniciar sessao de polling do client");
+        }
         finally
         {
+            _scanCts = null;
             IsClientScanning = false;
+            _scanStopped?.TrySetResult();
         }
     }
 
-    [RelayCommand(CanExecute = nameof(IsClientScanning))]
-    private void StopClientScan()
+    [RelayCommand(CanExecute = nameof(CanDisconnectClient))]
+    private async Task DisconnectClientAsync()
     {
         _scanCts?.Cancel();
-        IsClientScanning = false;
-        Status = "Scan parado.";
+        if (_scanStopped is not null) await _scanStopped.Task;
+        await _client.DisconnectAsync();
+        Status = "Client desconectado; scan parado.";
+        DisconnectClientCommand.NotifyCanExecuteChanged();
+    }
+
+    public async Task SetClientConnectionModeAsync(bool keepConnectionOpen)
+    {
+        await _client.ConfigureConnectionModeAsync(keepConnectionOpen);
+        KeepClientConnectionOpen = keepConnectionOpen;
+        Status = keepConnectionOpen
+            ? "Modo Client configurado para manter uma conexao TCP."
+            : "Modo Client configurado para reconectar a cada requisicao.";
     }
 
     public async Task WriteRangeFromMapAsync(ClientMapRow row, ushort address, ushort endAddress, ushort value)
@@ -679,54 +749,99 @@ public sealed partial class MainViewModel : ObservableObject
         Status = "Timeline limpa.";
     }
 
+    public void ResetDiagnosticSession()
+    {
+        ClearTimeline();
+        NetworkDiscoveryRows.Clear();
+        DiscoveredMapRows.Clear();
+        FullTestReport = string.Empty;
+        FullTestStartedAtText = "-";
+        FullTestFinishedAtText = "-";
+        FullTestOverallStatus = "Aguardando";
+        FullTestProgressLabel = "Aguardando execução";
+        FullTestCompletedSteps = 0;
+        FullTestProgressPercent = 0;
+        FullTestOkCount = 0;
+        FullTestWarningCount = 0;
+        FullTestFailureCount = 0;
+        CreateFullTestPlan();
+        Status = "Nova sessão de diagnóstico preparada.";
+    }
+
     [RelayCommand(CanExecute = nameof(CanStartFullTest))]
     private async Task StartFullTestAsync()
     {
+        using var testCts = new CancellationTokenSource();
+        _fullTestCts = testCts;
+        _fullTestStartedAt = DateTimeOffset.Now;
         IsFullTestRunning = true;
+        try
+        {
         FullTestReport = "";
         FullTestOverallStatus = "Executando";
         FullTestScore = "0/0";
+        FullTestCompletedSteps = 0;
+        FullTestTotalSteps = 0;
+        FullTestProgressPercent = 0;
+        FullTestProgressLabel = "Preparando teste";
+        FullTestOkCount = 0;
+        FullTestWarningCount = 0;
+        FullTestFailureCount = 0;
+        FullTestStartedAtText = _fullTestStartedAt.ToString("HH:mm:ss");
+        FullTestFinishedAtText = "-";
         FullTestNetworkSummary = "Coletando dados...";
         FullTestModbusSummary = "Coletando dados...";
         FullTestRouteSummary = "Coletando dados...";
         FullTestBandwidthSummary = "Coletando dados...";
-        FullTestSteps.Clear();
         NetworkDiscoveryRows.Clear();
         DiscoveredMapRows.Clear();
         _fullTestStartupActions.Clear();
 
-        await EnsureFullTestRuntimeAsync();
+        var steps = CreateFullTestPlan();
+        UpdateFullTestSummaryCards();
 
-        var steps = new List<(FullTestStep? Step, Func<CancellationToken, Task<FullTestStepResult>> Action)>
-        {
-            CreateFullTestStep("Contexto do teste", "Registra alvo, modo, porta, interface, filtro e premissas de seguranca.", RunFullTestContextAsync),
-            CreateFullTestStep("Interfaces e rotas IP", "Mapeia placas ativas, gateways, mascara, velocidade nominal e rotas do Windows.", RunIpRouteAnalysisAsync),
-            CreateFullTestStep("Inventario passivo TCP", "Resume endpoints e protocolos vistos na captura TCP atual.", RunPassiveInventoryAsync),
-            CreateFullTestStep("Tabela ARP local", "Consulta ARP do Windows para descobrir dispositivos ja resolvidos na rede.", RunArpSnapshotAsync),
-            CreateFullTestStep("Varredura de hosts", "Testa hosts candidatos da sub-rede e consolida dispositivos possivelmente ativos.", RunHostDiscoveryAsync),
-            CreateFullTestStep("Descoberta Modbus", "Procura servidores Modbus/TCP nos hosts descobertos e no alvo configurado.", RunModbusDiscoveryAsync),
-            CreateOptionalMapDiscoveryStep(),
-            CreateFullTestStep("Conectividade TCP", "Testa abertura de socket TCP no alvo e porta configurados.", RunTcpConnectivityAsync),
-            CreateFullTestStep("Banda e carga", "Mede contadores de interface e analisa taxa aproximada de pacotes capturados.", RunTrafficLoadAsync),
-            CreateFullTestStep("Topologia inferida", "Infere gateway, possiveis switches/infraestrutura e lacunas de visibilidade.", RunTopologyInferenceAsync),
-            CreateFullTestStep("Mapa Modbus", "Valida todas as linhas habilitadas do mapa configurado por leitura real.", RunClientMapValidationAsync),
-            CreateFullTestStep("Envio e recebimento", "Executa uma transacao Modbus read-only para confirmar request/response.", RunSendReceiveValidationAsync),
-            CreateFullTestStep("Falhas observadas", "Consolida avisos importantes e checks automaticos ja detectados.", RunObservedFailuresAsync),
-            CreateFullTestStep("Conclusao", "Gera parecer final com proximas acoes de troubleshooting.", RunFullTestConclusionAsync)
-        };
+        await EnsureFullTestRuntimeAsync();
 
         foreach (var (step, action) in steps.Where(x => x.Step is not null))
         {
-            await ExecuteFullTestStepAsync(step!, action, CancellationToken.None);
+            testCts.Token.ThrowIfCancellationRequested();
+            await ExecuteFullTestStepAsync(step!, action, testCts.Token);
         }
 
         FullTestReport = BuildFullTestReport();
         UpdateFullTestSummaryCards();
+        FullTestFinishedAtText = DateTimeOffset.Now.ToString("HH:mm:ss");
+        FullTestProgressLabel = "Teste concluído";
         Status = "Teste completo finalizado. Relatorio gerado.";
-        IsFullTestRunning = false;
+        }
+        catch (OperationCanceledException) when (testCts.IsCancellationRequested)
+        {
+            FullTestOverallStatus = "Cancelado";
+            FullTestFinishedAtText = DateTimeOffset.Now.ToString("HH:mm:ss");
+            FullTestProgressLabel = "Teste cancelado";
+            FullTestReport = BuildFullTestReport();
+            Status = "Teste cancelado. Relatorio parcial disponivel; scan e captura podem continuar ativos.";
+        }
+        catch (Exception ex)
+        {
+            FullTestOverallStatus = "Falha";
+            FullTestFinishedAtText = DateTimeOffset.Now.ToString("HH:mm:ss");
+            FullTestProgressLabel = "Teste interrompido por falha";
+            Status = $"Falha no teste: {ex.Message}";
+            FullTestReport = BuildFullTestReport();
+            Log.Error(ex, "Falha na execucao do teste completo");
+        }
+        finally
+        {
+            _fullTestCts = null;
+            IsFullTestRunning = false;
+        }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsFullTestRunning))]
+    private void CancelFullTest() => _fullTestCts?.Cancel();
+
+    [RelayCommand(CanExecute = nameof(CanSaveFullTestReport))]
     private async Task SaveFullTestReportAsync()
     {
         if (string.IsNullOrWhiteSpace(FullTestReport))
@@ -759,6 +874,7 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task EnsureFullTestRuntimeAsync()
     {
         await EnsureNetworkCaptureForFullTestAsync();
+        _fullTestCts?.Token.ThrowIfCancellationRequested();
 
         if (IsServerMode)
         {
@@ -769,7 +885,7 @@ public sealed partial class MainViewModel : ObservableObject
             EnsureClientScanForFullTest();
         }
 
-        await Task.Delay(500);
+        await Task.Delay(500, _fullTestCts?.Token ?? CancellationToken.None);
     }
 
     private async Task EnsureNetworkCaptureForFullTestAsync()
@@ -939,6 +1055,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         foreach (var row in rows)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var functionCode = row.FunctionCode;
@@ -958,6 +1075,10 @@ public sealed partial class MainViewModel : ObservableObject
                 row.LastStatus = "OK";
                 row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 row.LastStatus = ex.Message;
@@ -971,22 +1092,49 @@ public sealed partial class MainViewModel : ObservableObject
         Status = $"Leitura finalizada: {rows.Count} linha(s).";
     }
 
-    private bool CanStartServer() => !IsServerRunning;
-    private bool CanReadOnce() => !IsClientScanning;
-    private bool CanStartClientScan() => !IsClientScanning;
+    private bool CanStartServer() => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
+    private bool CanReadOnce() => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
+    private bool CanStartClientScan() => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
     private bool CanEditServerMap() => !IsServerRunning;
     private bool CanStartNetworkCapture() => !IsNetworkCaptureRunning && SelectedCaptureDevice is not null;
     private bool CanStartFullTest() => !IsFullTestRunning;
+    private bool CanSaveFullTestReport() => !string.IsNullOrWhiteSpace(FullTestReport) && !IsFullTestRunning;
+
+    partial void OnFullTestReportChanged(string value)
+    {
+        SaveFullTestReportCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanOpenFullTestReport));
+    }
+
+    partial void OnEnableMapDiscoveryChanged(bool value)
+    {
+        if (IsFullTestRunning || !string.IsNullOrWhiteSpace(FullTestReport)) return;
+
+        CreateFullTestPlan();
+        UpdateFullTestSummaryCards();
+    }
 
     partial void OnSelectedModeChanged(string value)
     {
         OnPropertyChanged(nameof(IsClientMode));
         OnPropertyChanged(nameof(IsServerMode));
+        OnPropertyChanged(nameof(SelectedModeLabel));
+        OnPropertyChanged(nameof(ActiveEndpoint));
     }
+
+    partial void OnLocalIpChanged(string value) => OnPropertyChanged(nameof(ActiveEndpoint));
+    partial void OnTargetIpChanged(string value) => OnPropertyChanged(nameof(ActiveEndpoint));
+    partial void OnPortChanged(int value) => OnPropertyChanged(nameof(ActiveEndpoint));
 
     partial void OnIsServerRunningChanged(bool value)
     {
+        OnPropertyChanged(nameof(CanConfigureClient));
+        OnPropertyChanged(nameof(CanConfigureServer));
+        OnPropertyChanged(nameof(CanUseClientOperations));
+        OnPropertyChanged(nameof(CanDisconnectClient));
         StartServerCommand.NotifyCanExecuteChanged();
+        ReadOnceCommand.NotifyCanExecuteChanged();
+        StartClientScanCommand.NotifyCanExecuteChanged();
         StopServerCommand.NotifyCanExecuteChanged();
         AddServerRangeCommand.NotifyCanExecuteChanged();
         RemoveServerRangeCommand.NotifyCanExecuteChanged();
@@ -995,15 +1143,27 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnIsClientScanningChanged(bool value)
     {
+        OnPropertyChanged(nameof(CanConfigureClient));
+        OnPropertyChanged(nameof(CanConfigureServer));
         ReadOnceCommand.NotifyCanExecuteChanged();
         StartClientScanCommand.NotifyCanExecuteChanged();
-        StopClientScanCommand.NotifyCanExecuteChanged();
+        StartServerCommand.NotifyCanExecuteChanged();
+        DisconnectClientCommand.NotifyCanExecuteChanged();
         StartFullTestCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnIsFullTestRunningChanged(bool value)
     {
+        StartServerCommand.NotifyCanExecuteChanged();
+        StartClientScanCommand.NotifyCanExecuteChanged();
+        ReadOnceCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanConfigureClient));
+        OnPropertyChanged(nameof(CanConfigureServer));
+        OnPropertyChanged(nameof(CanDisconnectClient));
         StartFullTestCommand.NotifyCanExecuteChanged();
+        CancelFullTestCommand.NotifyCanExecuteChanged();
+        SaveFullTestReportCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanConfigureFullTest));
     }
 
     partial void OnIsNetworkCaptureRunningChanged(bool value)
@@ -1097,6 +1257,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void ApplyServerMapRanges()
     {
+        if (ServerMapRanges.Any(x => x.Enabled && (x.Quantity == 0 || (int)x.StartAddress + x.Quantity > 65536)))
+        {
+            Status = "Mapa nao aplicado: quantidade deve ser positiva e endereco final deve ser no maximo 65535.";
+            return;
+        }
         _serverMap.Clear();
         foreach (var range in ServerMapRanges.Where(x => x.Enabled))
         {
@@ -1104,7 +1269,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 var address = (ushort)(range.StartAddress + i);
                 var value = range.IncrementValue ? (ushort)(range.InitialValue + i) : range.InitialValue;
-                _serverMap.AddPoint(range.Type, address, value);
+                _serverMap.AddPoint(range.Type, address, value, range.Writable);
             }
         }
 
@@ -1113,13 +1278,24 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void RefreshServerPoints()
     {
-        foreach (var row in ServerPoints)
+        var points = _serverMap.ToPoints();
+        if (ServerPoints.Count == points.Count && ServerPoints.Zip(points).All(x =>
+            x.First.Type == x.Second.Type && x.First.Address == x.Second.Address && x.First.IsWritable == x.Second.IsWritable))
         {
-            row.PropertyChanged -= OnServerPointChanged;
+            foreach (var (row, point) in ServerPoints.Zip(points))
+            {
+                if (row.Value == point.Value) continue;
+                row.PropertyChanged -= OnServerPointChanged;
+                row.Value = point.Value;
+                row.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
+                row.PropertyChanged += OnServerPointChanged;
+            }
+            return;
         }
 
+        foreach (var row in ServerPoints) row.PropertyChanged -= OnServerPointChanged;
         ServerPoints.Clear();
-        foreach (var point in _serverMap.ToPoints())
+        foreach (var point in points)
         {
             var row = new ServerPointRow(point);
             row.PropertyChanged += OnServerPointChanged;
@@ -1134,7 +1310,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        _serverMap.AddPoint(row.Type, row.Address, row.Value);
+        _serverMap.AddPoint(row.Type, row.Address, row.Value, row.IsWritable);
         row.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
         Status = $"Valor do server atualizado: {row.Type} {row.Address} = {row.Value}";
     }
@@ -1184,6 +1360,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnPassivePacketCaptured(object? sender, TcpTimelineRow row)
     {
+        if (_passivePacketQueue.Count >= 10000)
+        {
+            Interlocked.Increment(ref _droppedPassivePackets);
+            return;
+        }
         _passivePacketQueue.Enqueue(row);
     }
 
@@ -1199,6 +1380,14 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         QueuedPassivePackets = _passivePacketQueue.Count;
+        var dropped = Interlocked.Read(ref _droppedPassivePackets);
+        if (dropped > _reportedDroppedPassivePackets)
+        {
+            _reportedDroppedPassivePackets = dropped;
+            UpsertImportantWarning("captura-descarte-ui", "Atencao", "Captura com descarte na fila",
+                $"{dropped} pacotes descartados desde a abertura do programa; limite da fila: 10000. Amostra incompleta.",
+                "As taxas observadas nao representam o trafego integral. Reduza o escopo de captura.", DateTimeOffset.Now);
+        }
         if (QueuedPassivePackets > 5000)
         {
             UpsertImportantWarning(
@@ -1324,6 +1513,29 @@ public sealed partial class MainViewModel : ObservableObject
         OnTrafficObserved(this, trafficEvent);
     }
 
+    private List<(FullTestStep? Step, Func<CancellationToken, Task<FullTestStepResult>> Action)> CreateFullTestPlan()
+    {
+        FullTestSteps.Clear();
+        SelectedFullTestStep = null;
+        return
+        [
+            CreateFullTestStep("Contexto do teste", "Registra alvo, modo, porta, interface, filtro e premissas de seguranca.", RunFullTestContextAsync),
+            CreateFullTestStep("Interfaces e rotas IP", "Mapeia placas ativas, gateways, mascara, velocidade nominal e rotas do Windows.", RunIpRouteAnalysisAsync),
+            CreateFullTestStep("Inventario passivo TCP", "Resume endpoints e protocolos vistos na captura TCP atual.", RunPassiveInventoryAsync),
+            CreateFullTestStep("Tabela ARP local", "Consulta ARP do Windows para descobrir dispositivos ja resolvidos na rede.", RunArpSnapshotAsync),
+            CreateFullTestStep("Varredura de hosts", "Testa hosts candidatos da sub-rede e consolida dispositivos possivelmente ativos.", RunHostDiscoveryAsync),
+            CreateFullTestStep("Descoberta Modbus", "Procura servidores Modbus/TCP nos hosts descobertos e no alvo configurado.", RunModbusDiscoveryAsync),
+            CreateOptionalMapDiscoveryStep(),
+            CreateFullTestStep("Conectividade TCP", "Testa abertura de socket TCP no alvo e porta configurados.", RunTcpConnectivityAsync),
+            CreateFullTestStep("Banda e carga", "Mede contadores de interface e analisa taxa aproximada de pacotes capturados.", RunTrafficLoadAsync),
+            CreateFullTestStep("Topologia inferida", "Infere gateway, possiveis switches/infraestrutura e lacunas de visibilidade.", RunTopologyInferenceAsync),
+            CreateFullTestStep("Mapa Modbus", "Valida todas as linhas habilitadas do mapa configurado por leitura real.", RunClientMapValidationAsync),
+            CreateFullTestStep("Envio e recebimento", "Executa uma transacao Modbus read-only para confirmar request/response.", RunSendReceiveValidationAsync),
+            CreateFullTestStep("Falhas observadas", "Consolida avisos importantes e checks automaticos ja detectados.", RunObservedFailuresAsync),
+            CreateFullTestStep("Conclusao", "Gera parecer final com proximas acoes de troubleshooting.", RunFullTestConclusionAsync)
+        ];
+    }
+
     private (FullTestStep Step, Func<CancellationToken, Task<FullTestStepResult>> Action) CreateFullTestStep(
         string name,
         string objective,
@@ -1331,6 +1543,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var step = new FullTestStep(FullTestSteps.Count + 1, name, objective);
         FullTestSteps.Add(step);
+        SelectedFullTestStep ??= step;
         return (step, action);
     }
 
@@ -1349,14 +1562,22 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedFullTestStep = step;
         step.Status = "Executando";
         step.StartedAt = DateTimeOffset.Now;
+        FullTestProgressLabel = $"Etapa {step.Order} de {FullTestSteps.Count}: {step.Name}";
         Status = $"Teste completo: {step.Name}...";
 
         try
         {
             var result = await action(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             step.Status = result.Status;
             step.Result = result.Detail;
             step.Recommendation = result.Recommendation;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            step.Status = "Cancelado";
+            step.Result = "Etapa interrompida pelo operador. Resultados incompletos.";
+            throw;
         }
         catch (Exception ex)
         {
@@ -1903,6 +2124,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task<FullTestStepResult> RunTcpConnectivityAsync(CancellationToken cancellationToken)
     {
+        if (IsServerMode)
+        {
+            return new FullTestStepResult(IsServerRunning ? "OK" : "Falha",
+                $"Servidor local {ActiveEndpoint}: {(IsServerRunning ? "escutando" : "parado")}. Esta verificacao nao comprova acesso a partir de outros hosts.",
+                "A acessibilidade externa depende das requisicoes recebidas, firewall e caminho de rede.");
+        }
         if (string.IsNullOrWhiteSpace(TargetIp))
         {
             return new FullTestStepResult("Falha", "IP alvo vazio.", "Configure o IP do PLC/server Modbus antes do teste.");
@@ -2049,6 +2276,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task<FullTestStepResult> RunClientMapValidationAsync(CancellationToken cancellationToken)
     {
+        if (IsServerMode)
+        {
+            var points = _serverMap.ToPoints();
+            return new FullTestStepResult(points.Count > 0 ? "OK" : "Atencao",
+                $"Mapa local do servidor: {points.Count} pontos, {points.Count(x => x.IsWritable)} gravaveis. Validacao de configuracao; nao representa leitura por cliente externo.",
+                "Compare com os ranges requisitados na etapa de descoberta de mapa e com as exceptions recebidas.");
+        }
         var rows = ClientMapRows.Where(x => x.Enabled).ToList();
         if (rows.Count == 0)
         {
@@ -2109,6 +2343,17 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task<FullTestStepResult> RunSendReceiveValidationAsync(CancellationToken cancellationToken)
     {
+        if (IsServerMode)
+        {
+            var observed = Traffic.Where(x => x.Timestamp >= _fullTestStartedAt).ToList();
+            var requests = observed.Where(x => x.Direction == TrafficDirection.ClientToServer).ToList();
+            var replies = observed.Where(x => x.Direction == TrafficDirection.ServerToClient).ToList();
+            var matched = requests.Count(x => replies.Any(y => y.Endpoint == x.Endpoint && y.TransactionId == x.TransactionId && y.UnitId == x.UnitId && y.Timestamp >= x.Timestamp));
+            var exceptions = replies.Count(x => x.Summary.Contains("exception", StringComparison.OrdinalIgnoreCase));
+            return new FullTestStepResult(requests.Count == 0 || matched != requests.Count || exceptions > 0 ? "Atencao" : "OK",
+                $"Amostra retida desde o inicio do teste: {requests.Count} requisicoes, {matched} com resposta correlacionada por endpoint/TID/UID; {exceptions} exceptions. Limite de retencao: 500 eventos. Sem requests, comunicacao externa nao foi comprovada.",
+                "Use clientes externos apontados ao servidor simulado. Correlacao limitada a amostra retida; nao representa historico integral.");
+        }
         var row = ClientMapRows.FirstOrDefault(x => x.Enabled) ?? new ClientMapRow
         {
             Name = "Teste minimo FC03",
@@ -2203,7 +2448,7 @@ public sealed partial class MainViewModel : ObservableObject
         builder.AppendLine($"- Caso: {CaseName}");
         builder.AppendLine($"- Gerado em: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
         builder.AppendLine($"- Modo: {SelectedMode}");
-        builder.AppendLine($"- Alvo: {TargetIp}:{Port}");
+        builder.AppendLine($"- Endpoint do modo ativo: {ActiveEndpoint}");
         builder.AppendLine($"- Unit ID: {UnitId}");
         builder.AppendLine($"- Interface captura: {SelectedCaptureDevice?.Description ?? "Nao selecionada"}");
         builder.AppendLine($"- Filtro BPF: {GeneratedCaptureFilter}");
@@ -2275,13 +2520,23 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void UpdateFullTestSummaryCards()
     {
-        var completed = FullTestSteps.ToList();
-        var ok = completed.Count(x => x.Status == "OK");
-        var warnings = completed.Count(x => x.Status == "Atencao");
-        var failures = completed.Count(x => x.Status is "Falha" or "Erro");
+        var steps = FullTestSteps.ToList();
+        var ok = steps.Count(x => x.Status == "OK");
+        var warnings = steps.Count(x => x.Status == "Atencao");
+        var failures = steps.Count(x => x.Status is "Falha" or "Erro");
+        var completed = ok + warnings + failures;
 
-        FullTestScore = $"{ok}/{completed.Count} OK";
-        FullTestOverallStatus = failures > 0 ? "Falha" : warnings > 0 ? "Atencao" : "OK";
+        FullTestTotalSteps = steps.Count;
+        FullTestCompletedSteps = completed;
+        FullTestProgressPercent = steps.Count == 0 ? 0 : (int)Math.Round(100.0 * completed / steps.Count);
+        FullTestOkCount = ok;
+        FullTestWarningCount = warnings;
+        FullTestFailureCount = failures;
+        FullTestScore = $"{ok}/{steps.Count} OK";
+        FullTestOverallStatus = IsFullTestRunning && completed < steps.Count
+            ? "Executando"
+            : completed == 0 && string.IsNullOrWhiteSpace(FullTestReport) ? "Aguardando"
+            : failures > 0 ? "Falha" : warnings > 0 ? "Atencao" : "OK";
     }
 
     private async Task<List<TcpTimelineRow>> CollectPassiveTrafficSampleAsync(int minNewPackets, CancellationToken cancellationToken)

@@ -1,0 +1,79 @@
+<Window x:Class="ModbusTcpTroubleshooter.App.MapDiscoverySettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Map Discovery Settings"
+        Width="540"
+        Height="560"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#F0F0F0">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="26" />
+            <RowDefinition Height="34" />
+        </Grid.RowDefinitions>
+        <StackPanel>
+            <GroupBox Header="Enable map discovery" Padding="10" Margin="0,0,0,8">
+                <StackPanel>
+                    <CheckBox x:Name="EnableDiscoveryCheckBox" Content="Probe Modbus maps during Full Test" Margin="0,0,0,5" />
+                    <TextBlock Text="Client role: executes read-only FC01-FC04 requests against candidate endpoints. Server role: records ranges requested by connected clients. No write function is used." TextWrapping="Wrap" Foreground="#5B665F" />
+                </StackPanel>
+            </GroupBox>
+            <GroupBox Header="Address range" Padding="10" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="32" />
+                        <RowDefinition Height="32" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="145" />
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Maximum address" VerticalAlignment="Center" />
+                    <TextBox x:Name="MaxAddressTextBox" Grid.Column="1" Width="70" Height="26" Padding="4,2" HorizontalAlignment="Left" />
+                    <TextBlock Grid.Column="2" Text="tests addresses from 0 through this value" VerticalAlignment="Center" Foreground="#5B665F" />
+                    <TextBlock Grid.Row="1" Text="Block size" VerticalAlignment="Center" Margin="0,7,0,0" />
+                    <TextBox x:Name="BlockSizeTextBox" Grid.Row="1" Grid.Column="1" Width="70" Height="26" Padding="4,2" HorizontalAlignment="Left" Margin="0,7,0,0" />
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="registers/bits per read request" VerticalAlignment="Center" Foreground="#5B665F" Margin="0,7,0,0" />
+                </Grid>
+            </GroupBox>
+            <GroupBox Header="Unit IDs and function codes" Padding="10" Margin="0,0,0,8">
+                <StackPanel>
+                    <CheckBox x:Name="UnitSweepCheckBox" Content="Sweep Unit IDs" Margin="0,0,0,6" />
+                    <Grid Margin="0,0,0,7">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="145" />
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="70" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Unit ID range" VerticalAlignment="Center" />
+                        <TextBox x:Name="UnitStartTextBox" Grid.Column="1" Width="55" Height="26" Padding="4,2" HorizontalAlignment="Left" />
+                        <TextBlock Grid.Column="2" Text="through" VerticalAlignment="Center" />
+                        <TextBox x:Name="UnitEndTextBox" Grid.Column="3" Width="55" Height="26" Padding="4,2" HorizontalAlignment="Left" />
+                    </Grid>
+                    <WrapPanel>
+                        <TextBlock Text="Read functions:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <CheckBox x:Name="Fc01CheckBox" Content="FC01 Coils" Margin="0,0,10,0" />
+                        <CheckBox x:Name="Fc02CheckBox" Content="FC02 Discrete" Margin="0,0,10,0" />
+                        <CheckBox x:Name="Fc03CheckBox" Content="FC03 Holding" Margin="0,0,10,0" />
+                        <CheckBox x:Name="Fc04CheckBox" Content="FC04 Input" />
+                    </WrapPanel>
+                </StackPanel>
+            </GroupBox>
+            <GroupBox Header="Fallback" Padding="10">
+                <StackPanel>
+                    <CheckBox x:Name="PointFallbackCheckBox" Content="Use point-by-point fallback" />
+                    <TextBlock Text="When a block fails, individual addresses are retried to identify smaller valid ranges. This increases the number of requests." TextWrapping="Wrap" Foreground="#5B665F" Margin="0,5,0,0" />
+                </StackPanel>
+            </GroupBox>
+        </StackPanel>
+        <TextBlock x:Name="ValidationText" Grid.Row="1" Foreground="#B3261E" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Button Content="OK" Width="82" Height="26" Margin="0,0,14,0" IsDefault="True" Click="Confirm_Click" />
+            <Button Content="Cancel" Width="82" Height="26" IsCancel="True" Click="Cancel_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

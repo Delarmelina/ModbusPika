@@ -15,6 +15,14 @@ public static class ModbusProtocol
 
     public static byte[] BuildReadRequest(ushort transactionId, byte unitId, byte functionCode, ushort startAddress, ushort quantity)
     {
+        var maxQuantity = functionCode switch
+        {
+            ReadCoils or ReadDiscreteInputs => 2000,
+            ReadHoldingRegisters or ReadInputRegisters => 125,
+            _ => throw new ArgumentOutOfRangeException(nameof(functionCode), "Funcao de leitura invalida.")
+        };
+        if (quantity == 0 || quantity > maxQuantity || (int)startAddress + quantity > 65536)
+            throw new ArgumentOutOfRangeException(nameof(quantity), "Quantidade ou faixa de leitura invalida.");
         var frame = new byte[12];
         WriteMbap(frame, transactionId, unitId, 6);
         frame[7] = functionCode;
@@ -135,6 +143,7 @@ public static class ModbusProtocol
 
         address = BinaryPrimitives.ReadUInt16BigEndian(frame.Pdu.AsSpan(1, 2));
         quantity = BinaryPrimitives.ReadUInt16BigEndian(frame.Pdu.AsSpan(3, 2));
+        if (frame.FunctionCode is WriteSingleCoil or WriteSingleRegister) quantity = 1;
         return true;
     }
 

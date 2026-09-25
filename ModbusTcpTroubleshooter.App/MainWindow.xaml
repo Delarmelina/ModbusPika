@@ -4,30 +4,156 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Modbus TCP Troubleshooter" Height="790" Width="1280" MinHeight="700" MinWidth="1120"
-        Background="#F2F4F1">
+        Title="Modbus TCP Diagnostic Tool" Height="840" Width="1260" MinHeight="580" MinWidth="720"
+        Background="#E9EFF3" FontFamily="Segoe UI" FontSize="12">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <DrawingImage x:Key="ToolbarNewIcon">
+            <DrawingImage.Drawing><DrawingGroup>
+                <GeometryDrawing Brush="#FFFFFF" Geometry="M4,1 L16,1 21,6 21,24 4,24 Z"><GeometryDrawing.Pen><Pen Brush="#315C7A" Thickness="1.6" /></GeometryDrawing.Pen></GeometryDrawing>
+                <GeometryDrawing Brush="#CFE6F3" Geometry="M16,1 L16,6 21,6 Z" />
+                <GeometryDrawing Geometry="M7,11 L17,11 M7,15 L17,15 M7,19 L14,19"><GeometryDrawing.Pen><Pen Brush="#377DAD" Thickness="1.4" /></GeometryDrawing.Pen></GeometryDrawing>
+            </DrawingGroup></DrawingImage.Drawing>
+        </DrawingImage>
+        <DrawingImage x:Key="ToolbarSaveIcon">
+            <DrawingImage.Drawing><DrawingGroup>
+                <GeometryDrawing Brush="#3A83B7" Geometry="M2,2 L20,2 23,5 23,24 2,24 Z"><GeometryDrawing.Pen><Pen Brush="#285774" Thickness="1.5" /></GeometryDrawing.Pen></GeometryDrawing>
+                <GeometryDrawing Brush="#E7F3FA" Geometry="M6,2 L18,2 18,10 6,10 Z" />
+                <GeometryDrawing Brush="#FFFFFF" Geometry="M6,15 L19,15 19,24 6,24 Z" />
+                <GeometryDrawing Brush="#264F6D" Geometry="M14,3 L17,3 17,9 14,9 Z" />
+            </DrawingGroup></DrawingImage.Drawing>
+        </DrawingImage>
+        <DrawingImage x:Key="ToolbarClientIcon">
+            <DrawingImage.Drawing><DrawingGroup>
+                <GeometryDrawing Brush="#315F83" Geometry="M1,3 L24,3 24,18 1,18 Z"><GeometryDrawing.Pen><Pen Brush="#254F6B" Thickness="1" /></GeometryDrawing.Pen></GeometryDrawing>
+                <GeometryDrawing Brush="#EAF6FC" Geometry="M3,5 L22,5 22,16 3,16 Z" />
+                <GeometryDrawing Geometry="M12.5,18 L12.5,22 M7,22 L18,22"><GeometryDrawing.Pen><Pen Brush="#315F83" Thickness="2" /></GeometryDrawing.Pen></GeometryDrawing>
+                <GeometryDrawing Brush="#69B7D9" Geometry="M6,8 L15,8 15,10 6,10 Z" />
+            </DrawingGroup></DrawingImage.Drawing>
+        </DrawingImage>
+        <DrawingImage x:Key="ToolbarServerIcon">
+            <DrawingImage.Drawing><DrawingGroup>
+                <GeometryDrawing Brush="#315F83" Geometry="M4,1 L21,1 21,24 4,24 Z"><GeometryDrawing.Pen><Pen Brush="#254F6B" Thickness="1" /></GeometryDrawing.Pen></GeometryDrawing>
+                <GeometryDrawing Brush="#EAF6FC" Geometry="M6,4 L19,4 19,9 6,9 Z M6,11 L19,11 19,16 6,16 Z M6,18 L19,18 19,22 6,22 Z" />
+                <GeometryDrawing Brush="#49A4CC" Geometry="M8,6 L10,6 10,8 8,8 Z M8,13 L10,13 10,15 8,15 Z M8,19 L10,19 10,21 8,21 Z" />
+            </DrawingGroup></DrawingImage.Drawing>
+        </DrawingImage>
         <Style x:Key="CompactToolButton" TargetType="Button">
             <Setter Property="Width" Value="36" />
             <Setter Property="Height" Value="32" />
             <Setter Property="Margin" Value="1" />
             <Setter Property="Padding" Value="0" />
         </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Background" Value="#F4F6F5" />
+            <Setter Property="BorderBrush" Value="#AEB9B3" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#202B26" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinHeight" Value="27" />
+            <Setter Property="Padding" Value="5,3" />
+            <Setter Property="BorderBrush" Value="#AEB9B3" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="27" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="BorderBrush" Value="#AEB9B3" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#B9C3BE" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="RowHeight" Value="25" />
+            <Setter Property="ColumnHeaderHeight" Value="29" />
+            <Setter Property="AlternatingRowBackground" Value="#F5F7F6" />
+            <Setter Property="CanUserResizeColumns" Value="True" />
+            <Setter Property="CanUserSortColumns" Value="True" />
+            <Setter Property="HorizontalGridLinesBrush" Value="#E3E8E5" />
+        </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#B9C3BE" />
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="Background" Value="#E4E9E6" />
+            <Setter Property="BorderBrush" Value="#B9C3BE" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="White" />
+                    <Setter Property="Foreground" Value="#17312B" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PrimaryActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#1E4E70" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#173D59" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="TestStatusBadge" TargetType="Border">
+            <Setter Property="Background" Value="#E8EEF3" />
+            <Setter Property="BorderBrush" Value="#B8C7D0" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="Executando"><Setter Property="Background" Value="#E4F0FA" /><Setter Property="BorderBrush" Value="#9BC1DD" /></DataTrigger>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="OK"><Setter Property="Background" Value="#E4F3E9" /><Setter Property="BorderBrush" Value="#9ACBAA" /></DataTrigger>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="Atencao"><Setter Property="Background" Value="#FFF4DC" /><Setter Property="BorderBrush" Value="#E2C47C" /></DataTrigger>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="Falha"><Setter Property="Background" Value="#FBE9E8" /><Setter Property="BorderBrush" Value="#DFA39F" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TestStatusText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#18354B" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="Executando"><Setter Property="Foreground" Value="#1B6697" /></DataTrigger>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="OK"><Setter Property="Foreground" Value="#247A4D" /></DataTrigger>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="Atencao"><Setter Property="Foreground" Value="#926700" /></DataTrigger>
+                <DataTrigger Binding="{Binding FullTestOverallStatus}" Value="Falha"><Setter Property="Foreground" Value="#B3261E" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="RibbonCommandButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="116" />
+            <Setter Property="Height" Value="65" />
+            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="SidebarRoleButton" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,3" />
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="Foreground" Value="#18354B" />
+        </Style>
+        <Style x:Key="SidebarHostButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="4,3" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
         <Style x:Key="ScanStateText" TargetType="TextBlock">
-            <Setter Property="Text" Value="Stopped" />
+            <Setter Property="Text" Value="Parado" />
             <Setter Property="Foreground" Value="#6D756E" />
-            <Style.Triggers><DataTrigger Binding="{Binding IsClientScanning}" Value="True"><Setter Property="Text" Value="Running" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
+            <Style.Triggers><DataTrigger Binding="{Binding IsClientScanning}" Value="True"><Setter Property="Text" Value="Em execucao" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
         </Style>
         <Style x:Key="ServerStateText" TargetType="TextBlock">
-            <Setter Property="Text" Value="Stopped" />
+            <Setter Property="Text" Value="Parado" />
             <Setter Property="Foreground" Value="#6D756E" />
-            <Style.Triggers><DataTrigger Binding="{Binding IsServerRunning}" Value="True"><Setter Property="Text" Value="Running" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
+            <Style.Triggers><DataTrigger Binding="{Binding IsServerRunning}" Value="True"><Setter Property="Text" Value="Em execucao" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
         </Style>
         <Style x:Key="CaptureStateText" TargetType="TextBlock">
-            <Setter Property="Text" Value="Off" />
+            <Setter Property="Text" Value="Inativa" />
             <Setter Property="Foreground" Value="#6D756E" />
-            <Style.Triggers><DataTrigger Binding="{Binding IsNetworkCaptureRunning}" Value="True"><Setter Property="Text" Value="Active" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
+            <Style.Triggers><DataTrigger Binding="{Binding IsNetworkCaptureRunning}" Value="True"><Setter Property="Text" Value="Ativa" /><Setter Property="Foreground" Value="#247A4D" /></DataTrigger></Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -35,54 +161,223 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Menu Grid.Row="0" Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="0,0,0,1">
-            <MenuItem Header="_File"><MenuItem Header="Exit" Click="ExitMenuItem_Click" /></MenuItem>
-            <MenuItem Header="_Connections">
-                <MenuItem Header="Client (Master)">
-                    <MenuItem Header="Configure Client..." Click="ConfigureClient_Click" />
-                    <MenuItem Header="Connect..." Command="{Binding ReadOnceCommand}" />
-                    <MenuItem Header="Read Once" Command="{Binding ReadOnceCommand}" />
+        <Menu Grid.Row="0" Background="#F7F8F7" BorderBrush="#C9D1CC" BorderThickness="0,0,0,1" Padding="4,2">
+            <MenuItem Header="_Arquivo"><MenuItem Header="Novo" Click="NewSession_Click" /><MenuItem Header="Salvar caso..." Command="{Binding SaveCaseCommand}" /><Separator /><MenuItem Header="Sair" Click="ExitMenuItem_Click" /></MenuItem>
+            <MenuItem Header="_Conexões">
+                <MenuItem Header="Cliente / Mestre" IsEnabled="{Binding CanUseClientOperations}">
+                    <MenuItem Header="Configurar cliente..." Click="ConfigureClient_Click" IsEnabled="{Binding CanConfigureClient}" />
+                    <MenuItem Header="Iniciar leitura" Command="{Binding StartClientScanCommand}" />
+                    <MenuItem Header="Leitura única" Command="{Binding ReadOnceCommand}" />
+                    <Separator />
+                    <MenuItem Header="Desconectar" Command="{Binding DisconnectClientCommand}" />
                 </MenuItem>
-                <MenuItem Header="Server (Slave)">
-                    <MenuItem Header="Configure Server..." Click="ConfigureServer_Click" />
-                    <MenuItem Header="Start Server..." Command="{Binding StartServerCommand}" />
+                <MenuItem Header="Servidor / Escravo">
+                    <MenuItem Header="Configurar servidor..." Click="ConfigureServer_Click" IsEnabled="{Binding CanConfigureServer}" />
+                    <MenuItem Header="Iniciar servidor..." Command="{Binding StartServerCommand}" />
+                    <Separator />
+                    <MenuItem Header="Parar servidor" Command="{Binding StopServerCommand}" />
                 </MenuItem>
             </MenuItem>
-            <MenuItem Header="_View">
-                <MenuItem Header="Communication Map" Click="ShowCommunicationMap_Click" />
-                <MenuItem Header="Timeline" Click="ShowTimeline_Click" />
-                <MenuItem Header="Issue Logs" Click="ShowIssueLogs_Click" />
-                <MenuItem Header="Full Test" Click="ShowFullTest_Click" />
+            <MenuItem Header="_Exibir">
+                <MenuItem x:Name="ConnectionsPaneMenuItem" Header="Painel de conexões" IsCheckable="True" IsChecked="True" Click="ToggleConnectionsPane_Click" />
+                <Separator />
+                <MenuItem x:Name="CommunicationMapMenuItem" Header="Mapa de comunicação" IsCheckable="True" IsChecked="True" Click="ShowCommunicationMap_Click" />
+                <MenuItem x:Name="TimelineMenuItem" Header="Linha do tempo" IsCheckable="True" IsChecked="True" Click="ShowTimeline_Click" />
+                 <MenuItem x:Name="IssueLogsMenuItem" Header="Avisos" IsCheckable="True" IsChecked="True" Click="ShowIssueLogs_Click" />
+                 <MenuItem x:Name="FullTestMenuItem" Header="Teste completo" IsCheckable="True" IsChecked="True" Click="ShowFullTest_Click" />
+                 <Separator />
+                 <MenuItem Header="Detalhes do teste" Click="ShowTestDetails_Click" />
             </MenuItem>
-            <MenuItem Header="_Help"><MenuItem Header="About" Click="AboutMenuItem_Click" /></MenuItem>
+            <MenuItem Header="_Ferramentas">
+                <MenuItem Header="Configurar escopo do teste..." Click="ConfigureFullTestScope_Click" IsEnabled="{Binding CanConfigureFullTest}" />
+                <MenuItem Header="Configurar descoberta de mapa..." Click="ConfigureMapDiscovery_Click" IsEnabled="{Binding CanConfigureFullTest}" />
+                <MenuItem Header="O que o teste verifica?" Click="FullTestHelp_Click" />
+            </MenuItem>
+            <MenuItem Header="_Ajuda">
+                <MenuItem Header="Sobre" Click="AboutMenuItem_Click" />
+            </MenuItem>
         </Menu>
 
-        <DockPanel Grid.Row="2" Margin="16,10,16,10">
-            <StackPanel DockPanel.Dock="Left">
-                <TextBlock Text="Modbus TCP Troubleshooter" FontSize="24" FontWeight="SemiBold" Foreground="#17312B" />
-            </StackPanel>
-        </DockPanel>
+        <Border Grid.Row="1" Background="#E8EEF2" BorderBrush="#BAC8D2" BorderThickness="0,0,0,1" Padding="4,3">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="MainToolbar" Orientation="Horizontal">
+                    <Button Style="{StaticResource RibbonCommandButton}" Width="70" Click="NewSession_Click" ToolTip="Iniciar uma nova sessão de diagnóstico">
+                        <StackPanel><Image Source="{StaticResource ToolbarNewIcon}" Width="25" Height="26" HorizontalAlignment="Center" /><TextBlock Text="Novo" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource RibbonCommandButton}" Width="70" Command="{Binding SaveCaseCommand}" ToolTip="Salvar dados do caso em JSON">
+                        <StackPanel><Image Source="{StaticResource ToolbarSaveIcon}" Width="25" Height="26" HorizontalAlignment="Center" /><TextBlock Text="Salvar" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                    <Border Width="1" Height="46" Background="#B9C7D0" Margin="7,7" />
+                    <Button Style="{StaticResource RibbonCommandButton}" Click="ConfigureClient_Click" IsEnabled="{Binding CanConfigureClient}" ToolTip="Configurar cliente Modbus TCP">
+                        <StackPanel><Grid Width="29" Height="29" HorizontalAlignment="Center"><Image Source="{StaticResource ToolbarClientIcon}" Width="25" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" /><Ellipse Width="14" Height="14" Fill="#E49B31" Stroke="White" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" /><TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Foreground="White" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" /></Grid><TextBlock Text="Configurações Cliente" FontSize="10" TextAlignment="Center" TextWrapping="Wrap" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource RibbonCommandButton}" Command="{Binding StartClientScanCommand}" ToolTip="Conectar o cliente e iniciar as leituras ritmadas">
+                        <StackPanel><Grid Width="29" Height="29" HorizontalAlignment="Center"><Image Source="{StaticResource ToolbarClientIcon}" Width="25" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" /><Ellipse Width="14" Height="14" Fill="#31A565" Stroke="White" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" /><TextBlock Text="+" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,1" /></Grid><TextBlock Text="Conectar Cliente" FontSize="10" TextAlignment="Center" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource RibbonCommandButton}" Command="{Binding DisconnectClientCommand}" ToolTip="Desconectar o cliente e parar as leituras">
+                        <StackPanel><Grid Width="29" Height="29" HorizontalAlignment="Center"><Image Source="{StaticResource ToolbarClientIcon}" Width="25" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" /><Ellipse Width="14" Height="14" Fill="#D7554D" Stroke="White" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" /><TextBlock Text="×" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,1" /></Grid><TextBlock Text="Desconectar" FontSize="10" TextAlignment="Center" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                    <Border Width="1" Height="46" Background="#B9C7D0" Margin="7,7" />
+                    <Button Style="{StaticResource RibbonCommandButton}" Click="ConfigureServer_Click" IsEnabled="{Binding CanConfigureServer}" ToolTip="Configurar servidor Modbus TCP">
+                        <StackPanel><Grid Width="29" Height="29" HorizontalAlignment="Center"><Image Source="{StaticResource ToolbarServerIcon}" Width="25" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" /><Ellipse Width="14" Height="14" Fill="#E49B31" Stroke="White" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" /><TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Foreground="White" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" /></Grid><TextBlock Text="Configurações Server" FontSize="10" TextAlignment="Center" TextWrapping="Wrap" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource RibbonCommandButton}" Command="{Binding StartServerCommand}" ToolTip="Iniciar servidor Modbus TCP">
+                        <StackPanel><Grid Width="29" Height="29" HorizontalAlignment="Center"><Image Source="{StaticResource ToolbarServerIcon}" Width="25" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" /><Ellipse Width="14" Height="14" Fill="#31A565" Stroke="White" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" /><TextBlock Text="+" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,1" /></Grid><TextBlock Text="Conectar Server" FontSize="10" TextAlignment="Center" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource RibbonCommandButton}" Command="{Binding StopServerCommand}" ToolTip="Parar e desconectar o servidor">
+                        <StackPanel><Grid Width="29" Height="29" HorizontalAlignment="Center"><Image Source="{StaticResource ToolbarServerIcon}" Width="25" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" /><Ellipse Width="14" Height="14" Fill="#D7554D" Stroke="White" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" /><TextBlock Text="×" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,1" /></Grid><TextBlock Text="Desconectar" FontSize="10" TextAlignment="Center" Margin="0,2,0,0" /></StackPanel>
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
 
-        <Grid x:Name="ShellGrid" Grid.Row="3" Margin="16,0,16,0">
-            <TabControl x:Name="MainTabs">
-                <TabItem Header="Home">
-                    <Border Background="White" BorderBrush="#D5DDD6" BorderThickness="1" Padding="24">
-                        <StackPanel MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="Basic tutorial" FontSize="18" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,16" />
-                            <TextBlock Text="1. Open Connection and choose Configure Client or Configure Server." Margin="0,0,0,8" />
-                            <TextBlock Text="2. Configure the IP address, port and Unit ID, then confirm with OK." Margin="0,0,0,8" />
-                            <TextBlock Text="3. Use Operation to configure the map and monitor Modbus communication." Margin="0,0,0,8" />
-                            <TextBlock Text="4. Use Capture for passive network traffic and Full Test for guided diagnostics." Margin="0,0,0,8" />
-                            <TextBlock Text="Use the View menu to open Communication Map, Timeline, Issue Logs and Full Test." Margin="0,12,0,0" Foreground="#5B665F" TextWrapping="Wrap" />
+        <Grid x:Name="ShellGrid" Grid.Row="2" Margin="0">
+            <Grid.ColumnDefinitions>
+                 <ColumnDefinition x:Name="ConnectionsColumn" Width="220" />
+                <ColumnDefinition x:Name="ConnectionsSplitterColumn" Width="5" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+             <Border x:Name="ConnectionsPane" Grid.Column="0" Background="#F2F6FA" BorderBrush="#C5D0D7" BorderThickness="0,0,1,0" Padding="5">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="3,1,3,8">
+                        <Button DockPanel.Dock="Right" Content="×" Click="HideConnectionsPane_Click" ToolTip="Ocultar painel de conexões" Width="26" Height="25" Padding="0" Margin="0" />
+                         <TextBlock Text="Conexões" FontSize="12" FontWeight="SemiBold" Foreground="#18354B" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <Expander IsExpanded="True" Margin="0,0,0,4">
+                                 <Expander.Header><StackPanel Orientation="Horizontal"><Ellipse Width="9" Height="9" Margin="0,0,7,0" VerticalAlignment="Center"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="#9AA39C" /><Style.Triggers><DataTrigger Binding="{Binding IsClientScanning}" Value="True"><Setter Property="Fill" Value="#2E9B62" /></DataTrigger></Style.Triggers></Style></Ellipse.Style></Ellipse><TextBlock Text="Cliente (Master)" FontWeight="SemiBold" Foreground="#18354B" /></StackPanel></Expander.Header>
+                                 <Border Background="Transparent" BorderThickness="0" Margin="13,1,0,0" Padding="1">
+                                    <RadioButton GroupName="OperatingMode" Style="{StaticResource SidebarRoleButton}" IsChecked="{Binding IsClientMode, Mode=OneWay}" IsEnabled="{Binding CanConfigureClient}" Click="SelectClientMode_Click">
+                                         <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" Foreground="#5A7B93" Margin="0,0,5,0" /><TextBlock Foreground="#18354B"><Run Text="{Binding TargetIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StackPanel>
+                                    </RadioButton>
+                                </Border>
+                            </Expander>
+                            <Expander IsExpanded="True" Margin="0,0,0,7">
+                                 <Expander.Header><StackPanel Orientation="Horizontal"><Ellipse Width="9" Height="9" Margin="0,0,7,0" VerticalAlignment="Center"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="#9AA39C" /><Style.Triggers><DataTrigger Binding="{Binding IsServerRunning}" Value="True"><Setter Property="Fill" Value="#2E9B62" /></DataTrigger></Style.Triggers></Style></Ellipse.Style></Ellipse><TextBlock Text="Servidor (Slave)" FontWeight="SemiBold" Foreground="#18354B" /></StackPanel></Expander.Header>
+                                 <Border Background="Transparent" BorderThickness="0" Margin="13,1,0,0" Padding="1">
+                                    <RadioButton GroupName="OperatingMode" Style="{StaticResource SidebarRoleButton}" IsChecked="{Binding IsServerMode, Mode=OneWay}" IsEnabled="{Binding CanConfigureServer}" Click="SelectServerMode_Click">
+                                         <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" Foreground="#5A7B93" Margin="0,0,5,0" /><TextBlock Foreground="#18354B"><Run Text="{Binding LocalIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StackPanel>
+                                    </RadioButton>
+                                </Border>
+                            </Expander>
+                             <GroupBox Header="Dispositivos" Padding="5" Background="Transparent" BorderThickness="0">
+                                <DockPanel>
+                                     <TextBlock DockPanel.Dock="Top" Text="Execute o teste para descobrir hosts." Foreground="#8998A2" FontSize="11" TextWrapping="Wrap" Margin="3,3,3,5">
+                                         <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding NetworkDiscoveryRows.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                     </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding NetworkDiscoveryRows}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource SidebarHostButton}" Click="OpenDiscoveredHost_Click" ToolTip="Abrir detalhes deste host na aba Dispositivos / rede">
+                                                    <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" Foreground="#3985B4" Margin="0,2,7,0" /><StackPanel><TextBlock Text="{Binding Ip}" FontWeight="SemiBold" Foreground="#18354B" /><TextBlock Text="{Binding RoleGuess}" FontSize="10" Foreground="#657785" TextTrimming="CharacterEllipsis" /></StackPanel></StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DockPanel>
+                            </GroupBox>
                         </StackPanel>
-                    </Border>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+            <GridSplitter x:Name="ConnectionsSplitter" Grid.Column="1" Width="5" HorizontalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Background="#D5DEE4" />
+             <TabControl x:Name="MainTabs" Grid.Column="2" Margin="0,0,0,0" SelectedIndex="3">
+                 <TabItem x:Name="HomeTab" Header="Resumo" Visibility="Collapsed">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="2,0,2,10">
+                            <StackPanel>
+                                <TextBlock Text="Resumo operacional" FontSize="18" FontWeight="SemiBold" Foreground="#17312B" />
+                                <TextBlock Text="Estado das conexões, mapa simulado e atividade observada nesta sessão." Foreground="#5B665F" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <Border DockPanel.Dock="Right" BorderBrush="#AEB9B3" BorderThickness="1" Background="#F7F8F7" Padding="10,5" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Modo ativo: " Foreground="#5B665F" />
+                                    <TextBlock Text="{Binding SelectedModeLabel, Mode=OneWay}" FontWeight="SemiBold" Foreground="#17312B" />
+                                </StackPanel>
+                            </Border>
+                        </DockPanel>
+                        <Grid Grid.Row="1" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <GroupBox Header="Cliente / Mestre" Padding="10" Background="White">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Ellipse Width="12" Height="12" Fill="#9AA39C" VerticalAlignment="Top" Margin="0,5,10,0">
+                                        <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="#9AA39C" /><Style.Triggers><DataTrigger Binding="{Binding IsClientScanning}" Value="True"><Setter Property="Fill" Value="#2E7D32" /></DataTrigger></Style.Triggers></Style></Ellipse.Style>
+                                    </Ellipse>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding TargetIp}" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" />
+                                        <TextBlock Foreground="#5B665F" Margin="0,2,0,0"><Run Text="Porta " /><Run Text="{Binding Port}" /><Run Text="    ID da unidade " /><Run Text="{Binding UnitId}" /></TextBlock>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0"><TextBlock Text="Leitura: " Foreground="#5B665F" /><TextBlock Style="{StaticResource ScanStateText}" FontWeight="SemiBold" /></StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+                            <GroupBox Grid.Column="2" Header="Servidor / Escravo" Padding="10" Background="White">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Ellipse Width="12" Height="12" Fill="#9AA39C" VerticalAlignment="Top" Margin="0,5,10,0">
+                                        <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="#9AA39C" /><Style.Triggers><DataTrigger Binding="{Binding IsServerRunning}" Value="True"><Setter Property="Fill" Value="#2E7D32" /></DataTrigger></Style.Triggers></Style></Ellipse.Style>
+                                    </Ellipse>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding LocalIp}" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" />
+                                        <TextBlock Foreground="#5B665F" Margin="0,2,0,0"><Run Text="Porta " /><Run Text="{Binding Port}" /><Run Text="    ID da unidade " /><Run Text="{Binding UnitId}" /></TextBlock>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0"><TextBlock Text="Estado: " Foreground="#5B665F" /><TextBlock Style="{StaticResource ServerStateText}" FontWeight="SemiBold" /></StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+                        </Grid>
+                        <UniformGrid Grid.Row="2" Columns="3" Margin="0,0,0,10">
+                            <GroupBox Header="Mapa do servidor" Padding="8" Margin="0,0,6,0" Background="White">
+                                <StackPanel Orientation="Horizontal"><TextBlock Text="Pontos simulados: " Foreground="#5B665F" /><TextBlock Text="{Binding ServerPoints.Count}" FontWeight="SemiBold" /></StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Avisos importantes" Padding="8" Margin="0,0,6,0" Background="White">
+                                <StackPanel Orientation="Horizontal"><TextBlock Text="Ocorrencias consolidadas: " Foreground="#5B665F" /><TextBlock Text="{Binding ImportantWarnings.Count}" FontWeight="SemiBold" /></StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Atividade Modbus" Padding="8" Background="White">
+                                <StackPanel Orientation="Horizontal"><TextBlock Text="Mensagens nesta sessao: " Foreground="#5B665F" /><TextBlock Text="{Binding Traffic.Count}" FontWeight="SemiBold" /></StackPanel>
+                            </GroupBox>
+                        </UniformGrid>
+                        <GroupBox Grid.Row="3" Header="Resumo e atividade" Padding="10" Background="White">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="2*" /></Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Estado dos servicos" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Cliente / leitura ritmada" Foreground="#5B665F" /><TextBlock Grid.Column="1" Style="{StaticResource ScanStateText}" FontWeight="SemiBold" /></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Servidor simulado" Foreground="#5B665F" /><TextBlock Grid.Column="1" Style="{StaticResource ServerStateText}" FontWeight="SemiBold" /></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Captura passiva" Foreground="#5B665F" /><TextBlock Grid.Column="1" Style="{StaticResource CaptureStateText}" FontWeight="SemiBold" /></Grid>
+                                    <TextBlock Text="{Binding Status}" Foreground="#35433B" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                </StackPanel>
+                                <GroupBox Grid.Column="2" Header="Ultimo teste completo" Padding="8" Background="#F7F8F7">
+                                    <Grid>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <TextBlock Text="Resultado: " Foreground="#5B665F" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding FullTestOverallStatus}" FontSize="15" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" />
+                                            <TextBlock Text="    Etapas concluidas: " Foreground="#5B665F" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding FullTestScore}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <Grid Grid.Row="1">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <StackPanel><TextBlock Text="Rede" FontSize="11" FontWeight="SemiBold" Foreground="#5B665F" /><TextBlock Text="{Binding FullTestNetworkSummary}" TextWrapping="Wrap" Margin="0,3,0,0" /></StackPanel>
+                                            <StackPanel Grid.Column="2"><TextBlock Text="Modbus" FontSize="11" FontWeight="SemiBold" Foreground="#5B665F" /><TextBlock Text="{Binding FullTestModbusSummary}" TextWrapping="Wrap" Margin="0,3,0,0" /></StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </GroupBox>
+                            </Grid>
+                        </GroupBox>
+                    </Grid>
                 </TabItem>
-                <TabItem x:Name="CommunicationMapTab" Header="Communication Map" Visibility="Collapsed">
+                <TabItem x:Name="CommunicationMapTab" Header="Communication Map">
                     <Grid Margin="0,8,0,0">
                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10"
                             Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}">
@@ -90,14 +385,14 @@
                             <TabItem Header="Configurar leituras">
                                 <DockPanel Margin="0,8,0,0">
                                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                                        <TextBlock Text="Mapa do client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                        <TextBlock Text="Mapa do cliente" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
                                         <Button Content="Adicionar linha" Command="{Binding AddClientMapRowCommand}" />
                                         <Button Content="Remover linha" Command="{Binding RemoveClientMapRowCommand}" />
-                                        <TextBlock Text="Duplo clique na linha para escrever HR/COIL gravavel." Foreground="#6D756E" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                        <TextBlock Text="Dê duplo clique em uma linha para escrever em registradores HR ou bobinas COIL graváveis." Foreground="#6D756E" VerticalAlignment="Center" Margin="12,0,0,0" />
                                     </StackPanel>
                                     <DataGrid ItemsSource="{Binding ClientMapRows}" SelectedItem="{Binding SelectedClientMapRow}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="ClientMapGrid_MouseDoubleClick">
                                         <DataGrid.Columns>
-                                            <DataGridCheckBoxColumn Header="On" Binding="{Binding Enabled}" Width="45" />
+                                            <DataGridCheckBoxColumn Header="Ativo" Binding="{Binding Enabled}" Width="55" />
                                             <DataGridTextColumn Header="Nome" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="130" />
                                             <DataGridTemplateColumn Header="FC" Width="160">
                                                 <DataGridTemplateColumn.CellTemplate>
@@ -122,7 +417,7 @@
                             </TabItem>
                             <TabItem Header="Mapa de comunicacao">
                                 <DockPanel Margin="0,8,0,0">
-                                    <TextBlock DockPanel.Dock="Top" Text="Pontos lidos pelo client" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <TextBlock DockPanel.Dock="Top" Text="Pontos recebidos do dispositivo" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
                                     <TabControl>
                                         <TabItem Header="HR">
                                             <DataGrid Margin="0,8,0,0" ItemsSource="{Binding ClientHoldingRegisterPoints}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="ClientCommunicationGrid_MouseDoubleClick">
@@ -185,14 +480,14 @@
                             <TabItem Header="Configurar faixas">
                                 <DockPanel Margin="0,8,0,0">
                                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                                        <TextBlock Text="Faixas expostas pelo server" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                        <TextBlock Text="Faixas disponibilizadas pelo servidor" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
                                         <Button Content="Adicionar faixa" Command="{Binding AddServerRangeCommand}" />
                                         <Button Content="Remover faixa" Command="{Binding RemoveServerRangeCommand}" />
                                         <Button Content="Aplicar mapa" Command="{Binding ApplyServerMapCommand}" />
                                     </StackPanel>
                                     <DataGrid ItemsSource="{Binding ServerMapRanges}" SelectedItem="{Binding SelectedServerMapRange}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                         <DataGrid.Columns>
-                                            <DataGridCheckBoxColumn Header="On" Binding="{Binding Enabled}" Width="45" />
+                                            <DataGridCheckBoxColumn Header="Ativo" Binding="{Binding Enabled}" Width="55" />
                                             <DataGridTextColumn Header="Prefixo" Binding="{Binding NamePrefix, UpdateSourceTrigger=PropertyChanged}" Width="110" />
                                             <DataGridTemplateColumn Header="Tipo" Width="145">
                                                 <DataGridTemplateColumn.CellTemplate>
@@ -217,7 +512,7 @@
                             </TabItem>
                             <TabItem Header="Visualizar mapa">
                                 <DockPanel Margin="0,8,0,0">
-                                    <TextBlock DockPanel.Dock="Top" Text="Mapa efetivo do server simulado - edite a coluna Valor para alterar a resposta do server" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <TextBlock DockPanel.Dock="Top" Text="Mapa em memória do servidor simulado. Edite a coluna Valor para alterar as respostas." FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
                                     <DataGrid ItemsSource="{Binding ServerPoints}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Tipo" Binding="{Binding TypeLabel}" Width="130" IsReadOnly="True" />
@@ -235,12 +530,15 @@
                     </Grid>
                 </TabItem>
 
-                <TabItem x:Name="IssueLogsTab" Header="Issue Logs" Visibility="Collapsed">
+                <TabItem x:Name="IssueLogsTab" Header="Avisos">
                     <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
                         <TabControl>
                             <TabItem Header="Todos">
                                 <DockPanel Margin="0,8,0,0">
-                                    <TextBlock DockPanel.Dock="Top" Text="Diagnosticos" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                        <Border DockPanel.Dock="Right" Background="#E9EEEB" BorderBrush="#C9D1CC" BorderThickness="1" Padding="8,4"><StackPanel Orientation="Horizontal"><TextBlock Text="Registros: " Foreground="#5B665F" /><TextBlock Text="{Binding Diagnostics.Count}" FontWeight="SemiBold" /></StackPanel></Border>
+                                        <StackPanel><TextBlock Text="Diagnósticos" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" /><TextBlock Text="Eventos e verificações registrados durante a sessão." Foreground="#65716A" Margin="0,2,0,0" /></StackPanel>
+                                    </DockPanel>
                                     <DataGrid ItemsSource="{Binding Diagnostics}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Hora" Binding="{Binding Timestamp, StringFormat=HH:mm:ss}" Width="75" />
@@ -253,7 +551,10 @@
                             </TabItem>
                             <TabItem Header="Avisos importantes">
                                 <DockPanel Margin="0,8,0,0">
-                                    <TextBlock DockPanel.Dock="Top" Text="Resumo de ocorrencias importantes" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                        <Border DockPanel.Dock="Right" Background="#E9EEEB" BorderBrush="#C9D1CC" BorderThickness="1" Padding="8,4"><StackPanel Orientation="Horizontal"><TextBlock Text="Avisos consolidados: " Foreground="#5B665F" /><TextBlock Text="{Binding ImportantWarnings.Count}" FontWeight="SemiBold" /></StackPanel></Border>
+                                        <StackPanel><TextBlock Text="Resumo de ocorrências importantes" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" /><TextBlock Text="Eventos semelhantes são agrupados para evitar uma lista repetitiva durante períodos longos." Foreground="#65716A" Margin="0,2,0,0" /></StackPanel>
+                                    </DockPanel>
                                     <DataGrid ItemsSource="{Binding ImportantWarnings}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Qtd" Binding="{Binding Count}" Width="45" />
@@ -269,7 +570,10 @@
                             </TabItem>
                             <TabItem Header="Checklist">
                                 <DockPanel Margin="0,8,0,0">
-                                    <TextBlock DockPanel.Dock="Top" Text="Verificacoes automaticas" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                        <Border DockPanel.Dock="Right" Background="#E9EEEB" BorderBrush="#C9D1CC" BorderThickness="1" Padding="8,4"><StackPanel Orientation="Horizontal"><TextBlock Text="Verificações: " Foreground="#5B665F" /><TextBlock Text="{Binding VerificationChecks.Count}" FontWeight="SemiBold" /></StackPanel></Border>
+                                        <StackPanel><TextBlock Text="Verificações automáticas" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" /><TextBlock Text="Estado atual dos critérios monitorados pelo sistema." Foreground="#65716A" Margin="0,2,0,0" /></StackPanel>
+                                    </DockPanel>
                                     <DataGrid ItemsSource="{Binding VerificationChecks}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Item" Binding="{Binding Name}" Width="125" />
@@ -284,12 +588,12 @@
                     </Border>
                 </TabItem>
 
-                <TabItem x:Name="TimelineTab" Header="Timeline" Visibility="Collapsed">
+                <TabItem x:Name="TimelineTab" Header="Timeline">
                 <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
                     <TabControl>
                         <TabItem Header="Modbus">
                             <DockPanel Margin="0,8,0,0">
-                                <TextBlock DockPanel.Dock="Top" Text="Timeline Modbus TCP" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                <TextBlock DockPanel.Dock="Top" Text="Mensagens Modbus TCP" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
                                 <DataGrid ItemsSource="{Binding Traffic}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Hora" Binding="{Binding Timestamp, StringFormat=HH:mm:ss.fff}" Width="95" />
@@ -309,87 +613,57 @@
                         <TabItem Header="TCP">
                             <DockPanel Margin="0,8,0,0">
                                 <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="1.7*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                            <TextBlock Text="Interface" />
-                                            <ComboBox ItemsSource="{Binding CaptureDevices}" SelectedItem="{Binding SelectedCaptureDevice}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                            <TextBlock Text="Protocolo" />
-                                            <ComboBox ItemsSource="{Binding CaptureProtocols}" SelectedItem="{Binding SelectedCaptureProtocol}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                            <TextBlock Text="IP" />
-                                            <TextBox Text="{Binding CaptureIp, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="3" Margin="0,0,8,0">
-                                            <TextBlock Text="Direcao IP" />
-                                            <ComboBox ItemsSource="{Binding CaptureDirections}" SelectedItem="{Binding SelectedCaptureIpDirection}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="4" Margin="0,0,8,0">
-                                            <TextBlock Text="Porta" />
-                                            <TextBox Text="{Binding CapturePort, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="5" Margin="0,0,8,0">
-                                            <TextBlock Text="Direcao porta" />
-                                            <ComboBox ItemsSource="{Binding CaptureDirections}" SelectedItem="{Binding SelectedCapturePortDirection}" />
-                                        </StackPanel>
-                                        <WrapPanel Grid.Column="6" VerticalAlignment="Bottom">
-                                            <Button Content="Atualizar interfaces" Command="{Binding RefreshCaptureDevicesCommand}" />
-                                            <Button Content="Atualizar filtro" Command="{Binding ApplyCaptureFilterCommand}" />
-                                            <Button Content="Iniciar captura" Command="{Binding StartNetworkCaptureCommand}" />
-                                            <Button Content="Parar captura" Command="{Binding StopNetworkCaptureCommand}" />
-                                        </WrapPanel>
-                                    </Grid>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1*" />
-                                            <ColumnDefinition Width="1.6*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                            <TextBlock Text="Filtro Source" />
-                                            <TextBox Text="{Binding SourceColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                            <TextBlock Text="Filtro Destination" />
-                                            <TextBox Text="{Binding DestinationColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                            <TextBlock Text="Filtro Protocol" />
-                                            <TextBox Text="{Binding ProtocolColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="3" Margin="0,0,8,0">
-                                            <TextBlock Text="Filtro Info" />
-                                            <TextBox Text="{Binding InfoColumnFilter, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="4">
-                                            <TextBlock Text="BPF gerado" />
-                                            <TextBox Text="{Binding GeneratedCaptureFilter}" IsReadOnly="True" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <TextBlock Foreground="#6D756E" Text="{Binding QueuedPassivePackets, StringFormat=Captura passiva da interface. Pacotes pendentes na fila de UI: {0}}" />
+                                    <GroupBox Header="Configuracao da captura" Padding="8" Margin="0,0,0,6" Background="White">
+                                        <Grid>
+                                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="2.2*" /><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,10,6">
+                                                <TextBlock Text="Interface de rede" Foreground="#5B665F" />
+                                                <ComboBox ItemsSource="{Binding CaptureDevices}" SelectedItem="{Binding SelectedCaptureDevice}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="0,0,10,6">
+                                                <TextBlock Text="Protocolo" Foreground="#5B665F" />
+                                                <ComboBox ItemsSource="{Binding CaptureProtocols}" SelectedItem="{Binding SelectedCaptureProtocol}" />
+                                            </StackPanel>
+                                            <WrapPanel Grid.Column="2" Grid.RowSpan="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                <Button Content="Atualizar interfaces" Command="{Binding RefreshCaptureDevicesCommand}" />
+                                                <Button Content="Aplicar filtro" Command="{Binding ApplyCaptureFilterCommand}" />
+                                                <Button Content="Iniciar captura" Style="{StaticResource PrimaryActionButton}" Command="{Binding StartNetworkCaptureCommand}" />
+                                                <Button Content="Parar captura" Command="{Binding StopNetworkCaptureCommand}" Margin="0" />
+                                            </WrapPanel>
+                                            <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,10,6">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*" /><ColumnDefinition Width="1.2*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="1.2*" /></Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Text="Endereco IP" Foreground="#5B665F" /><TextBox Text="{Binding CaptureIp, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                                <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Direcao do IP" Foreground="#5B665F" /><ComboBox ItemsSource="{Binding CaptureDirections}" SelectedItem="{Binding SelectedCaptureIpDirection}" /></StackPanel>
+                                                <StackPanel Grid.Column="2" Margin="0,0,8,0"><TextBlock Text="Porta" Foreground="#5B665F" /><TextBox Text="{Binding CapturePort, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                                <StackPanel Grid.Column="3"><TextBlock Text="Direcao da porta" Foreground="#5B665F" /><ComboBox ItemsSource="{Binding CaptureDirections}" SelectedItem="{Binding SelectedCapturePortDirection}" /></StackPanel>
+                                            </Grid>
+                                            <DockPanel Grid.Row="2" Grid.ColumnSpan="3">
+                                                <TextBlock DockPanel.Dock="Left" Text="Filtro de captura (BPF):" Foreground="#5B665F" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                <TextBox Text="{Binding GeneratedCaptureFilter}" IsReadOnly="True" />
+                                            </DockPanel>
+                                        </Grid>
+                                    </GroupBox>
+                                    <GroupBox Header="Filtros da lista de pacotes" Padding="8" Margin="0,0,0,5" Background="White">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Text="Origem contem" Foreground="#5B665F" /><TextBox Text="{Binding SourceColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Destino contem" Foreground="#5B665F" /><TextBox Text="{Binding DestinationColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                            <StackPanel Grid.Column="2" Margin="0,0,8,0"><TextBlock Text="Protocolo contem" Foreground="#5B665F" /><TextBox Text="{Binding ProtocolColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                            <StackPanel Grid.Column="3"><TextBlock Text="Informacao contem" Foreground="#5B665F" /><TextBox Text="{Binding InfoColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                        </Grid>
+                                    </GroupBox>
+                                    <TextBlock Foreground="#6D756E" Text="{Binding QueuedPassivePackets, StringFormat=Pacotes aguardando exibicao na interface: {0}}" />
                                 </StackPanel>
                                 <DataGrid ItemsSource="{Binding FilteredTcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="TcpTimelineGrid_MouseDoubleClick">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="No." Binding="{Binding Number}" Width="55" />
-                                        <DataGridTextColumn Header="Time" Binding="{Binding RelativeTime, StringFormat=0.000000}" Width="95" />
-                                        <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="150" />
-                                        <DataGridTextColumn Header="Destination" Binding="{Binding Destination}" Width="150" />
-                                        <DataGridTextColumn Header="Protocol" Binding="{Binding Protocol}" Width="95" />
-                                        <DataGridTextColumn Header="Length" Binding="{Binding Length}" Width="70" />
-                                        <DataGridTextColumn Header="Info" Binding="{Binding Info}" Width="*" />
+                                        <DataGridTextColumn Header="Nº" Binding="{Binding Number}" Width="55" />
+                                        <DataGridTextColumn Header="Tempo" Binding="{Binding RelativeTime, StringFormat=0.000000}" Width="95" />
+                                        <DataGridTextColumn Header="Origem" Binding="{Binding Source}" Width="150" />
+                                        <DataGridTextColumn Header="Destino" Binding="{Binding Destination}" Width="150" />
+                                        <DataGridTextColumn Header="Protocolo" Binding="{Binding Protocol}" Width="95" />
+                                        <DataGridTextColumn Header="Tamanho" Binding="{Binding Length}" Width="70" />
+                                        <DataGridTextColumn Header="Informacao" Binding="{Binding Info}" Width="*" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </DockPanel>
@@ -397,110 +671,233 @@
                     </TabControl>
                 </Border>
                 </TabItem>
-                <TabItem x:Name="FullTestTab" Header="Full Test" Visibility="Collapsed">
-                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                                <WrapPanel Margin="0,0,0,10">
-                                    <TextBlock Text="Teste completo de rede Modbus" FontSize="16" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,16,0" />
-                                    <Button Content="Executar teste completo" Command="{Binding StartFullTestCommand}" />
-                                    <Button Content="Exportar relatorio" Command="{Binding SaveFullTestReportCommand}" />
-                                    <CheckBox Content="Varredura ativa da sub-rede" IsChecked="{Binding EnableActiveSubnetScan}" VerticalAlignment="Center" Margin="14,0,8,0" />
-                                    <CheckBox Content="Descoberta de mapa" IsChecked="{Binding EnableMapDiscovery}" VerticalAlignment="Center" Margin="8,0,8,0" />
-                                    <TextBlock Text="Timeout ms" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
-                                    <TextBox Text="{Binding ActiveScanTimeoutMs, UpdateSourceTrigger=PropertyChanged}" Width="58" />
-                                    <TextBlock Text="Concorrencia" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
-                                    <TextBox Text="{Binding ActiveScanConcurrency, UpdateSourceTrigger=PropertyChanged}" Width="48" />
-                                    <TextBlock Text="Observacao s" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
-                                    <TextBox Text="{Binding PassiveObservationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="48" />
-                                </WrapPanel>
-                                <WrapPanel Margin="0,0,0,10">
-                                    <TextBlock Text="Descoberta de mapa:" FontWeight="SemiBold" Foreground="#17312B" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBlock Text="Mapa ate" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#5B665F" />
-                                    <TextBox Text="{Binding MapDiscoveryMaxAddress, UpdateSourceTrigger=PropertyChanged}" Width="54" />
-                                    <TextBlock Text="Bloco" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
-                                    <TextBox Text="{Binding MapDiscoveryBlockSize, UpdateSourceTrigger=PropertyChanged}" Width="42" />
-                                    <CheckBox Content="Fallback ponto a ponto" IsChecked="{Binding EnableMapDiscoveryPointFallback}" VerticalAlignment="Center" Margin="10,0,8,0" />
-                                    <CheckBox Content="Unit sweep" IsChecked="{Binding EnableMapDiscoveryUnitSweep}" VerticalAlignment="Center" Margin="8,0,4,0" />
-                                    <TextBlock Text="UID ini" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
-                                    <TextBox Text="{Binding MapDiscoveryUnitIdStart, UpdateSourceTrigger=PropertyChanged}" Width="38" />
-                                    <TextBlock Text="UID fim" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#5B665F" />
-                                    <TextBox Text="{Binding MapDiscoveryUnitIdEnd, UpdateSourceTrigger=PropertyChanged}" Width="38" />
-                                    <TextBlock Text="FCs" VerticalAlignment="Center" Margin="12,0,4,0" Foreground="#5B665F" />
-                                    <CheckBox Content="01" IsChecked="{Binding MapDiscoveryFc01}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                                    <CheckBox Content="02" IsChecked="{Binding MapDiscoveryFc02}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                                    <CheckBox Content="03" IsChecked="{Binding MapDiscoveryFc03}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                                    <CheckBox Content="04" IsChecked="{Binding MapDiscoveryFc04}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                                </WrapPanel>
-                                <UniformGrid Columns="3" Margin="0,0,0,8">
-                                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,0">
+                 <TabItem x:Name="FullTestTab" Header="Teste completo">
+                     <Grid Background="#F2F6FA" Margin="0">
+                         <Grid.RowDefinitions>
+                             <RowDefinition Height="Auto" />
+                             <RowDefinition Height="8" />
+                             <RowDefinition Height="2.7*" MinHeight="260" />
+                             <RowDefinition Height="8" />
+                             <RowDefinition Height="1.1*" MinHeight="165" />
+                         </Grid.RowDefinitions>
+                         <StackPanel Grid.Row="0" Margin="10,10,10,0">
+                             <TextBlock Text="Teste completo" FontSize="17" FontWeight="Bold" Foreground="#17354C" />
+                             <TextBlock Text="Verifica a comunicação Modbus TCP e executa diagnósticos nos dispositivos." Foreground="#526C7D" FontSize="11" Margin="0,3,0,0" />
+                         </StackPanel>
+                         <Grid Grid.Row="2" Margin="9,0,9,0">
+                             <Grid.ColumnDefinitions><ColumnDefinition Width="1*" MinWidth="225" /><ColumnDefinition Width="7" /><ColumnDefinition Width="1.6*" /></Grid.ColumnDefinitions>
+                             <Border Grid.Column="0" Background="#F9FBFC" BorderBrush="#CDD8E0" BorderThickness="1">
+                                 <DockPanel>
+                                     <Border DockPanel.Dock="Top" Background="#E5EDF3" Padding="7,5"><TextBlock Text="Configurar escopo" Foreground="#234463" FontWeight="Bold" /></Border>
+                                     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="10,7">
+                                         <TextBlock Text="Modo:" FontWeight="SemiBold" Foreground="#30485B" Margin="0,0,0,3" />
+                                         <RadioButton GroupName="TestModeCurrent" Content="Cliente (Master)" IsChecked="{Binding IsClientMode, Mode=OneWay}" IsEnabled="{Binding CanConfigureClient}" Click="SelectClientMode_Click" Margin="2,1" />
+                                         <RadioButton GroupName="TestModeCurrent" Content="Servidor (Slave)" IsChecked="{Binding IsServerMode, Mode=OneWay}" IsEnabled="{Binding CanConfigureServer}" Click="SelectServerMode_Click" Margin="2,1,0,8" />
+                                         <TextBlock Text="Endereço IP:" Foreground="#30485B" />
+                                         <TextBox Text="{Binding TargetIp, Mode=OneWay}" IsReadOnly="True" Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}" Margin="0,3,0,6" />
+                                         <TextBox Text="{Binding LocalIp, Mode=OneWay}" IsReadOnly="True" Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}" Margin="0,3,0,6" />
+                                         <TextBlock Text="Porta:" Foreground="#30485B" />
+                                         <TextBox Text="{Binding Port, Mode=OneWay}" IsReadOnly="True" Width="90" HorizontalAlignment="Left" Margin="0,3,0,8" />
+                                         <TextBlock Text="Dispositivos:" FontWeight="SemiBold" Foreground="#30485B" Margin="0,0,0,3" />
+                                         <CheckBox Content="Alvo configurado" IsChecked="True" IsEnabled="False" Margin="2,2" ToolTip="O alvo configurado é sempre verificado pelo teste." />
+                                         <ItemsControl ItemsSource="{Binding NetworkDiscoveryRows}">
+                                             <ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="20,2,0,0" Foreground="#314F67" Text="{Binding Ip}" /></DataTemplate></ItemsControl.ItemTemplate>
+                                         </ItemsControl>
+                                         <CheckBox Content="Varredura de outros hosts" IsChecked="{Binding EnableActiveSubnetScan}" IsEnabled="{Binding CanConfigureFullTest}" Margin="2,4,0,2" ToolTip="Sondagem ativa de hosts da sub-rede; requer autorização na rede industrial." />
+                                         <CheckBox Content="Descoberta de mapa" IsChecked="{Binding EnableMapDiscovery}" IsEnabled="{Binding CanConfigureFullTest}" Margin="2,2,0,2" ToolTip="Sondagem somente para leitura; ajuste as faixas em Ferramentas." />
+                                         <Button Content="Aplicar configuração" Click="ConfigureFullTestScope_Click" IsEnabled="{Binding CanConfigureFullTest}" HorizontalAlignment="Stretch" Margin="0,7,0,0" ToolTip="Configurar janela de observação, timeout e varredura ativa." />
+                                     </StackPanel></ScrollViewer>
+                                 </DockPanel>
+                             </Border>
+                             <Grid Grid.Column="2">
+                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="7" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                 <Border Grid.Row="0" Background="#F9FBFC" BorderBrush="#CDD8E0" BorderThickness="1">
+                                     <StackPanel>
+                                         <Border Background="#E5EDF3" Padding="7,5"><TextBlock Text="Execução do teste" Foreground="#234463" FontWeight="Bold" /></Border>
+                                         <Grid Margin="8,8,8,5"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                             <ProgressBar Value="{Binding FullTestProgressPercent}" Maximum="100" Height="13" Foreground="#2DA660" Background="#DEE7EA" />
+                                             <TextBlock Grid.Column="1" Text="{Binding FullTestProgressPercent, StringFormat={}{0}%}" Foreground="#36536B" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                         </Grid>
+                                         <TextBlock Text="{Binding FullTestProgressLabel}" Foreground="#526B7D" FontSize="11" Margin="8,0,8,6" TextTrimming="CharacterEllipsis" />
+                                         <StackPanel Orientation="Horizontal" Margin="8,0,8,7"><Button Content="Executar teste" Click="StartFullTest_Click" IsEnabled="{Binding CanConfigureFullTest}" /><Button Content="Cancelar" Command="{Binding CancelFullTestCommand}" /></StackPanel>
+                                     </StackPanel>
+                                 </Border>
+                                 <Border Grid.Row="2" Background="#F9FBFC" BorderBrush="#CDD8E0" BorderThickness="1">
+                                     <DockPanel>
+                                         <Border DockPanel.Dock="Top" Background="#E5EDF3" Padding="7,5"><TextBlock Text="Checklist de diagnóstico" Foreground="#234463" FontWeight="Bold" /></Border>
+                                         <ListBox ItemsSource="{Binding FullTestSteps}" SelectedItem="{Binding SelectedFullTestStep}" BorderThickness="0" Background="#F9FBFC" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                             <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="Padding" Value="2,2" /></Style></ListBox.ItemContainerStyle>
+                                             <ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="23" /><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /><ColumnDefinition Width="110" /></Grid.ColumnDefinitions>
+                                                 <TextBlock Grid.Column="0" Text="●" Foreground="{Binding StatusColor}" FontSize="14" HorizontalAlignment="Center" />
+                                                 <TextBlock Grid.Column="1" Text="{Binding Order}" Foreground="#30485B" />
+                                                 <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="#30485B" TextTrimming="CharacterEllipsis" />
+                                                 <TextBlock Grid.Column="3" Text="{Binding Status}" Foreground="{Binding StatusColor}" TextTrimming="CharacterEllipsis" />
+                                             </Grid></DataTemplate></ListBox.ItemTemplate>
+                                         </ListBox>
+                                     </DockPanel>
+                                 </Border>
+                             </Grid>
+                         </Grid>
+                         <Grid Grid.Row="4" Margin="9,0,9,9">
+                             <Grid.ColumnDefinitions><ColumnDefinition Width="1*" /><ColumnDefinition Width="7" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
+                             <Border Grid.Column="0" Background="#F9FBFC" BorderBrush="#CDD8E0" BorderThickness="1">
+                                 <DockPanel>
+                                     <Border DockPanel.Dock="Top" Background="#E5EDF3" Padding="7,5"><TextBlock Text="Resultado da etapa selecionada" Foreground="#234463" FontWeight="Bold" /></Border>
+                                     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="9,6">
+                                         <TextBlock Foreground="#30485B"><Run Text="Etapa:  " FontWeight="SemiBold" /><Run Text="{Binding SelectedFullTestStep.Order, Mode=OneWay}" /><Run Text=". " /><Run Text="{Binding SelectedFullTestStep.Name, Mode=OneWay}" /></TextBlock>
+                                         <TextBlock Foreground="#30485B" TextWrapping="Wrap" Margin="0,3,0,0"><Run Text="Objetivo:  " FontWeight="SemiBold" /><Run Text="{Binding SelectedFullTestStep.Objective, Mode=OneWay}" /></TextBlock>
+                                         <TextBlock Foreground="#30485B" TextWrapping="Wrap" Margin="0,3,0,0"><Run Text="Resultado:  " FontWeight="SemiBold" /><Run Text="{Binding SelectedFullTestStep.Result, Mode=OneWay}" /></TextBlock>
+                                         <TextBlock Foreground="#30485B" TextWrapping="Wrap" Margin="0,3,0,0"><Run Text="Recomendação:  " FontWeight="SemiBold" /><Run Text="{Binding SelectedFullTestStep.Recommendation, Mode=OneWay}" /></TextBlock>
+                                     </StackPanel></ScrollViewer>
+                                 </DockPanel>
+                             </Border>
+                             <Border Grid.Column="2" Background="#F9FBFC" BorderBrush="#CDD8E0" BorderThickness="1">
+                                 <DockPanel>
+                                     <Border DockPanel.Dock="Top" Background="#E5EDF3" Padding="7,5"><TextBlock Text="Relatório final" Foreground="#234463" FontWeight="Bold" /></Border>
+                                     <Button DockPanel.Dock="Bottom" Content="Gerar relatório" Click="ShowFullTestReport_Click" IsEnabled="{Binding CanOpenFullTestReport}" HorizontalAlignment="Right" Margin="0,0,7,6" />
+                                     <StackPanel Margin="9,6">
+                                         <TextBlock><Run Text="Início:  " FontWeight="SemiBold" /><Run Text="{Binding FullTestStartedAtText}" /></TextBlock>
+                                         <TextBlock><Run Text="Término:  " FontWeight="SemiBold" /><Run Text="{Binding FullTestFinishedAtText}" /></TextBlock>
+                                         <TextBlock><Run Text="Etapas testadas:  " FontWeight="SemiBold" /><Run Text="{Binding FullTestCompletedSteps}" /><Run Text="/" /><Run Text="{Binding FullTestTotalSteps}" /></TextBlock>
+                                         <TextBlock><Run Text="Sucesso:  " FontWeight="SemiBold" /><Run Text="{Binding FullTestOkCount}" /></TextBlock>
+                                         <TextBlock><Run Text="Avisos:  " FontWeight="SemiBold" /><Run Text="{Binding FullTestWarningCount}" /></TextBlock>
+                                         <TextBlock><Run Text="Erros:  " FontWeight="SemiBold" /><Run Text="{Binding FullTestFailureCount}" /></TextBlock>
+                                     </StackPanel>
+                                 </DockPanel>
+                             </Border>
+                         </Grid>
+                     </Grid>
+                 </TabItem>
+                 <TabItem x:Name="LegacyFullTestTab" Header="Detalhes do teste" Visibility="Collapsed">
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="285" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="#F2F5F7" BorderBrush="#CBD5DC" BorderThickness="1" Padding="10">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Text="Configurar escopo" FontSize="16" FontWeight="SemiBold" Foreground="#18354B" />
+                                    <TextBlock Text="Escolha o papel e os testes desta execução." Foreground="#657785" TextWrapping="Wrap" Margin="0,3,0,10" />
+                                    <GroupBox Header="Modo" Padding="6" Margin="0,0,0,8" Background="White">
                                         <StackPanel>
-                                            <TextBlock Text="Status geral" Foreground="#5B665F" />
-                                            <TextBlock Text="{Binding FullTestOverallStatus}" FontSize="18" FontWeight="SemiBold" Foreground="#17312B" />
-                                            <TextBlock Text="{Binding FullTestScore}" Foreground="#5B665F" />
+                                            <RadioButton GroupName="TestMode" Content="Cliente / Mestre" IsChecked="{Binding IsClientMode, Mode=OneWay}" IsEnabled="{Binding CanConfigureClient}" Click="SelectClientMode_Click" Margin="2,2" />
+                                            <RadioButton GroupName="TestMode" Content="Servidor / Escravo" IsChecked="{Binding IsServerMode, Mode=OneWay}" IsEnabled="{Binding CanConfigureServer}" Click="SelectServerMode_Click" Margin="2,2" />
                                         </StackPanel>
-                                    </Border>
-                                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,0">
+                                    </GroupBox>
+                                    <GroupBox Header="Dispositivo" Padding="8" Margin="0,0,0,8" Background="White">
                                         <StackPanel>
-                                            <TextBlock Text="Rede / hosts" Foreground="#5B665F" />
-                                            <TextBlock Text="{Binding FullTestNetworkSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#17312B" />
+                                            <TextBlock Text="Endereço IP" FontSize="11" Foreground="#657785" />
+                                            <TextBox Text="{Binding TargetIp, Mode=OneWay}" IsReadOnly="True" Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}" Margin="0,2,0,7" Background="#F8FAFB" />
+                                            <TextBox Text="{Binding LocalIp, Mode=OneWay}" IsReadOnly="True" Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}" Margin="0,2,0,7" Background="#F8FAFB" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                <StackPanel><TextBlock Text="Porta" FontSize="11" Foreground="#657785" /><TextBox Text="{Binding Port, Mode=OneWay}" IsReadOnly="True" Background="#F8FAFB" Margin="0,2,0,0" /></StackPanel>
+                                                <StackPanel Grid.Column="2"><TextBlock Text="ID da unidade" FontSize="11" Foreground="#657785" /><TextBox Text="{Binding UnitId, Mode=OneWay}" IsReadOnly="True" Background="#F8FAFB" Margin="0,2,0,0" /></StackPanel>
+                                            </Grid>
+                                            <Button Content="Editar conexão..." Click="ConfigureActiveEndpoint_Click" IsEnabled="{Binding CanConfigureFullTest}" Margin="0,9,0,0" />
                                         </StackPanel>
-                                    </Border>
-                                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10">
+                                    </GroupBox>
+                                    <GroupBox Header="Verificações opcionais" Padding="8" Margin="0,0,0,8" Background="White">
                                         <StackPanel>
-                                            <TextBlock Text="Modbus descoberto" Foreground="#5B665F" />
-                                            <TextBlock Text="{Binding FullTestModbusSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#17312B" />
+                                            <CheckBox Content="Varredura ativa da sub-rede" IsChecked="{Binding EnableActiveSubnetScan}" IsEnabled="{Binding CanConfigureFullTest}" ToolTip="Tenta conexoes TCP aos hosts candidatos da sub-rede local." Margin="0,2,0,4" />
+                                            <TextBlock Text="Requer autorizacao na rede industrial." FontSize="10" Foreground="#657785" TextWrapping="Wrap" Margin="19,0,0,5" />
+                                            <Button Content="Configurar varredura..." Click="ConfigureFullTestScope_Click" IsEnabled="{Binding CanConfigureFullTest}" HorizontalAlignment="Stretch" />
+                                            <Separator Margin="0,7" />
+                                            <CheckBox Content="Descoberta de mapa Modbus" IsChecked="{Binding EnableMapDiscovery}" IsEnabled="{Binding CanConfigureFullTest}" ToolTip="Sondagem somente para leitura no modo cliente; no modo servidor registra as faixas requisitadas." Margin="0,2,0,5" />
+                                            <Button Content="Configurar descoberta..." Click="ConfigureMapDiscovery_Click" IsEnabled="{Binding CanConfigureFullTest}" HorizontalAlignment="Stretch" />
+                                            <TextBlock Foreground="#657785" Margin="0,7,0,0"><Run Text="Observação passiva: " /><Run Text="{Binding PassiveObservationSeconds}" /><Run Text=" s" /></TextBlock>
                                         </StackPanel>
-                                    </Border>
-                                </UniformGrid>
-                                <UniformGrid Columns="2">
-                                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,8,0">
-                                        <StackPanel>
-                                            <TextBlock Text="Rotas / gateway" Foreground="#5B665F" />
-                                            <TextBlock Text="{Binding FullTestRouteSummary}" TextWrapping="Wrap" Foreground="#17312B" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Background="#FFFFFF" BorderBrush="#D5DDD6" BorderThickness="1" CornerRadius="6" Padding="10">
-                                        <StackPanel>
-                                            <TextBlock Text="Banda / carga" Foreground="#5B665F" />
-                                            <TextBlock Text="{Binding FullTestBandwidthSummary}" TextWrapping="Wrap" Foreground="#17312B" />
-                                        </StackPanel>
-                                    </Border>
-                                </UniformGrid>
-                            </StackPanel>
-                            <TabControl>
+                                    </GroupBox>
+                                    <TextBlock Text="A varredura considera o alvo e os hosts candidatos encontrados por ARP, captura e sub-rede." Foreground="#657785" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,7" />
+                                    <Button Content="O que o teste verifica?" Click="FullTestHelp_Click" HorizontalAlignment="Stretch" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                        <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="#D5DEE4" />
+                        <Grid Grid.Column="2" Margin="0,0,0,0">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#F4F7F9" BorderBrush="#CBD5DC" BorderThickness="1" Padding="10,8" Margin="0,0,0,7">
+                                <Grid>
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Execução do teste" FontSize="16" FontWeight="SemiBold" Foreground="#18354B" VerticalAlignment="Center" />
+                                        <Border Style="{StaticResource TestStatusBadge}" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Center"><TextBlock Text="{Binding FullTestOverallStatus}" FontWeight="SemiBold" Style="{StaticResource TestStatusText}" /></Border>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="Executar teste" Style="{StaticResource PrimaryActionButton}" Click="StartFullTest_Click" IsEnabled="{Binding CanConfigureFullTest}" />
+                                        <Button Content="Cancelar" Command="{Binding CancelFullTestCommand}" Margin="0" />
+                                    </StackPanel>
+                                    <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding FullTestProgressPercent}" Maximum="100" Height="9" Margin="0,9,0,4" Foreground="#2E9B62" Background="#E0E7EB" />
+                                    <DockPanel Grid.Row="2" Grid.ColumnSpan="2">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><TextBlock Text="{Binding FullTestProgressPercent}" FontWeight="SemiBold" Foreground="#18354B" /><TextBlock Text="%" Foreground="#18354B" /></StackPanel>
+                                        <TextBlock Text="{Binding FullTestProgressLabel}" Foreground="#526776" TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+                                    </DockPanel>
+                                </Grid>
+                            </Border>
+                            <TabControl x:Name="FullTestSections" Grid.Row="1" SelectedIndex="0">
                                 <TabItem Header="Checklist">
-                                    <Grid Margin="0,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="1.45*" />
-                                            <ColumnDefinition Width="6" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <DataGrid Grid.Column="0" ItemsSource="{Binding FullTestSteps}" SelectedItem="{Binding SelectedFullTestStep}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                    <Grid Margin="4,5,4,4">
+                                        <Grid.RowDefinitions><RowDefinition Height="1.35*" /><RowDefinition Height="6" /><RowDefinition Height="1*" /></Grid.RowDefinitions>
+                                        <DataGrid Grid.Row="0" ItemsSource="{Binding FullTestSteps}" SelectedItem="{Binding SelectedFullTestStep}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                             <DataGrid.Columns>
-                                                <DataGridTemplateColumn Header="" Width="30">
-                                                    <DataGridTemplateColumn.CellTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock Text="●" Foreground="{Binding StatusColor}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                        </DataTemplate>
-                                                    </DataGridTemplateColumn.CellTemplate>
-                                                </DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="" Width="30"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="●" Foreground="{Binding StatusColor}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                                 <DataGridTextColumn Header="#" Binding="{Binding Order}" Width="35" />
-                                                <DataGridTextColumn Header="Etapa" Binding="{Binding Name}" Width="170" />
-                                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="85" />
-                                                <DataGridTextColumn Header="Objetivo" Binding="{Binding Objective}" Width="*" />
-                                                <DataGridTextColumn Header="Recomendacao" Binding="{Binding Recommendation}" Width="260" />
+                                                <DataGridTextColumn Header="Etapa de diagnóstico" Binding="{Binding Name}" Width="2*" MinWidth="220" />
+                                                <DataGridTemplateColumn Header="Estado" Width="105"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding StatusColor}" FontWeight="SemiBold" VerticalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
-                                        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#D5DDD6" />
-                                        <DockPanel Grid.Column="2" Margin="8,0,0,0">
-                                            <TextBlock DockPanel.Dock="Top" Text="Detalhe da etapa selecionada" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
-                                            <TextBox Text="{Binding SelectedFullTestStep.Result}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
-                                        </DockPanel>
+                                        <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#D5DEE4" />
+                                        <Grid Grid.Row="2">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.6*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
+                                            <GroupBox Header="Resultado da etapa selecionada" Padding="8" Background="White">
+                                                <DockPanel>
+                                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,5">
+                                                        <TextBlock Text="{Binding SelectedFullTestStep.Order, StringFormat=Etapa {0}: }" FontWeight="SemiBold" Foreground="#18354B" />
+                                                        <TextBlock Text="{Binding SelectedFullTestStep.Name}" FontWeight="SemiBold" Foreground="#18354B" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding SelectedFullTestStep.Status, StringFormat=  |  {0}}" Foreground="#526776" />
+                                                    </StackPanel>
+                                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                        <StackPanel>
+                                                            <TextBlock Foreground="#435460" TextWrapping="Wrap"><Run Text="Objetivo: " FontWeight="SemiBold" /><Run Text="{Binding SelectedFullTestStep.Objective, Mode=OneWay}" /></TextBlock>
+                                                            <TextBlock Text="Resultado técnico" FontWeight="SemiBold" Foreground="#18354B" Margin="0,7,0,2" />
+                                                            <TextBlock Text="{Binding SelectedFullTestStep.Result}" TextWrapping="Wrap" Foreground="#263B49" />
+                                                            <TextBlock Text="Recomendação" FontWeight="SemiBold" Foreground="#18354B" Margin="0,7,0,2" />
+                                                            <TextBlock Text="{Binding SelectedFullTestStep.Recommendation}" TextWrapping="Wrap" Foreground="#435460" />
+                                                        </StackPanel>
+                                                    </ScrollViewer>
+                                                </DockPanel>
+                                            </GroupBox>
+                                            <GroupBox Grid.Column="2" Header="Relatório final" Padding="8" Background="White">
+                                                <DockPanel>
+                                                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                                                        <Button Content="Abrir" Click="ShowFullTestReport_Click" IsEnabled="{Binding CanOpenFullTestReport}" ToolTip="Abrir o relatório técnico completo" />
+                                                        <Button Content="Exportar..." Command="{Binding SaveFullTestReportCommand}" Margin="0" />
+                                                    </StackPanel>
+                                                    <StackPanel>
+                                                        <DockPanel Margin="0,0,0,3"><TextBlock DockPanel.Dock="Right" Text="{Binding FullTestStartedAtText}" /><TextBlock Text="Início" Foreground="#657785" /></DockPanel>
+                                                        <DockPanel Margin="0,0,0,3"><TextBlock DockPanel.Dock="Right" Text="{Binding FullTestFinishedAtText}" /><TextBlock Text="Término" Foreground="#657785" /></DockPanel>
+                                                        <DockPanel Margin="0,0,0,3"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><TextBlock Text="{Binding FullTestCompletedSteps}" /><TextBlock Text="/" /><TextBlock Text="{Binding FullTestTotalSteps}" /></StackPanel><TextBlock Text="Etapas" Foreground="#657785" /></DockPanel>
+                                                        <DockPanel Margin="0,0,0,3"><TextBlock DockPanel.Dock="Right" Text="{Binding FullTestOkCount}" Foreground="#247A4D" FontWeight="SemiBold" /><TextBlock Text="OK" Foreground="#657785" /></DockPanel>
+                                                        <DockPanel Margin="0,0,0,3"><TextBlock DockPanel.Dock="Right" Text="{Binding FullTestWarningCount}" Foreground="#A67400" FontWeight="SemiBold" /><TextBlock Text="Atenção" Foreground="#657785" /></DockPanel>
+                                                        <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding FullTestFailureCount}" Foreground="#B3261E" FontWeight="SemiBold" /><TextBlock Text="Falhas" Foreground="#657785" /></DockPanel>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </GroupBox>
+                                        </Grid>
                                     </Grid>
                                 </TabItem>
-                                <TabItem Header="Dispositivos / rede">
-                                    <DataGrid Margin="0,8,0,0" ItemsSource="{Binding NetworkDiscoveryRows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                <TabItem Header="Visão geral">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
+                                        <TextBlock Text="Resumo dos resultados" FontSize="16" FontWeight="SemiBold" Foreground="#18354B" Margin="0,0,0,8" />
+                                        <UniformGrid Columns="3" Margin="0,0,0,8">
+                                            <Border Background="#F4F7F9" BorderBrush="#CBD5DC" BorderThickness="1" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="Status geral" Foreground="#657785" /><TextBlock Text="{Binding FullTestOverallStatus}" FontSize="18" FontWeight="SemiBold" Foreground="#18354B" /><TextBlock Text="{Binding FullTestScore}" Foreground="#657785" /></StackPanel></Border>
+                                            <Border Background="#F4F7F9" BorderBrush="#CBD5DC" BorderThickness="1" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="Rede e dispositivos" Foreground="#657785" /><TextBlock Text="{Binding FullTestNetworkSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#18354B" /></StackPanel></Border>
+                                            <Border Background="#F4F7F9" BorderBrush="#CBD5DC" BorderThickness="1" Padding="10"><StackPanel><TextBlock Text="Modbus" Foreground="#657785" /><TextBlock Text="{Binding FullTestModbusSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#18354B" /></StackPanel></Border>
+                                        </UniformGrid>
+                                        <UniformGrid Columns="2"><Border Background="#F4F7F9" BorderBrush="#CBD5DC" BorderThickness="1" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="Rotas e gateway" Foreground="#657785" /><TextBlock Text="{Binding FullTestRouteSummary}" TextWrapping="Wrap" Foreground="#18354B" /></StackPanel></Border><Border Background="#F4F7F9" BorderBrush="#CBD5DC" BorderThickness="1" Padding="10"><StackPanel><TextBlock Text="Banda e carga" Foreground="#657785" /><TextBlock Text="{Binding FullTestBandwidthSummary}" TextWrapping="Wrap" Foreground="#18354B" /></StackPanel></Border></UniformGrid>
+                                    </StackPanel></ScrollViewer>
+                                </TabItem>
+                                <TabItem x:Name="FullTestDevicesTab" Header="Dispositivos / rede">
+                                    <DataGrid x:Name="DiscoveredDevicesGrid" Margin="0,8,0,0" ItemsSource="{Binding NetworkDiscoveryRows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="IP" Binding="{Binding Ip}" Width="120" />
                                             <DataGridTextColumn Header="MAC" Binding="{Binding Mac}" Width="140" />
@@ -526,30 +923,30 @@
                                         </DataGrid.Columns>
                                     </DataGrid>
                                 </TabItem>
-                                <TabItem Header="Relatorio">
+                                <TabItem x:Name="FullTestReportTab" Header="Relatório">
                                     <DockPanel Margin="0,8,0,0">
-                                        <TextBlock DockPanel.Dock="Top" Text="Relatorio final exportavel" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
+                                        <TextBlock DockPanel.Dock="Top" Text="Relatório final exportável" FontWeight="SemiBold" Foreground="#17312B" Margin="0,0,0,8" />
                                         <TextBox Text="{Binding FullTestReport}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
                                     </DockPanel>
                                 </TabItem>
                             </TabControl>
-                        </DockPanel>
-                    </Border>
+                        </Grid>
+                    </Grid>
                 </TabItem>
             </TabControl>
         </Grid>
 
-        <StatusBar Grid.Row="4" Background="#E7ECE8" BorderBrush="#D5DDD6" BorderThickness="0,1,0,0" Padding="8,3">
-            <StatusBarItem><TextBlock Foreground="#17312B"><Run Text="Mode: " /><Run Text="{Binding SelectedMode}" /></TextBlock></StatusBarItem>
+        <StatusBar Grid.Row="3" Background="#E7ECE8" BorderBrush="#D5DDD6" BorderThickness="0,1,0,0" Padding="8,3">
+            <StatusBarItem><TextBlock Foreground="#17312B"><Run Text="Modo: " /><Run Text="{Binding SelectedModeLabel, Mode=OneWay}" /></TextBlock></StatusBarItem>
             <Separator />
-            <StatusBarItem Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}"><TextBlock Foreground="#17312B"><Run Text="Target: " /><Run Text="{Binding TargetIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StatusBarItem>
-            <StatusBarItem Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}"><TextBlock Foreground="#17312B"><Run Text="Listen: " /><Run Text="{Binding LocalIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StatusBarItem>
+            <StatusBarItem Visibility="{Binding IsClientMode, Converter={StaticResource BoolToVisibility}}"><TextBlock Foreground="#17312B"><Run Text="Alvo: " /><Run Text="{Binding TargetIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StatusBarItem>
+            <StatusBarItem Visibility="{Binding IsServerMode, Converter={StaticResource BoolToVisibility}}"><TextBlock Foreground="#17312B"><Run Text="Escuta: " /><Run Text="{Binding LocalIp}" /><Run Text=":" /><Run Text="{Binding Port}" /></TextBlock></StatusBarItem>
             <Separator />
-            <StatusBarItem><TextBlock Foreground="#17312B"><Run Text="Unit ID: " /><Run Text="{Binding UnitId}" /></TextBlock></StatusBarItem>
+            <StatusBarItem><TextBlock Foreground="#17312B"><Run Text="ID da unidade: " /><Run Text="{Binding UnitId}" /></TextBlock></StatusBarItem>
             <Separator />
-            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Scan: " Foreground="#17312B" /><TextBlock Style="{StaticResource ScanStateText}" /></StackPanel></StatusBarItem>
-            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Server: " Foreground="#17312B" /><TextBlock Style="{StaticResource ServerStateText}" /></StackPanel></StatusBarItem>
-            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Capture: " Foreground="#17312B" /><TextBlock Style="{StaticResource CaptureStateText}" /></StackPanel></StatusBarItem>
+            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Leitura: " Foreground="#17312B" /><TextBlock Style="{StaticResource ScanStateText}" /></StackPanel></StatusBarItem>
+            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Servidor: " Foreground="#17312B" /><TextBlock Style="{StaticResource ServerStateText}" /></StackPanel></StatusBarItem>
+            <StatusBarItem><StackPanel Orientation="Horizontal"><TextBlock Text="Captura: " Foreground="#17312B" /><TextBlock Style="{StaticResource CaptureStateText}" /></StackPanel></StatusBarItem>
             <Separator />
             <StatusBarItem><TextBlock Foreground="#5B665F" Text="{Binding Status}" /></StatusBarItem>
         </StatusBar>

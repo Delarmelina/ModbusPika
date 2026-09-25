@@ -1,4 +1,5 @@
 # Build output
+release/
 obj/
 **/obj/
 **/bin/Release/

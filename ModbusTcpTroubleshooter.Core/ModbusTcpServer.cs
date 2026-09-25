@@ -50,6 +50,8 @@ public sealed class ModbusTcpServer
         using var _ = client;
         var stream = client.GetStream();
 
+        try
+        {
         while (!cancellationToken.IsCancellationRequested && client.Connected)
         {
             var header = await ReadExactAsync(stream, 7, cancellationToken);
@@ -58,7 +60,10 @@ public sealed class ModbusTcpServer
                 break;
             }
 
+            if (header.Length != 7) throw new InvalidDataException("Cabecalho MBAP incompleto.");
             var length = ModbusProtocol.ReadUInt16(header, 4);
+            if (length is < 2 or > 254)
+                throw new InvalidDataException("Cabecalho MBAP invalido.");
             var body = await ReadExactAsync(stream, length - 1, cancellationToken);
             var raw = header.Concat(body).ToArray();
             var request = ModbusProtocol.Parse(raw);
@@ -69,7 +74,12 @@ public sealed class ModbusTcpServer
             await stream.WriteAsync(response, cancellationToken);
             Emit(TrafficDirection.ServerToClient, endpoint, request.TransactionId, request.UnitId, request.FunctionCode, address, quantity, responseSummary, response);
         }
-
+        }
+        catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException)
+        {
+            if (!cancellationToken.IsCancellationRequested)
+                Emit(TrafficDirection.System, endpoint, null, null, null, null, null, $"Falha no cliente: {ex.Message}", []);
+        }
         Emit(TrafficDirection.System, endpoint, null, null, null, null, null, "Cliente desconectado.", []);
     }
 
@@ -78,6 +88,45 @@ public sealed class ModbusTcpServer
         if (!ModbusProtocol.TryGetAddressRange(request, out var address, out var quantity))
         {
             summary = "Requisicao invalida: PDU curta. Resposta exception 03.";
+            return ModbusProtocol.BuildException(request, 3);
+        }
+
+        var maxQuantity = request.FunctionCode switch
+        {
+            ModbusProtocol.ReadCoils or ModbusProtocol.ReadDiscreteInputs => 2000,
+            ModbusProtocol.ReadHoldingRegisters or ModbusProtocol.ReadInputRegisters => 125,
+            ModbusProtocol.WriteMultipleCoils => 1968,
+            ModbusProtocol.WriteMultipleRegisters => 123,
+            _ => 1
+        };
+        if (quantity == 0 || quantity > maxQuantity || (int)address + quantity > 65536)
+        {
+            summary = "Quantidade ou faixa invalida. Resposta exception 03.";
+            return ModbusProtocol.BuildException(request, 3);
+        }
+        if (request.FunctionCode is ModbusProtocol.WriteMultipleCoils or ModbusProtocol.WriteMultipleRegisters)
+        {
+            var bytes = request.FunctionCode == ModbusProtocol.WriteMultipleCoils ? (quantity + 7) / 8 : quantity * 2;
+            if (request.Pdu.Length != 6 + bytes || request.Pdu[5] != bytes)
+            {
+                summary = "Byte count invalido. Resposta exception 03.";
+                return ModbusProtocol.BuildException(request, 3);
+            }
+        }
+        if (request.FunctionCode is ModbusProtocol.WriteSingleCoil or ModbusProtocol.WriteSingleRegister or
+            ModbusProtocol.WriteMultipleCoils or ModbusProtocol.WriteMultipleRegisters)
+        {
+            var type = request.FunctionCode is ModbusProtocol.WriteSingleCoil or ModbusProtocol.WriteMultipleCoils
+                ? ModbusPointType.Coil : ModbusPointType.HoldingRegister;
+            if (Enumerable.Range(address, quantity).Any(x => !_map.CanWrite(type, (ushort)x)))
+            {
+                summary = "Escrita fora do mapa ou em ponto somente leitura. Resposta exception 02.";
+                return ModbusProtocol.BuildException(request, 2);
+            }
+        }
+        if (request.FunctionCode == ModbusProtocol.WriteSingleCoil && ModbusProtocol.ReadUInt16(request.Pdu, 3) is not (0 or 0xFF00))
+        {
+            summary = "Valor FC05 invalido. Resposta exception 03.";
             return ModbusProtocol.BuildException(request, 3);
         }
 
