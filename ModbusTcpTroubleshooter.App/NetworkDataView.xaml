@@ -1,0 +1,81 @@
+<UserControl x:Class="ModbusTcpTroubleshooter.App.NetworkDataView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="clr-namespace:ModbusTcpTroubleshooter.App"
+ FontWeight="Normal">
+ <Grid Margin="8"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <DockPanel Margin="0,0,0,8">
+   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+    <TextBlock Text="Período:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+    <ComboBox x:Name="PeriodPicker" Width="150" SelectedIndex="1" SelectionChanged="PeriodChanged">
+     <ComboBoxItem Content="Últimos 30 s" Tag="30"/><ComboBoxItem Content="Último 1 min" Tag="60"/>
+     <ComboBoxItem Content="Últimos 5 min" Tag="300"/><ComboBoxItem Content="Pacotes retidos" Tag="0"/>
+    </ComboBox>
+   </StackPanel>
+   <StackPanel><TextBlock Text="Visão geral do tráfego capturado" FontSize="16" FontWeight="SemiBold"/>
+    <TextBlock x:Name="SampleDescription" Foreground="#526B7D" TextWrapping="Wrap" Margin="0,3,12,0"/>
+   </StackPanel>
+  </DockPanel>
+  <UniformGrid Grid.Row="1" Columns="6" Margin="0,0,0,8">
+   <Border Background="#F3F6F8" BorderBrush="#CDD8E0" BorderThickness="1" Padding="8" Margin="0,0,5,0"><StackPanel><TextBlock Text="Pacotes" Foreground="#526B7D"/><TextBlock x:Name="PacketCount" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border>
+   <Border Background="#F3F6F8" BorderBrush="#CDD8E0" BorderThickness="1" Padding="8" Margin="0,0,5,0"><StackPanel><TextBlock Text="Volume capturado" Foreground="#526B7D"/><TextBlock x:Name="ByteCount" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border>
+   <Border Background="#F3F6F8" BorderBrush="#CDD8E0" BorderThickness="1" Padding="8" Margin="0,0,5,0"><StackPanel><TextBlock Text="Média de pacotes" Foreground="#526B7D"/><TextBlock x:Name="AveragePackets" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border>
+   <Border Background="#F3F6F8" BorderBrush="#CDD8E0" BorderThickness="1" Padding="8" Margin="0,0,5,0"><StackPanel><TextBlock Text="Média de dados" Foreground="#526B7D"/><TextBlock x:Name="AverageBytes" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border>
+   <Border Background="#F3F6F8" BorderBrush="#CDD8E0" BorderThickness="1" Padding="8" Margin="0,0,5,0"><StackPanel><TextBlock Text="Pico em 1 s" Foreground="#526B7D"/><TextBlock x:Name="PeakPackets" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border>
+   <Border Background="#F3F6F8" BorderBrush="#CDD8E0" BorderThickness="1" Padding="8"><StackPanel><TextBlock Text="Maior volume em 1 s" Foreground="#526B7D"/><TextBlock x:Name="PeakBytes" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border>
+  </UniformGrid>
+  <TabControl Grid.Row="2">
+   <TabItem Header="Resumo">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
+     <GroupBox Header="Taxa observada ao longo da captura" Padding="8" Margin="0,0,0,8">
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <StackPanel Margin="4"><TextBlock Text="Pacotes por segundo" FontWeight="SemiBold"/><local:TrafficSparkline x:Name="PacketChart" Height="130"/></StackPanel>
+       <StackPanel Grid.Column="1" Margin="4"><TextBlock Text="Bytes por segundo (KB/s)" FontWeight="SemiBold"/><local:TrafficSparkline x:Name="ByteChart" Height="130"/></StackPanel>
+      </Grid>
+     </GroupBox>
+     <UniformGrid Columns="2">
+     <GroupBox Header="Protocolos observados" Padding="6" Margin="0,0,6,0"><ItemsControl x:Name="ProtocolList">
+      <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="2,4"><Grid.ColumnDefinitions><ColumnDefinition Width="95"/><ColumnDefinition Width="*"/><ColumnDefinition Width="135"/></Grid.ColumnDefinitions>
+       <TextBlock Text="{Binding Protocol}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+       <ProgressBar Grid.Column="1" Value="{Binding PercentBar, Mode=OneWay}" Maximum="100" Height="10" VerticalAlignment="Center" Foreground="#2878A8"/>
+       <TextBlock Grid.Column="2" Text="{Binding Summary}" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+      </Grid></DataTemplate></ItemsControl.ItemTemplate>
+     </ItemsControl></GroupBox>
+      <GroupBox Header="Interpretação da amostra" Padding="8"><TextBlock x:Name="Interpretation" TextWrapping="Wrap" VerticalAlignment="Top"/></GroupBox>
+     </UniformGrid>
+     <GroupBox Header="Qualidade e limites da captura" Padding="8" Margin="0,8,0,0"><TextBlock x:Name="CaptureQuality" TextWrapping="Wrap"/></GroupBox>
+    </StackPanel></ScrollViewer>
+   </TabItem>
+   <TabItem Header="Dispositivos com mais tráfego">
+    <DockPanel Margin="8"><TextBlock DockPanel.Dock="Top" x:Name="HostHint" Foreground="#526B7D" TextWrapping="Wrap" Margin="0,0,0,7"/>
+     <DataGrid x:Name="HostGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="IP observado" Binding="{Binding Host}" Width="145" MinWidth="130"/>
+       <DataGridTextColumn Header="Pacotes enviados" Binding="{Binding SentPackets}" Width="115" MinWidth="105"/>
+       <DataGridTextColumn Header="Pacotes recebidos" Binding="{Binding ReceivedPackets}" Width="120" MinWidth="110"/>
+       <DataGridTextColumn Header="Dados enviados" Binding="{Binding SentBytesText}" Width="115" MinWidth="105"/>
+       <DataGridTextColumn Header="Dados recebidos" Binding="{Binding ReceivedBytesText}" Width="120" MinWidth="110"/>
+       <DataGridTextColumn Header="% dos pacotes da amostra" Binding="{Binding ShareText}" Width="155" MinWidth="145"/>
+       <DataGridTextColumn Header="Pico observado" Binding="{Binding PeakText}" Width="115" MinWidth="105"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </DockPanel>
+   </TabItem>
+   <TabItem Header="Conversas">
+    <DockPanel Margin="8"><TextBlock DockPanel.Dock="Top" Text="Conversas agrupadas sem distinguir a direção. O volume é contabilizado nos quadros capturados; retransmissões também contam como quadros." Foreground="#526B7D" TextWrapping="Wrap" Margin="0,0,0,7"/>
+     <DataGrid x:Name="ConversationGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="Endpoint A" Binding="{Binding EndpointA}" Width="180" MinWidth="150"/>
+       <DataGridTextColumn Header="Endpoint B" Binding="{Binding EndpointB}" Width="180" MinWidth="150"/>
+       <DataGridTextColumn Header="Protocolos" Binding="{Binding Protocols}" Width="125" MinWidth="110"/>
+       <DataGridTextColumn Header="Pacotes" Binding="{Binding Packets}" Width="90" MinWidth="80"/>
+       <DataGridTextColumn Header="Dados" Binding="{Binding BytesText}" Width="110" MinWidth="100"/>
+       <DataGridTextColumn Header="% dos pacotes" Binding="{Binding ShareText}" Width="120" MinWidth="110"/>
+       <DataGridTextColumn Header="Pico em 1 s" Binding="{Binding PeakText}" Width="105" MinWidth="95"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </DockPanel>
+   </TabItem>
+  </TabControl>
+ </Grid>
+</UserControl>

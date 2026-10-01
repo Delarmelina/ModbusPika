@@ -1,0 +1,31 @@
+<Window x:Class="ModbusTcpTroubleshooter.App.DiscoveredTargetDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Adicionar dispositivo como alvo" Width="550" SizeToContent="Height" MinWidth="500"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" Background="#F0F0F0">
+    <StackPanel Margin="16">
+        <TextBlock Text="Novo alvo da estação cliente" FontWeight="SemiBold" FontSize="15" Foreground="#18354B" />
+        <TextBlock x:Name="DeviceHint" TextWrapping="Wrap" Margin="0,5,0,12" Foreground="#526B7D" />
+        <Grid x:Name="SettingsGrid">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/></Grid.RowDefinitions>
+            <TextBlock Text="Endereço IPv4" VerticalAlignment="Center"/><TextBox x:Name="AddressBox" Grid.Column="1" Height="27" VerticalAlignment="Center" Padding="4,2" TextChanged="EndpointChanged"/>
+            <TextBlock Grid.Row="1" Text="Porta TCP" VerticalAlignment="Center"/><TextBox x:Name="PortBox" Grid.Row="1" Grid.Column="1" Height="27" VerticalAlignment="Center" Padding="4,2" TextChanged="EndpointChanged"/>
+            <TextBlock Grid.Row="2" Text="Unit ID" VerticalAlignment="Center"/><TextBox x:Name="UnitBox" Grid.Row="2" Grid.Column="1" Height="27" VerticalAlignment="Center" Padding="4,2" TextChanged="EndpointChanged"/>
+            <TextBlock Grid.Row="3" Text="Scan (ms)" VerticalAlignment="Center"/><TextBox x:Name="ScanBox" Grid.Row="3" Grid.Column="1" Height="27" VerticalAlignment="Center" Padding="4,2" Text="1000"/>
+        </Grid>
+        <Border Background="#E8F0F5" BorderBrush="#C5D0D7" BorderThickness="1" Padding="10" Margin="0,12,0,0">
+            <StackPanel>
+                <TextBlock x:Name="MapHint" TextWrapping="Wrap" Foreground="#18354B" />
+                <CheckBox x:Name="DiscoverMapCheck" Content="Encontrar mapa agora (somente leitura)" Margin="0,8,0,0" ToolTip="Testa somente o endpoint e Unit ID acima com FC01 a FC04 habilitados. Nao escreve e nao varre a sub-rede." />
+                <TextBlock x:Name="DiscoveryScopeHint" TextWrapping="Wrap" Foreground="#657785" FontSize="11" Margin="20,4,0,0" />
+            </StackPanel>
+        </Border>
+        <TextBlock Text="O cadastro nao conecta nem inicia o scan. Blocos importados comecam como 'Nao lido'. Se nao houver mapa, podera configurar blocos manualmente." TextWrapping="Wrap" Foreground="#526B7D" Margin="0,10,0,0" />
+        <TextBlock x:Name="FeedbackText" TextWrapping="Wrap" Foreground="#B3261E" Margin="0,8,0,0" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="AddButton" Content="Adicionar alvo" MinWidth="115" Height="29" IsDefault="True" Click="Confirm_Click" Margin="0,0,8,0"/>
+            <Button Content="Cancelar" MinWidth="85" Height="29" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

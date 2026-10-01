@@ -1,0 +1,914 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manual>
+  <section title="01 · Orientação e operação">
+    <topic id="inicio" title="Como consultar o manual" keywords="ajuda F1 pesquisa índice navegação">
+      <p>As páginas de configuração descrevem cada campo, os valores aceitos, seu efeito e exemplos. As páginas de diagnóstico explicam evidências, critérios de classificação e verificações seguintes. Os endereços dos exemplos são ilustrativos: adapte-os à instalação.</p>
+      <table><head><cell>Controle do manual</cell><cell>Como usar</cell></head>
+        <row><cell>Índice à esquerda</cell><cell>Expanda uma seção e selecione um tópico. O artigo aparece no painel direito.</cell></row>
+        <row><cell>Pesquisar no manual</cell><cell>Digite uma ou mais palavras. Todos os termos precisam estar presentes no título, seção, palavras-chave ou conteúdo, mesmo em posições diferentes. Acentos e maiúsculas não alteram a busca.</cell></row>
+        <row><cell>Resultados</cell><cell>Mostram título, seção e introdução. Clique para abrir; limpe a busca para retornar ao índice.</cell></row>
+        <row><cell>Voltar / Avançar</cell><cell>Percorre os artigos visitados, inclusive após seguir uma referência relacionada.</cell></row>
+        <row><cell>Consultar</cell><cell>Abre outro tópico do manual e preserva o histórico de navegação.</cell></row>
+        <row><cell>F1</cell><cell>Na aplicação e nos diálogos principais, abre o assunto da tela ativa. Dentro deste visor, navegue pelo índice ou pela pesquisa.</cell></row>
+      </table>
+      <h>Estratégia de pesquisa</h><p>Procure pelo rótulo do campo (“concorrência”, “Unit ID”, “Inc”, “p95”) ou pela mensagem/código de erro (“exceção 02”, “timeout”, “TID”). Se vários termos retornarem zero resultados, reduza a busca e consulte a seção pertinente.</p>
+      <link topic="fluxo">Primeiro ensaio e sequência de diagnóstico</link>
+    </topic>
+    <topic id="fluxo" title="Primeiro ensaio: sequência completa" keywords="tutorial passo a passo início procedimento">
+      <h>Ensaio local controlado</h>
+      <ol><li>Configure o servidor local: escuta 127.0.0.1, porta 1502 e Unit ID 1.</li><li>No Dispositivo do servidor, habilite uma faixa HR, início 0, quantidade 10. Aplique o mapa e inicie o servidor.</li><li>Configure um alvo cliente: IP 127.0.0.1, porta 1502, Unit ID 1; bloco FC03, endereço 0, quantidade 10, Ativo marcado.</li><li>Execute Leitura única. Confirme Status OK e horário recente; inicie leitura cíclica e observe novas atualizações.</li><li>Abra Teste completo, escolha Cliente/Mestre e inclua esse alvo. Para verificar somente loopback, desative a descoberta da sub-rede.</li><li>Execute o teste e examine a etapa do bloco. Captura local depende da interface de loopback; a leitura pode funcionar mesmo com captura indisponível.</li></ol>
+      <h>Adaptar à instalação</h><p>Use o IP e a porta reais do PLC, Unit ID e endereçamento de engenharia. Selecione a interface industrial na captura. Defina faixa de descoberta, funções e janela conforme o objetivo; registre os parâmetros para repetir o ensaio após uma correção.</p>
+      <link topic="seguranca">Preparar um ensaio em produção</link><link topic="teste-completo">Operar a tela de testes</link>
+    </topic>
+    <topic id="conceitos" title="Papéis, seleção e alcance das telas" keywords="cliente mestre servidor escravo global simultâneo seleção">
+      <table><head><cell>Elemento</cell><cell>Função e alcance</cell></head>
+        <row><cell>Estação cliente / Mestre</cell><cell>Esta aplicação inicia consultas. Cada alvo é um endpoint cadastrado com IP, porta, Unit ID e mapa próprios.</cell></row>
+        <row><cell>Servidor local / Escravo</cell><cell>A aplicação escuta conexões e responde com seu mapa em memória. Clientes externos precisam alcançar o IP e a porta desta estação.</cell></row>
+        <row><cell>Dispositivo</cell><cell>Configuração e mapa do item selecionado lateralmente. Confirme nome e endpoint antes de editar.</cell></row>
+        <row><cell>Linha do tempo / Avisos</cell><cell>Visões globais da sessão: podem incluir vários alvos, servidor local e tráfego da interface capturada.</cell></row>
+        <row><cell>Teste completo</cell><cell>Papel e alvos são definidos dentro da aba. A seleção lateral não limita automaticamente a execução.</cell></row>
+      </table>
+      <p>Cliente e servidor podem operar simultaneamente. Os controles da leitura remota e do listener local são independentes. No teste, escolha o papel que deseja analisar mesmo que os dois estejam ativos.</p>
+      <h>Endpoint e equipamento</h><p>172.27.30.84:1501 identifica um serviço TCP. Unit IDs distintos podem representar destinos lógicos diferentes em um gateway. Loopback e IP Ethernet local podem representar o mesmo notebook. Contagem de endpoints, IPs e equipamentos físicos pode ser diferente.</p>
+      <link topic="inventario">Classificação dos dispositivos encontrados</link>
+    </topic>
+    <topic id="seguranca" title="Preparar um ensaio em rede industrial" keywords="autorização produção escrita risco janela manutenção">
+      <p>Defina o objetivo: abertura TCP, validade de um bloco, estabilidade, descoberta de servidores ou identificação do mapa solicitado por clientes. Escolha procedimentos e tempo que produzam evidências para esse objetivo.</p>
+      <table><head><cell>Ação</cell><cell>Efeito operacional</cell></head>
+        <row><cell>Captura passiva</cell><cell>Observa pacotes visíveis. Placa, filtro e posição de captura delimitam a cobertura.</cell></row>
+        <row><cell>Descoberta de hosts</cell><cell>Envia ICMP e tentativas TCP; IPs, portas, taxa e timeout determinam carga e duração.</cell></row>
+        <row><cell>Leituras repetidas / descoberta de mapa</cell><cell>Adiciona requisições Modbus às comunicações existentes e pode ocupar recursos do PLC/gateway.</cell></row>
+        <row><cell>Escrita manual</cell><cell>Altera valores; registradores podem corresponder a comandos, saídas ou setpoints.</cell></row>
+      </table>
+      <ol><li>Confirme a faixa, portas e equipamentos autorizados.</li><li>Salve .ffd antes de alterações substanciais.</li><li>Defina taxa e concorrência compatíveis com os equipamentos e a janela disponível.</li><li>Use escrita somente em variável e procedimento aprovados.</li><li>Registre cobertura e limitações junto do resultado; repita parâmetros equivalentes após a correção.</li></ol>
+      <note kind="safety">O Teste completo não realiza escrita automática; descoberta e validações podem gerar tráfego ativo de leitura.</note>
+    </topic>
+    <topic id="interface" title="Menus, atalhos e painel lateral" keywords="arquivo conexões exibir ferramentas ajuda novo salvar toolbar">
+      <table><head><cell>Área</cell><cell>Comandos e finalidade</cell></head>
+        <row><cell>Arquivo</cell><cell>Novo diagnóstico limpa resultados; Abrir carrega .ffd; Salvar grava o arquivo atual; Salvar como escolhe outro; Exportar caso gera JSON de diagnóstico; Sair fecha a aplicação.</cell></row>
+        <row><cell>Conexões</cell><cell>Gerencia estação e alvos, configura endpoints, inicia leituras e desconecta; configura, inicia e para o servidor local.</cell></row>
+        <row><cell>Exibir</cell><cell>Controla visibilidade do painel, grupos descobertos e abas. Ocultar uma aba não encerra a comunicação correspondente.</cell></row>
+        <row><cell>Ferramentas</cell><cell>Verificação de um IP, procedimentos do teste, descoberta de mapa e explicação do teste.</cell></row>
+        <row><cell>Ajuda</cell><cell>Manual técnico e informação Sobre.</cell></row>
+        <row><cell>Barra de atalhos</cell><cell>Novo, Salvar e ações de configuração/conexão/parada de cliente e servidor. As ações do cliente dependem do alvo selecionado.</cell></row>
+      </table>
+      <p>Recolha grupos laterais pelo indicador de expansão. A Estação cliente contém alvos cadastrados; Dispositivos encontrados contém evidências. Use o botão direito para verificar ou cadastrar um candidato.</p>
+      <link topic="ffd">Salvar e restaurar o projeto</link>
+    </topic>
+  </section>
+  <section title="02 · Conexões e dispositivos">
+    <topic id="estacao-cliente" title="Estação cliente e gerenciamento de alvos" keywords="alvos master nome excluir adicionar lista múltiplos">
+      <p>A estação agrupa as sessões cliente deste projeto. Abra-a pelo grupo lateral Estação cliente ou pelo menu Conexões. A seleção de um alvo disponibiliza o Dispositivo com configuração e mapa desse endpoint.</p>
+      <table><head><cell>Campo / ação</cell><cell>Significado e operação</cell></head>
+        <row><cell>Nome da estação</cell><cell>Identificação local do conjunto de alvos. É salva no .ffd; não renomeia nenhum PLC.</cell></row>
+        <row><cell>Servidor-alvo</cell><cell>Nome dado à sessão. Use identificação de engenharia, como “CLP embalagem”, para distinguir equipamentos.</cell></row>
+        <row><cell>IP / Porta / ID</cell><cell>Destino TCP e Unit ID do alvo. A mesma porta em IPs diferentes corresponde a serviços diferentes.</cell></row>
+        <row><cell>Intervalo (ms)</cell><cell>Pausa configurada entre ciclos do polling daquele alvo. Cada ciclo percorre seus blocos habilitados.</cell></row>
+        <row><cell>TCP persistente</cell><cell>Indica reutilização da conexão entre requests. Cada alvo tem sua própria política.</cell></row>
+        <row><cell>Estado</cell><cell>Parado, conectando/lendo, leitura ativa/OK ou falha. Confira também a qualidade por bloco.</cell></row>
+        <row><cell>Adicionar / Remover</cell><cell>Cria ou exclui uma sessão do projeto. Remova o alvo local padrão se sua atividade envolver somente descoberta ou simulação.</cell></row>
+      </table>
+      <h>Vários servidores</h><ol><li>Cadastre cada endpoint e nomeie-o.</li><li>Configure os blocos pertinentes a cada alvo.</li><li>Inicie as sessões desejadas e confira os respectivos estados.</li><li>No Teste completo, use Selecionar alvos para definir a cobertura da execução.</li></ol>
+      <note>Seleção para teste e operação cíclica são independentes. A quantidade de sessões no projeto não é uma contagem de PLCs confirmados na rede.</note>
+      <link topic="conexao-cliente">Campos do endpoint cliente</link>
+    </topic>
+    <topic id="conexao-cliente" title="Configurar cliente / servidor-alvo" keywords="IP porta Unit ID scan keep connection request persistente">
+      <p>Abra pelo comando Configurar alvo ou Conexões &gt; Cliente/Mestre &gt; Configurar servidor-alvo selecionado. Pare a comunicação do alvo antes de alterar seu endpoint. A configuração afeta aquela sessão.</p>
+      <table><head><cell>Campo</cell><cell>Domínio e efeito</cell></head>
+        <row><cell>Endereço IP</cell><cell>IP do servidor remoto, por exemplo 172.27.30.84. Para ensaio no próprio computador, use 127.0.0.1. 0.0.0.0 é endereço de escuta do servidor, não um destino de operação.</cell></row>
+        <row><cell>Porta</cell><cell>Inteiro de 1 a 65535. Use a porta realmente configurada no servidor: 502, 1501, 1502 ou outra. O campo não “descobre” a porta.</cell></row>
+        <row><cell>ID da unidade / Unit ID</cell><cell>Inteiro de 0 a 255 enviado no MBAP. Padrão inicial 1. Em gateway TCP/serial pode selecionar o escravo; confirme na engenharia. Aceitar 0 no formulário não garante broadcast ou suporte remoto.</cell></row>
+        <row><cell>Intervalo de leitura</cell><cell>Milissegundos, mínimo 100 no diálogo. Padrão inicial 1000. A edição na aba Dispositivo aceita 100 a 86400000. A pausa se soma ao tempo das transações do ciclo.</cell></row>
+        <row><cell>Manter uma conexão TCP entre requisições</cell><cell>Marcado por padrão: reutiliza o socket da sessão. Desmarcado: abre e fecha uma conexão para cada request, aumentando handshakes. Útil para comparar comportamento de dispositivos que encerram conexões.</cell></row>
+        <row><cell>OK / Cancelar</cell><cell>OK valida e confirma os campos. Cancelar fecha sem aplicar as edições do diálogo.</cell></row>
+      </table>
+      <h>Exemplo aplicado</h><example>Alvo: CLP embalagem
+IP: 172.27.30.84   Porta: 1501   Unit ID: 1
+Scan: 1000 ms   Conexão persistente: marcada
+Bloco: FC03 / início 0 / quantidade 10
+Esperado: uma rodada de 10 HR por ciclo desse alvo.</example>
+      <h>Referência visual</h>
+      <image src="ManualImages/ClientSettings.png">Diálogo real da aplicação com o endpoint de exemplo. Valores ilustrativos; a confirmação efetiva depende de uma leitura válida.</image>
+      <p>Porta válida e IP válido são apenas configuração. Inicie leitura e confirme resposta. Se TCP abrir e Modbus falhar, revise Unit ID, função e região solicitada.</p>
+      <link topic="conectar">Leitura única, ciclo e desconexão</link><link topic="erro-tcp">Diagnosticar transporte TCP</link>
+    </topic>
+    <topic id="conexao-servidor" title="Configurar o servidor simulado local" keywords="bind listen IP local 0.0.0.0 porta UID start stop">
+      <p>Abra pelo comando Configurar servidor. O servidor é uma função local da aplicação; seu endereço deve pertencer a este computador ou ser um endereço de escuta geral.</p>
+      <table><head><cell>Campo / estado</cell><cell>Significado</cell></head>
+        <row><cell>Endereço local de escuta</cell><cell>0.0.0.0 aceita interfaces IPv4 disponíveis; 127.0.0.1 restringe a comunicação ao computador; um IP Ethernet específico restringe a escuta àquela interface. IP de outro PLC não pode ser vinculado ao notebook sem configuração correspondente no Windows.</cell></row>
+        <row><cell>Porta</cell><cell>1 a 65535; padrão inicial 1502. Deve estar livre. Outro processo ou outra instância na mesma combinação de escuta pode impedir o início.</cell></row>
+        <row><cell>ID da unidade</cell><cell>0 a 255; padrão 1. É uma referência de configuração para os testes. Nesta implementação, o listener não filtra requisições pelo ID configurado: atende o mapa único e devolve o Unit ID recebido no MBAP. O valor não cria vários mapas ou escravos locais. Uma resposta do simulador não comprova que um PLC ou gateway real aceite o mesmo ID.</cell></row>
+        <row><cell>Iniciar servidor</cell><cell>Abre o listener e passa a atender clientes com o mapa em memória.</cell></row>
+        <row><cell>Parar / Desconectar servidor</cell><cell>Encerra a operação do servidor. A ação não encerra automaticamente os clientes que consultam outros alvos.</cell></row>
+        <row><cell>Em execução</cell><cell>Indica listener local ativo. Acesso externo requer caminho IP e regras do Windows/rede compatíveis.</cell></row>
+      </table>
+      <h>Substituir um PLC em ensaio</h><ol><li>Configure no Windows o endereço e a rede previstos no ensaio autorizado.</li><li>Configure escuta e porta correspondentes; cadastre e aplique o mapa que o cliente espera.</li><li>Inicie o servidor e observe as requisições externas na timeline.</li><li>No Teste completo, escolha Servidor/Escravo; habilite descoberta de mapa para listar as regiões que os clientes realmente consultam.</li></ol>
+      <link topic="faixas-servidor">Construir o mapa de resposta</link><link topic="erro-tcp">Falha ao iniciar ou acessar a porta</link>
+    </topic>
+    <topic id="config-dispositivo" title="Dispositivo: editar nome e endpoint" keywords="aplicar restaurar nome ipv4 parâmetros bloqueado">
+      <h>Validação e alterações pendentes</h><p>Erros de nome, IPv4, porta, ID e intervalo aparecem abaixo do respectivo campo. Aplicar fica indisponível enquanto houver erro, comunicação ativa ou nenhuma alteração. Ao trocar de dispositivo, sair desta área ou fechar a janela com um rascunho, confirme o descarte ou cancele para aplicar os valores primeiro. Alterações não aplicadas nunca alteram o endpoint em operação.</p>
+      <p>Selecione um alvo ou o servidor local no painel lateral e abra Dispositivo &gt; Configuração do dispositivo. O texto de contexto identifica se a edição afeta um servidor-alvo remoto ou o listener local.</p>
+      <table><head><cell>Campo / botão</cell><cell>Validação e resultado</cell></head>
+        <row><cell>Nome</cell><cell>Obrigatório, até 1024 caracteres; espaços externos são removidos. Salvo no projeto. Não altera a identificação anunciada pelo PLC.</cell></row>
+        <row><cell>Endereço IP</cell><cell>IPv4 válido. No alvo, destino remoto; no servidor local, endereço de escuta.</cell></row>
+        <row><cell>Porta / ID da unidade</cell><cell>Porta 1 a 65535; ID 0 a 255.</cell></row>
+        <row><cell>Intervalo / conexão persistente</cell><cell>Visíveis somente para alvos cliente. Intervalo 100 a 86400000 ms; política TCP independente por alvo.</cell></row>
+        <row><cell>Aplicar configuração</cell><cell>Valida todos os campos. No alvo, fecha socket ocioso; troca de IP/porta/UID invalida leituras anteriores. Preserva os blocos do mapa e mantém comunicação parada.</cell></row>
+        <row><cell>Restaurar campos</cell><cell>Recarrega os valores atualmente aplicados e descarta edições ainda não confirmadas.</cell></row>
+        <row><cell>Mensagem de bloqueio</cell><cell>Aguarde fim dos testes/sondagem e pare a comunicação do item. Servidor em execução bloqueia sua configuração; leitura ativa bloqueia o alvo.</cell></row>
+      </table>
+      <p>Depois de aplicar, confirme endpoint no painel e inicie a operação desejada. Renomear sem alterar IP/porta/UID não representa nova descoberta nem prova de comunicação.</p>
+      <link topic="blocos">Editar os blocos do alvo</link>
+    </topic>
+    <topic id="conectar" title="Leitura única, conexão cíclica e estados" keywords="connect read once scan disconnect falha estado">
+      <table><head><cell>Ação / estado</cell><cell>Comportamento observável</cell></head>
+        <row><cell>Leitura única</cell><cell>Executa uma rodada dos blocos habilitados da sessão selecionada. Não mantém polling automático após essa rodada.</cell></row>
+        <row><cell>Iniciar leitura / Conectar alvo</cell><cell>Mantém ciclos até desconexão. Cada bloco gera uma transação; um ciclo com vários blocos produz vários requests.</cell></row>
+        <row><cell>Desconectar</cell><cell>Interrompe o ciclo e fecha a conexão persistente da sessão.</cell></row>
+        <row><cell>Conectando / Lendo</cell><cell>Operação em progresso; ainda não comprova resposta válida.</cell></row>
+        <row><cell>Leitura ativa / Leitura OK</cell><cell>Ciclo em execução ou rodada bem-sucedida. Confirme detalhe e horário de cada bloco.</cell></row>
+        <row><cell>Falha de conexão / leitura</cell><cell>Consulte Last error/status, Avisos e mensagens da timeline para distinguir transporte, exceção e resposta divergente.</cell></row>
+      </table>
+      <h>Conexão persistente ou por request</h><p>No modo persistente, ausência de pacotes de handshake a cada ciclo é normal. No modo por request, abertura/fechamento frequente é consequência da configuração. Compare contadores de conexões com essa política antes de interpretar reconexões como defeito.</p>
+      <p>O cliente serializa transações no socket. Um teste pode compartilhar esse recurso com polling já ativo, de modo que a latência medida inclua espera pela sessão. O timeout interno de uma transação cliente é de 4 segundos; o timeout da descoberta e o da conectividade têm critérios próprios.</p>
+      <link topic="intervalos">Entender o período de scan</link><link topic="latencia">Interpretar mediana e p95</link>
+    </topic>
+    <topic id="inventario" title="Dispositivos encontrados: categorias e colunas" keywords="ARP vizinho host industrial IP MAC modbus confirmado observado categorias">
+      <h>Categorias do painel lateral</h>
+      <table><head><cell>Categoria</cell><cell>Evidência e limite</cell></head>
+        <row><cell>Modbus encontrado</cell><cell>Resposta Modbus confirmada por sondagem ou reconhecida passivamente. Leia a porta e a origem da evidência para distinguir os dois casos.</cell></row>
+        <row><cell>Clientes Modbus observados</cell><cell>Requisições Modbus capturadas ou recebidas pelo servidor local. A porta de origem do cliente pode ser efêmera; não é uma porta para cadastrá-lo como servidor.</cell></row>
+        <row><cell>TCP aberto / não confirmado</cell><cell>Uma porta aceitou conexão, mas ainda não há resposta Modbus válida. Pode ser outro serviço ou um servidor que exige outro UID/FC.</cell></row>
+        <row><cell>Vizinhos IPv4 / ARP</cell><cell>Resolução IPv4/MAC local, sem evidência de protocolo industrial. “Vizinho” descreve uma entrada de rede, não a função do equipamento.</cell></row>
+        <row><cell>Outros hosts observados</cell><cell>Host visto em tráfego ou sondagem, sem classificação Modbus/infraestrutura suficiente. O papel provável é uma hipótese.</cell></row>
+        <row><cell>Infraestrutura anunciada</cell><cell>Vizinhança anunciada por LLDP/CDP. Nome/porta são campos recebidos no anúncio.</cell></row>
+        <row><cell>Endereços especiais</cell><cell>Endereços que não devem ser interpretados diretamente como equipamentos industriais individuais.</cell></row>
+      </table>
+      <h>Dispositivos / rede, dentro do teste</h><p>IP tem ordenação numérica. Dispositivo indica identidade local reconhecida; MAC vem da evidência disponível; Fonte informa ARP, captura ou sondagem; Papel provável resume a classificação. TCP aberto, Modbus confirmado e Modbus observado são listas de portas com evidências diferentes. Notas contém resultados e limitações da sondagem.</p>
+      <p>Loopback e IPs locais são consolidados no grupo “Este computador”. Um host ARP pode depois mudar de categoria quando houver resposta Modbus. Recolher ou ocultar o grupo altera a apresentação.</p>
+      <link topic="verificar-ip">Verificar um candidato</link><link topic="adicionar-descoberto">Adicionar como alvo</link>
+    </topic>
+    <topic id="verificar-ip" title="Verificar Modbus em um IP" keywords="sondagem unicast portas 1501 UID resultado verificar">
+      <table><head><cell>Campo</cell><cell>Uso e limites</cell></head>
+        <row><cell>Endereço IPv4</cell><cell>Destino unicast válido; não aceita endereços de grupo/multicast ou endereço inicial 0. Use o IP exato do candidato.</cell></row>
+        <row><cell>Portas TCP</cell><cell>De 1 a 16 entradas entre 1 e 65535, separadas por vírgula. Exemplo: 502,1501,1502. Cada porta será verificada no mesmo IP.</cell></row>
+        <row><cell>ID da unidade</cell><cell>0 a 255. Use o UID do equipamento; a verificação pontual não varre automaticamente todos os IDs.</cell></row>
+        <row><cell>Verificar</cell><cell>Envia leitura mínima. Se houver um alvo cadastrado nesse endpoint, usa função/endereço do primeiro bloco habilitado; caso contrário, usa FC03, endereço 0, quantidade 1.</cell></row>
+        <row><cell>Resultado</cell><cell>Resposta validada, exceção Modbus, TCP aberto sem confirmação ou falha de transporte. As notas e categorias do inventário são atualizadas.</cell></row>
+      </table>
+      <p>Exceção Modbus reconhecida confirma o protocolo, mas não a validade do endereço. O prazo de confirmação usa pelo menos 1000 ms ou o timeout de sondagem configurado, quando maior. Outros testes de leitura têm prazos próprios.</p>
+      <h>Exemplo</h><example>IP 172.27.30.84 / porta 1501 / UID 1
+TCP abre + Modbus exception 02:
+servidor Modbus confirmado; região consultada não validada.</example>
+      <link topic="erro-modbus">Interpretar códigos de exceção</link>
+    </topic>
+    <topic id="adicionar-descoberto" title="Adicionar dispositivo descoberto como alvo" keywords="menu direito encontrar mapa importar endpoint">
+      <p>Clique com o botão direito no dispositivo ou na linha em Dispositivos/rede e escolha Adicionar como alvo. Revise o serviço que deseja consultar: um cliente observado só pode ser cadastrado como servidor se também houver evidência/configuração de um serviço servidor nele.</p>
+      <table><head><cell>Campo / opção</cell><cell>Aplicação</cell></head>
+        <row><cell>IPv4 / Porta / Unit ID</cell><cell>Confirme o endpoint de servidor. Alterar esses campos muda o destino e pode invalidar o aproveitamento do mapa previamente descoberto.</cell></row>
+        <row><cell>Scan (ms)</cell><cell>Intervalo do novo alvo. Use um período compatível com a instalação.</cell></row>
+        <row><cell>Mapa disponível</cell><cell>O diálogo informa se há regiões descobertas para esse endpoint e UID. Revise-as depois no mapa do alvo.</cell></row>
+        <row><cell>Encontrar mapa agora</cell><cell>Opcional; somente leituras FC01 a FC04 habilitadas nas opções de descoberta. Sonda este endpoint/UID, sem varrer a sub-rede e sem escrever.</cell></row>
+        <row><cell>Adicionar alvo</cell><cell>Confirma o cadastro; a sessão passa a aparecer na Estação cliente. Revise nome e blocos antes de iniciar a operação.</cell></row>
+      </table>
+      <p>A porta efêmera usada por um cliente externo em uma requisição não identifica listener remoto. Por exemplo, 172.27.30.73:54012 na origem de um request para :1501 não autoriza usar 54012 como porta de servidor.</p>
+      <link topic="descoberta-mapa">Parâmetros da sondagem de mapa</link>
+    </topic>
+  </section>
+  <section title="03 · Mapa e valores Modbus">
+    <topic id="mapa-comunicacao" title="Áreas de dados e visões do mapa" keywords="HR IR COIL DI DISCRETE FC01 FC02 FC03 FC04">
+      <p>Abra Dispositivo após selecionar um alvo ou o servidor local. Tabela/configurar blocos descreve as consultas ou faixas; Mapa de endereços apresenta os pontos em cartões. No cliente, a tabela de valores é dividida por área.</p>
+      <table><head><cell>Área</cell><cell>Representação nesta aplicação</cell></head>
+        <row><cell>COIL</cell><cell>Bit, exibido como 0/1; leitura FC01. Escrita manual remota usa FC05 quando permitida.</cell></row>
+        <row><cell>DI / DISCRETE</cell><cell>Discrete Input, bit 0/1; leitura FC02. Sem escrita remota pelo popup.</cell></row>
+        <row><cell>HR</cell><cell>Holding Register, palavra de 16 bits; leitura FC03. Escrita manual usa FC06.</cell></row>
+        <row><cell>IR</cell><cell>Input Register, palavra de 16 bits; leitura FC04. Sem escrita remota pelo popup.</cell></row>
+      </table>
+      <p>HR 10 e IR 10 pertencem a áreas diferentes. A escolha de FC determina a área acessada. No cliente, a permissão “Escr.” indica capacidade de escrita da função nesta interface; a autorização real depende do servidor remoto.</p>
+      <h>Valores brutos</h><p>Os registros são exibidos como palavras inteiras. Um valor de processo pode usar escala, sinal ou duas palavras para 32 bits/float; consulte a definição do fabricante. Um número bruto válido não demonstra valor de engenharia correto. Esta tela não informa automaticamente unidade física, escala ou ordem de palavras do equipamento.</p>
+      <link topic="blocos">Referência das colunas de bloco</link><link topic="enderecamento">Endereço e notação de engenharia</link>
+    </topic>
+    <topic id="blocos" title="Configurar blocos de leitura do cliente" keywords="ativo nome FC endereço quantidade último valor status hora">
+      <p>Cada linha gera uma requisição por ciclo. Edite pela tabela, confirme a célula e confira o mapa resultante. Adicionar linha cria um bloco com nome sequencial; Remover linha elimina a configuração selecionada.</p>
+      <table><head><cell>Coluna</cell><cell>Significado, limite e efeito</cell></head>
+        <row><cell>Ativo</cell><cell>Marcado: bloco participa do polling e das validações repetidas. Desmarcado: não é lido nem compõe o mapa efetivo do cliente.</cell></row>
+        <row><cell>Nome</cell><cell>Identificação local da linha; use nomes distintos para facilitar correlação e evitar ambiguidade nos pontos exibidos. Não é um tag enviado ao PLC.</cell></row>
+        <row><cell>FC</cell><cell>FC01 COIL, FC02 DI, FC03 HR ou FC04 IR. Alterar FC muda a área consultada mesmo com o mesmo endereço.</cell></row>
+        <row><cell>Endereço</cell><cell>Offset de protocolo 0 a 65535; a quantidade não pode ultrapassar o último endereço 65535.</cell></row>
+        <row><cell>Qtd</cell><cell>Pontos por requisição; maior que zero. Leituras de registros limitadas a 125; de bits, a 2000. O equipamento pode impor limite menor.</cell></row>
+        <row><cell>Último valor</cell><cell>Lista de amostras na ordem dos endereços solicitados; não corresponde a uma única variável de engenharia.</cell></row>
+        <row><cell>Status</cell><cell>Não lido, OK ou erro recebido. Consulte-o antes de usar valores antigos.</cell></row>
+        <row><cell>Hora</cell><cell>Horário da rodada/resultado mais recente da linha. É necessário para avaliar atualidade.</cell></row>
+      </table>
+      <h>Exemplo de cobertura</h><example>Bloco 3 / FC03 / início 1000 / Qtd 10
+Requisição: HR 1000 até HR 1009, inclusive.
+Para incluir HR 1010, Qtd precisa ser 11.</example>
+      <p>Mudar habilitação, nome, FC, início ou quantidade invalida os dados anteriores da linha e reconstrói a visão do mapa. Blocos sobrepostos podem mostrar o mesmo endereço em mais de uma linha; prefira blocos sem sobreposição quando não houver uma finalidade específica.</p>
+      <link topic="qualidade">Qualidade e horário dos pontos</link>
+    </topic>
+    <topic id="faixas-servidor" title="Servidor: configurar faixas e aplicar mapa" keywords="ativo prefixo tipo início Qtd valor inicial Inc incremento RW">
+      <p>Em Tabela/configurar blocos &gt; Configurar faixas, defina as regiões que o simulador responderá. A aplicação do mapa recompõe os pontos em memória a partir das faixas habilitadas.</p>
+      <table><head><cell>Coluna / ação</cell><cell>Comportamento</cell></head>
+        <row><cell>Ativo</cell><cell>Somente faixas marcadas criam pontos no mapa aplicado.</cell></row>
+        <row><cell>Prefixo</cell><cell>Identificação descritiva da faixa. Confirme os nomes gerados em Visualizar mapa; o prefixo não é um identificador transmitido no protocolo.</cell></row>
+        <row><cell>Tipo</cell><cell>COIL, Discrete Input, Holding Register ou Input Register; cria a área correspondente.</cell></row>
+        <row><cell>Início / Qtd</cell><cell>Início 0 a 65535; quantidade positiva. Início + quantidade precisa ser no máximo 65536.</cell></row>
+        <row><cell>Valor inicial</cell><cell>Palavra 0 a 65535; nos tipos bit é convertida para estado lógico. Defina 0/1 para manter clareza.</cell></row>
+        <row><cell>Inc</cell><cell>Desmarcado: mesmo valor nos pontos. Marcado: soma o índice da posição ao valor inicial. Registros são palavras de 16 bits; evite extrapolar 65535.</cell></row>
+        <row><cell>R/W</cell><cell>Permite escrita remota em COIL/HR. DI/IR continuam áreas de leitura, independentemente do checkbox.</cell></row>
+        <row><cell>Adicionar / Remover faixa</cell><cell>Altera a lista de definição; confira o mapa efetivo depois da recomposição.</cell></row>
+        <row><cell>Aplicar mapa</cell><cell>Recria as regiões e seus valores iniciais. Valores editados em memória podem ser substituídos pelos valores das faixas.</cell></row>
+      </table>
+      <example>HR / início 0 / Qtd 3 / inicial 1000
+Inc desmarcado: 1000, 1000, 1000
+Inc marcado:    1000, 1001, 1002</example>
+      <p>Evite faixas sobrepostas do mesmo tipo: a definição posterior pode substituir o ponto anterior. Uma região ausente gera erro em leitura que a atravessa. Ajustar a memória local de DI/IR é uma ação de simulação, diferente de permitir escrita Modbus remota.</p>
+      <link topic="valores-servidor">Editar os valores do simulador</link>
+    </topic>
+    <topic id="valores-servidor" title="Servidor: visualizar e editar valores locais" keywords="valor acesso atualizado nome memória simulação">
+      <table><head><cell>Coluna</cell><cell>Como interpretar</cell></head>
+        <row><cell>Tipo</cell><cell>Área Modbus do ponto. O mesmo endereço pode existir em tipos distintos.</cell></row>
+        <row><cell>Endereço</cell><cell>Offset base zero do ponto em memória.</cell></row>
+        <row><cell>Nome</cell><cell>Rótulo local do ponto, exibido para operação; não é enviado no request/response.</cell></row>
+        <row><cell>Valor</cell><cell>Campo editável para alterar o dado que será respondido pelo simulador. HR/IR são palavras; COIL/DI são estados lógicos.</cell></row>
+        <row><cell>Acesso</cell><cell>R ou R/W para a operação remota. Editar a memória do simulador não altera essa permissão.</cell></row>
+        <row><cell>Atualizado</cell><cell>Horário da mudança registrada na memória local. Não é horário de leitura de cada cliente externo.</cell></row>
+      </table>
+      <ol><li>Selecione o servidor local e abra Visualizar mapa ou Mapa de endereços.</li><li>Altere Valor na tabela ou abra o editor do cartão.</li><li>Confirme a edição e faça uma leitura a partir do cliente externo para observar a nova resposta.</li></ol>
+      <p>Reaplicar as faixas pode repor os valores iniciais. Antes de salvar .ffd, mantenha faixas e pontos coerentes: o salvamento valida endereços, tipos e acesso. Nenhum valor local tem ligação automática com I/O físico.</p>
+    </topic>
+    <topic id="mapa-visual" title="Mapa de endereços: cartões e paginação" keywords="área dados localizar endereço próximo anterior pagina cor">
+      <table><head><cell>Controle / elemento</cell><cell>Função</cell></head>
+        <row><cell>Área de dados</cell><cell>Seleciona HR, IR, COIL ou DI. Localizar atua na área selecionada.</cell></row>
+        <row><cell>Ir ao endereço / Localizar</cell><cell>Informe offset 0 a 65535. O visor busca esse ponto configurado; a ação não envia uma leitura adicional nem cria endereço inexistente.</cell></row>
+        <row><cell>Anterior / Próxima</cell><cell>Percorre páginas dos pontos exibidos; o mapa renderiza até 96 cartões por página.</cell></row>
+        <row><cell>Cabeçalho do cartão</cell><cell>Endereço e acesso. O tipo vem da área escolhida.</cell></row>
+        <row><cell>Número central</cell><cell>Valor mais recente disponível; um ponto não lido exibe “-” para evitar um zero válido artificial.</cell></row>
+        <row><cell>Rótulo / tooltip</cell><cell>Nome e detalhe do ponto. Use o tooltip para informações que não cabem no cartão.</cell></row>
+        <row><cell>Indicador de qualidade</cell><cell>Verde OK; amarelo leitura parada; cinza não lido; azul memória local; vermelho falha. O texto acompanha a cor.</cell></row>
+      </table>
+      <p>Duplo clique abre edição quando o tipo e o contexto permitem. Em cliente, IR/DI não têm escrita remota pelo editor. Em servidor, editar valores faz parte da simulação local. Uma lacuna visual significa ausência na configuração exibida, sem comprovar inexistência na memória do PLC.</p>
+      <link topic="escrita">Operar o popup de escrita</link>
+    </topic>
+    <topic id="escrita" title="Escrita manual: popup e intervalo" keywords="duplo clique valor confirmar FC05 FC06 range coil HR">
+      <p>Abra o editor por duplo clique em um ponto gravável ou em um bloco COIL/HR. O contexto identifica alvo, região e função. A escrita deve ser revisada antes de confirmar.</p>
+      <table><head><cell>Campo</cell><cell>Valor e efeito</cell></head>
+        <row><cell>Endereço inicial</cell><cell>0 a 65535; primeiro ponto a modificar. No editor por bloco, deve estar dentro da linha.</cell></row>
+        <row><cell>Endereço final</cell><cell>0 a 65535 e maior ou igual ao inicial. Inclusive; precisa caber no bloco.</cell></row>
+        <row><cell>Novo valor</cell><cell>Inteiro 0 a 65535. HR usa a palavra informada; COIL converte zero em 0 e qualquer não zero em 1. Para coil, prefira 0/1.</cell></row>
+        <row><cell>OK / Confirmar</cell><cell>Valida os campos e executa a operação. Uma edição por bloco usa FC06 para cada HR ou FC05 para cada COIL.</cell></row>
+        <row><cell>Cancelar</cell><cell>Fecha o diálogo sem iniciar a escrita.</cell></row>
+      </table>
+      <h>Intervalos são inclusivos</h><example>Início 1000 / Fim 1010 / Valor 10
+São 11 pontos: 1000, 1001, ... 1010.
+HR: 11 requests FC06, valor 10 em cada ponto.
+COIL: 11 requests FC05, estado 1 em cada ponto.</example>
+      <note kind="safety">A escrita em intervalo é sequencial, sem atomicidade nem rollback. Se ocorrer falha no quinto request, pontos anteriores podem já estar alterados. Uma confirmação de protocolo não comprova que o processo utilizou o valor.</note>
+      <ol><li>Confirme o alvo e o bloco correto.</li><li>Confira tipo, início, fim e valor.</li><li>Confirme e examine Status/Avisos para detectar falha parcial.</li><li>Leia novamente a região para verificar o valor efetivamente devolvido.</li></ol>
+      <link topic="erro-mapa">Escrita rejeitada ou leitura divergente</link>
+    </topic>
+    <topic id="qualidade" title="Qualidade, valor e horário da amostra" keywords="não lido OK Escrita OK parada stale timestamp">
+      <table><head><cell>Indicação</cell><cell>Interpretação correta</cell></head>
+        <row><cell>Não lido / “-”</cell><cell>Nenhuma amostra válida para a configuração atual. O valor interno inicial não deve ser interpretado como leitura do PLC.</cell></row>
+        <row><cell>OK</cell><cell>A transação mais recente produziu resposta aceita. Verifique se o horário corresponde ao ciclo atual.</cell></row>
+        <row><cell>Escrita OK</cell><cell>O request de escrita foi aceito no protocolo. Uma leitura posterior verifica o valor retornado.</cell></row>
+        <row><cell>Falha / mensagem técnica</cell><cell>A última operação falhou. Pode haver valor anterior preservado; ele não passa a ser atual só por continuar exibido.</cell></row>
+        <row><cell>Leitura parada</cell><cell>O ciclo foi interrompido. A amostra pode ser válida historicamente, mas não está sendo atualizada.</cell></row>
+        <row><cell>Local</cell><cell>Valor da memória do simulador, em vez de uma leitura remota.</cell></row>
+      </table>
+      <p>Hora/Atualizado registra a atualização ou o resultado do ponto/linha conforme a visão. Para investigar atualização perdida, compare configuração ativa, último ciclo, qualidade e timestamp. Alterar o bloco reinicializa suas amostras e elimina pontos que deixaram de pertencer à configuração.</p>
+      <h>Exemplo</h><p>HR 10 = 1000, qualidade de falha e hora 15:42:10: o número pode ser a última leitura boa anterior. Não conclua que HR 10 ainda está em 1000 no dispositivo. Restabeleça a leitura antes de usar o valor para diagnóstico de processo.</p>
+    </topic>
+    <topic id="enderecamento" title="Endereço base zero, quantidade e dados de engenharia" keywords="offset 40001 30001 base um unsigned 16 bits float">
+      <p>Os campos de endereço usam offset de protocolo baseado em zero. O endereço documental de engenharia pode usar numeração baseada em um e prefixo da área; consulte a convenção do fabricante antes de copiar números.</p>
+      <table><head><cell>Exemplo</cell><cell>Configuração correspondente</cell></head>
+        <row><cell>HR documental 40001 em convenção clássica</cell><cell>FC03, offset 0, desde que o fabricante adote essa convenção.</cell></row>
+        <row><cell>HR documental 40101 nessa convenção</cell><cell>FC03, offset 100. O prefixo “4” não é o código de função e não é somado ao offset.</cell></row>
+        <row><cell>Endereço 100 / quantidade 10</cell><cell>100 até 109, inclusive. Fórmula: final = início + quantidade - 1.</cell></row>
+        <row><cell>Dois registros por variável</cell><cell>Leitura de duas palavras pode representar 32 bits, mas o significado/ordem precisa ser obtido na engenharia.</cell></row>
+      </table>
+      <p>Os valores HR/IR desta aplicação são palavras de 0 a 65535. Se um fabricante interpretar a palavra como signed de 16 bits, o mesmo padrão de bits pode representar outro número. Escala, sinal, float e word swap não são identificados pela descoberta de mapa.</p>
+      <h>Validar um novo bloco</h><ol><li>Confirme área e convenção de endereço.</li><li>Comece pela menor leitura documentada que represente o dado.</li><li>Confira resultado e exceção; amplie a quantidade até a região necessária.</li><li>Compare amostra com referência conhecida do dispositivo.</li></ol>
+      <link topic="descoberta-mapa">Endereço máximo inclusivo da descoberta</link>
+    </topic>
+  </section>
+  <section title="04 · Captura e avisos">
+    <topic id="timeline" title="Linha do tempo: Modbus e TCP" keywords="captura evento sessão direção TID UID FC Addr Qtd HEX">
+      <h>Investigar uma transação</h><p>Na subaba Modbus, Sessão/alvo pesquisa por nome ou endpoint; Unit ID filtra um inteiro de 0 a 255 e Função filtra a FC decimal original, incluindo sua resposta de exceção. Campos vazios incluem todos. Somente erros inclui exceções, requisições correlacionadas a exceções e eventos de falha/timeout. Os filtros são locais à lista, não restringem o BPF nem o teste. Limpar filtros restaura a visualização completa.</p><p>Selecione uma mensagem para consultar requisição, resposta e tempo entre eventos. A correlação usa sessão, endpoint, TID, UID e função. Se o par saiu da janela retida ou não foi observado, o tempo fica indisponível; isso não comprova timeout. Hexadecimal está recolhido em Dados brutos. O tempo entre eventos inclui transporte e esperas e não é exclusivamente o tempo de processamento do PLC.</p>
+      <p>A subaba Modbus apresenta mensagens das operações da aplicação; TCP apresenta pacotes da interface de captura. Correlacione por horário, endpoints e identificadores. Um evento Modbus da aplicação e um pacote de captura são evidências de origens distintas.</p>
+      <table><head><cell>Coluna Modbus</cell><cell>Significado</cell></head>
+        <row><cell>Hora / Sessão</cell><cell>Timestamp do evento e origem local: sessão cliente, servidor ou sistema.</cell></row>
+        <row><cell>Direção</cell><cell>Cliente para servidor, servidor para cliente ou mensagem de sistema. Refere-se ao papel no protocolo.</cell></row>
+        <row><cell>Endpoint</cell><cell>Par remoto da transação, com IP e porta. No servidor local pode ser a origem externa efêmera.</cell></row>
+        <row><cell>TID / UID</cell><cell>Transaction ID associa request e response; Unit ID identifica o destino lógico da consulta.</cell></row>
+        <row><cell>FC / Addr / Qtd</cell><cell>Função, offset inicial e quantidade relacionada à operação. A resposta pode carregar somente dados, com contexto associado ao request.</cell></row>
+        <row><cell>Resumo / Hex</cell><cell>Descrição interpretada e bytes disponíveis. Mensagem de sistema pode não ter frame hex.</cell></row>
+      </table>
+      <h>Colunas TCP</h><p>Nº é a sequência da lista; Tempo é tempo relativo da captura; Origem/Destino descrevem o fluxo; Protocolo é classificação; Tamanho é comprimento observado; Fase da coleta distingue referência, sondagem e monitoramento; Informação descreve o pacote. Duplo clique permite examinar detalhes disponíveis.</p>
+      <p>As listas têm retenção limitada, enquanto os contadores das janelas do teste são acumulados antes da fila de apresentação. Não conte somente as linhas visíveis para medir o ensaio inteiro.</p>
+      <link topic="captura-config">Configurar interface e filtro</link><link topic="captura-lista">Filtrar a lista de pacotes</link>
+    </topic>
+    <topic id="rede-dados" title="Dados da rede: volume, taxas e participantes" keywords="gráficos pps bytes banda pico conversa top talker overload throughput protocolos">
+      <p>A aba Dados resume os quadros que chegaram à captura e ainda estão na retenção visual. Use o período de 30 s, 1 min, 5 min ou todos os pacotes retidos. Mostra contagem, soma dos comprimentos capturados, média por segundo, picos por segundo completo, séries temporais, protocolos, endpoints com maior volume e conversas.</p>
+      <table><head><cell>Medida</cell><cell>Interpretação</cell></head>
+        <row><cell>Pacotes e volume</cell><cell>Quantidade de quadros e soma do tamanho reportado pelo capturador, dentro da amostra selecionada. Inclui quadros repetidos/retransmissões que foram capturados.</cell></row>
+        <row><cell>Médias</cell><cell>Total dividido pelo tempo entre a primeira e a última observação da amostra. Com uma única marca de tempo, taxa fica indisponível.</cell></row>
+        <row><cell>Pico em 1 s</cell><cell>Maior total de quadros ou bytes em um intervalo UTC de um segundo que esteja completo dentro da janela observada. Só aparece quando há ao menos um intervalo completo.</cell></row>
+        <row><cell>Gráficos</cell><cell>Séries por segundo dos últimos até 60 segundos, limitadas ao período escolhido. Lacuna significa nenhum quadro correspondente entregue para aquela faixa de tempo; consulte contadores e filtro antes de interpretar como silêncio na rede.</cell></row>
+        <row><cell>Dispositivos</cell><cell>Agrega bytes e quadros originados e destinados ao IP/MAC. Participação é por quadro envolvido; as porcentagens de dispositivos se sobrepõem porque cada quadro tem origem e destino.</cell></row>
+        <row><cell>Conversas</cell><cell>Combina os endpoints A/B sem distinguir direção, lista protocolos, volume e participação no conjunto observado. Não é um fluxo TCP remontado nem contagem de mensagens de aplicação.</cell></row>
+      </table>
+      <h>Leitura operacional</h><p>Ordene Dispositivos com mais tráfego ou Conversas por volume para encontrar o maior contribuinte capturado. Compare média e pico em 1 s; um pico curto não prova sobrecarga persistente. Consulte RST, janelas TCP zero e repetição de segmentos na própria captura e confira perdas da interface/fila. A taxa de bytes usa comprimentos capturados, não desconta overhead nem indica utilização percentual do link.</p>
+      <p>A amostra depende da interface e do BPF aplicados, pode perder quadros antes de chegar à aplicação e mantém no máximo 2.000 pacotes. Os contadores do driver são acumulados desde o início daquela captura; descartes da fila do programa são acumulados desde a abertura da aplicação. Uma participação alta identifica concentração dentro da amostra, não comprova dispositivo defeituoso ou saturação. Para concluir saturação, compare taxa sustentada com velocidade negociada e contadores de porta/NIC no mesmo período.</p>
+      <link topic="captura-config">Interface e filtro de captura</link><link topic="captura-lista">Filtros da lista TCP</link><link topic="intervalos">Intervalos e carga observada</link>
+    </topic>
+    <topic id="captura-config" title="Captura: referência de todos os campos" keywords="interface protocolo IP direção porta BPF atualizar iniciar aplicar filtro Npcap">
+      <p>Abra Linha do tempo &gt; TCP &gt; Configuração da captura. Os campos compõem o filtro BPF usado pelo driver. O filtro pode excluir evidências antes de elas chegarem à análise.</p>
+      <table><head><cell>Campo / botão</cell><cell>Efeito</cell></head>
+        <row><cell>Interface de rede</cell><cell>Placa exposta pelo driver de captura. Escolha Ethernet/Wi-Fi industrial ou loopback para tráfego 127.0.0.1. A lista pode conter adaptadores virtuais e filtros que não representam a rede pretendida.</cell></row>
+        <row><cell>Protocolo</cell><cell>Todos, TCP, UDP, ARP, ICMP, Modbus TCP, LLDP ou CDP. “Modbus TCP” usa filtro TCP; a confirmação do conteúdo ocorre na análise, não apenas pela seleção desse nome.</cell></row>
+        <row><cell>Endereço IP</cell><cell>Vazio: sem restrição de host. Preenchido: precisa ser IP válido e limita a captura ao host conforme a direção escolhida.</cell></row>
+        <row><cell>Direção do IP</cell><cell>Origem ou destino: os dois sentidos; Somente origem: src host; Somente destino: dst host. Restringir a um sentido pode excluir metade da transação.</cell></row>
+        <row><cell>Porta</cell><cell>Vazio: sem restrição de porta; preenchido: 1 a 65535. Filtrar 502 exclui, por exemplo, servidor em 1501.</cell></row>
+        <row><cell>Direção da porta</cell><cell>Ambos, somente origem ou somente destino. Para observar consulta e resposta de um serviço, ambos normalmente preserva os dois sentidos.</cell></row>
+        <row><cell>Filtro de captura (BPF)</cell><cell>Prévia de leitura. Combina critérios por AND; a prévia atualizada não substitui clicar Aplicar filtro em uma captura em execução.</cell></row>
+        <row><cell>Atualizar interfaces</cell><cell>Recarrega dispositivos disponíveis pelo driver.</cell></row>
+        <row><cell>Aplicar filtro</cell><cell>Valida e aplica o filtro na captura ativa ou prepara o filtro para o próximo início.</cell></row>
+        <row><cell>Iniciar / Parar captura</cell><cell>Abre ou fecha a coleta passiva. Não inicia sozinho o polling dos clientes nem o listener servidor.</cell></row>
+      </table>
+      <example>Protocolo TCP + IP 172.27.30.84, ambos + porta 1501, ambos
+Filtro: (tcp) and (host 172.27.30.84) and (port 1501)
+Conserva os dois sentidos daquele serviço; exclui ARP/ICMP/LLDP/CDP.</example>
+      <p>O filtro Todos inclui protocolos suportados e anúncios de vizinhança quando a interface permite. Adicionar restrição IP/porta pode excluir LLDP/CDP, que não são conversas TCP. Sem espelhamento, uma placa não recebe necessariamente conversas entre dois outros hosts do switch.</p>
+      <link topic="erro-captura">Captura vazia ou incompleta</link>
+    </topic>
+    <topic id="captura-lista" title="Filtros da lista e fila de apresentação" keywords="origem contém destino informação protocolo UI fila 2000">
+      <table><head><cell>Filtro / contador</cell><cell>Como interpretar</cell></head>
+        <row><cell>Origem contém</cell><cell>Busca texto na coluna Origem. Exemplo: 172.27.30.84.</cell></row>
+        <row><cell>Destino contém</cell><cell>Busca na coluna Destino. Preencher origem e destino exige atender os dois filtros.</cell></row>
+        <row><cell>Protocolo contém</cell><cell>Limita linhas já recebidas pela classificação textual.</cell></row>
+        <row><cell>Informação contém</cell><cell>Busca no resumo do pacote, por exemplo um sinal ou termo de interesse.</cell></row>
+        <row><cell>Campo vazio</cell><cell>Não restringe aquela coluna. A busca ignora maiúsculas/minúsculas.</cell></row>
+        <row><cell>Pacotes aguardando exibição</cell><cell>Pacotes recebidos e pendentes na fila da interface gráfica. Zero significa fila drenada naquele momento; não significa zero tráfego.</cell></row>
+      </table>
+      <p>Filtros da lista alteram a apresentação das linhas recebidas. O filtro BPF altera os pacotes capturados. Para investigar um sumiço de evidência, limpe primeiro filtros da lista e depois confira o BPF. A retenção da timeline TCP é de até 2000 linhas; os contadores das janelas do teste não dependem desse total visível.</p>
+      <p>Descartes da fila UI são perda de detalhe da lista. Descartes do driver são perda de pacotes capturáveis e tornam o volume observado uma amostra incompleta. Nenhum deles mede automaticamente perda física entre PLC e switch.</p>
+    </topic>
+    <topic id="avisos" title="Avisos: todos, importantes e checklist" keywords="diagnósticos nível recomendação qtd primeira última resumo">
+      <table><head><cell>Subaba / coluna</cell><cell>Leitura técnica</cell></head>
+        <row><cell>Todos</cell><cell>Eventos da sessão: Hora, Nível, Mensagem e Recomendação. Histórico pode incluir operações anteriores ao teste atual.</cell></row>
+        <row><cell>Avisos importantes / Qtd</cell><cell>Eventos semelhantes agrupados. Qtd é número de ocorrências daquele grupo, não número de dispositivos defeituosos.</cell></row>
+        <row><cell>Primeira / Última</cell><cell>Intervalo temporal das ocorrências agrupadas; ajuda a correlacionar com mudanças e janelas de teste.</cell></row>
+        <row><cell>Resumo / Último detalhe</cell><cell>Tipo de ocorrência e amostra técnica mais recente. O último detalhe não descreve necessariamente todas as ocorrências anteriores.</cell></row>
+        <row><cell>Recomendação</cell><cell>Próxima verificação sugerida. Não é confirmação automática da causa raiz.</cell></row>
+        <row><cell>Checklist</cell><cell>Critérios monitorados da sessão com Item, Status, Detalhe e Hora. É diferente do plano sequencial do Teste completo.</cell></row>
+      </table>
+      <h>Correlacionar uma falha</h><ol><li>Compare hora com início/fim do ensaio.</li><li>Confirme sessão, endpoint e assinatura do bloco.</li><li>Leia o request/response correspondente na timeline.</li><li>Verifique se o mesmo erro se repete em uma região ou em todos os blocos.</li></ol>
+      <p>Falhas observadas no teste usa eventos do escopo da execução. Um aviso global antigo ou de outro alvo não deve reprovar automaticamente esse teste. A mesma exceção repetida pode indicar configuração de mapa incorreta, em vez de problema de Ethernet.</p>
+    </topic>
+    <topic id="interfaces" title="Interfaces, rotas e ARP: interpretação" keywords="NIC máscara gateway IPv4 route arp MAC velocidade nominal">
+      <table><head><cell>Informação</cell><cell>Significado e verificação</cell></head>
+        <row><cell>Interface / IPv4 / máscara</cell><cell>Configuração local da placa. Determine se o destino está no mesmo segmento ou depende de rota.</cell></row>
+        <row><cell>Gateway / rota</cell><cell>Caminho configurado no Windows. Presença de gateway não comprova que seja o caminho usado para um alvo local.</cell></row>
+        <row><cell>Velocidade nominal</cell><cell>Valor informado pelo adaptador. Não mede banda útil disponível, utilização de uplink nem throughput do PLC.</cell></row>
+        <row><cell>ARP IP / MAC / tipo</cell><cell>Resolução conhecida localmente. Entradas dinâmicas podem envelhecer; entradas estáticas não comprovam equipamento respondendo.</cell></row>
+      </table>
+      <example>Notebook 172.27.30.73/24 e alvo 172.27.30.84:
+vizinhos diretos, normalmente resolução ARP do alvo.
+Alvo 172.27.31.84 via gateway:
+ARP local do gateway é esperado; ARP do destino remoto pode não existir.</example>
+      <p>Loopback não usa ARP; IP da própria estação não precisa de uma entrada ARP própria. Ausência de ARP em uma amostra não distingue host desligado, falta de tentativa prévia ou bloqueio. Em múltiplas placas, confira a rota e a interface realmente usadas.</p>
+      <link topic="etapa-arp">Critério da etapa ARP</link>
+    </topic>
+    <topic id="banda" title="Taxas de tráfego, porcentagens e contadores" keywords="pkt/s KB/s média pico top conversas banda carga RST zero window">
+      <table><head><cell>Medida</cell><cell>Cálculo e interpretação</cell></head>
+        <row><cell>Média pkt/s</cell><cell>Pacotes observados divididos pelos segundos efetivamente medidos; mistura os protocolos aceitos pelo BPF.</cell></row>
+        <row><cell>Média B/s, KB/s</cell><cell>Bytes capturados divididos pela janela. Diferente de RX/TX acumulados pelo adaptador do Windows.</cell></row>
+        <row><cell>Pico pkt/s</cell><cell>Maior contagem em um intervalo de 1 segundo da janela; não é pico instantâneo de microsegundos.</cell></row>
+        <row><cell>Top conversas (%)</cell><cell>Participação do fluxo direcional nos pacotes da janela. Origem→destino e destino→origem podem aparecer separados.</cell></row>
+        <row><cell>RX / TX da interface</cell><cell>Deltas dos contadores do sistema operacional. Podem incluir tráfego que o BPF excluiu.</cell></row>
+        <row><cell>Erros / descartes SO</cell><cell>Incrementos informados pelo Windows. Não equivalem a contadores de porta do switch.</cell></row>
+      </table>
+      <example>2000 pacotes / 12,5 s = 160 pkt/s em média.
+Conversa com 196 pacotes: 9,8% dos 2000.
+O número descreve volume; não há limite industrial universal que torne 160 pkt/s uma falha.</example>
+      <p>Compare o pico com o limiar operacional que você configurou e com latência/erros dos blocos relevantes. Tráfego de Internet ou outro protocolo pode dominar a interface sem interferir no PLC. “5000 pkt/s” é o limiar inicial da aplicação, não capacidade certificada do enlace.</p>
+      <link topic="etapa-monitoramento">Critérios exatos do monitoramento</link>
+    </topic>
+    <topic id="intervalos" title="Scan, intervalo entre requests e período observado" keywords="polling mediana 2 ms 1000 ms 75% amostra">
+      <p>Uma rodada com três blocos pode produzir requests separados por poucos milissegundos, mesmo com scan de 1000 ms. Para estimar polling, compare transações da mesma assinatura: sessão, endpoint, Unit ID, FC, início e quantidade.</p>
+      <table><head><cell>Parâmetro / regra</cell><cell>Efeito</cell></head>
+        <row><cell>Scan do alvo</cell><cell>Pausa entre ciclos operacionais; tempo total inclui a duração dos requests.</cell></row>
+        <row><cell>Intervalo adicional do teste</cell><cell>Pausa entre rodadas de validação repetida; não substitui o scan. Se polling já estiver ativo, ambos disputam a sessão.</cell></row>
+        <row><cell>Amostras de polling</cell><cell>Guarda até 12 intervalos por assinatura; intervalos menores que 10 ms não entram na estimativa. Com menos de 3, fica aguardando amostra.</cell></row>
+        <row><cell>Atenção por polling rápido</cell><cell>Com pelo menos 6 intervalos e período configurado conhecido, sinaliza mediana abaixo de 75% do período configurado.</cell></row>
+        <row><cell>Cliente externo</cell><cell>Seu período configurado pode ser desconhecido; frequência observada isolada não comprova sobrecarga.</cell></row>
+      </table>
+      <example>Scan conhecido 1000 ms / mediana observada 700 ms
+700 &lt; 750: pode gerar Atenção com amostra suficiente.
+Investigue requests adicionais concorrentes antes de atribuir a causa ao PLC.</example>
+      <link topic="latencia">Tempo de resposta por transação</link>
+    </topic>
+  </section>
+  <section title="05 · Configurar e executar o teste">
+    <topic id="teste-completo" title="Teste completo: controles e sequência" keywords="executar cancelar papel progresso abas global">
+      <h>Revisar antes de executar</h><p>Revisar e executar abre uma confirmação com papel, alvos e blocos habilitados, interface/filtro, CIDR, portas, limites de sondagem, rotas, janelas e descoberta de mapa. Voltar à configuração não inicia operações. Confirmar e executar inicia o teste. O tempo programado é a soma das janelas e pausas conhecidas, não uma previsão de término: transações, descoberta, rotas, timeouts e fallback adicionam duração variável. Em rede automática, o segmento é definido na preparação, e não pelo IP do alvo selecionado.</p><p>Durante a execução, o cabeçalho mostra tempo decorrido e etapa efetivamente em andamento, independentemente da etapa selecionada para leitura. A validação informa tentativa, bloco e leituras válidas/tentadas. Ao terminar, a interface abre Resumo para análise; relatórios continuam disponíveis na subaba própria.</p>
+      <p>A aba é global e mantém resultados da execução independentemente da seleção lateral. Escolha o papel analisado dentro de Execução; configurações de IP, porta e mapa pertencem aos dispositivos cadastrados.</p>
+      <table><head><cell>Controle / subaba</cell><cell>Função</cell></head>
+        <row><cell>Cliente/Mestre</cell><cell>Valida os servidores-alvo incluídos. Sem alvo, descobre no escopo permitido e valida servidores confirmados conforme mapa disponível.</cell></row>
+        <row><cell>Servidor/Escravo</cell><cell>Usa a configuração local e observa clientes que lhe enviam requests. Sem tráfego externo, etapas de comunicação podem ser inconclusivas.</cell></row>
+        <row><cell>Selecionar alvos</cell><cell>Lista de sessões cadastradas com checkbox de inclusão. Disponível no papel cliente.</cell></row>
+        <row><cell>Configurar procedimentos</cell><cell>Tempos, tentativas, intervalo adicional, descoberta de sub-rede, portas, taxa, concorrência e rotas.</cell></row>
+        <row><cell>Incluir descoberta de mapa / Opções</cell><cell>Adiciona etapa opcional; no cliente sonda regiões, no servidor observa regiões requisitadas.</cell></row>
+        <row><cell>Executar teste</cell><cell>Prepara serviços necessários e captura; registra contexto e percorre o plano. Operações previamente ativas podem continuar.</cell></row>
+        <row><cell>Cancelar</cell><cell>Interrompe o ensaio. Etapas incompletas não equivalem a falhas de rede; preserve a informação de cobertura parcial.</cell></row>
+        <row><cell>Progresso / checklist</cell><cell>Percentual deriva das etapas concluídas, não previsão exata de duração. Uma etapa longa pode manter o percentual por vários segundos/minutos.</cell></row>
+        <row><cell>Resumo / Dispositivos / Topologia / Mapa / Relatório</cell><cell>Resultados da mesma execução; abrem dentro do Teste completo.</cell></row>
+      </table>
+      <ol><li>Escolha o papel e confira a seleção de alvos.</li><li>Configure procedimentos e revise faixa/portas.</li><li>Habilite descoberta de mapa se houver objetivo para ela.</li><li>Execute e acompanhe o rótulo da etapa atual.</li><li>Selecione linhas do checklist para ler objetivo, resultado e recomendação.</li><li>Examine cobertura e evidências antes de exportar.</li></ol>
+      <link topic="escopo">Todos os parâmetros dos procedimentos</link><link topic="etapas">Índice das verificações</link>
+    </topic>
+    <topic id="alvos-teste" title="Selecionar servidores-alvo do ensaio" keywords="incluir nome endpoint ID estado checkbox sem alvo">
+      <table><head><cell>Coluna / condição</cell><cell>Significado</cell></head>
+        <row><cell>Incluir</cell><cell>Marca quais sessões terão etapas específicas nesta execução. Desmarcar não remove o alvo do projeto nem para seu polling existente.</cell></row>
+        <row><cell>Nome / Endpoint</cell><cell>Identifica o cadastro e IP:porta que serão testados.</cell></row>
+        <row><cell>ID</cell><cell>Unit ID da sessão. A seleção de um endpoint não varre automaticamente todos os IDs.</cell></row>
+        <row><cell>Estado</cell><cell>Situação operacional ao abrir a janela; seleção do teste não é prova de conexão.</cell></row>
+        <row><cell>Confirmar</cell><cell>Aplica a lista de inclusão ao próximo ensaio.</cell></row>
+      </table>
+      <h>Nenhum alvo incluído</h><p>O cliente pode executar descoberta e validar endpoints Modbus confirmados no escopo autorizado. Com descoberta de mapa, tenta repetir leituras em regiões encontradas. Sem região descoberta, a conclusão fica limitada à confirmação de protocolo. Hosts apenas capturados, fora da faixa autorizada, não recebem automaticamente leituras remotas.</p>
+      <p>Alvos cadastrados fora do CIDR podem ser verificados por sua inclusão explícita. Um endpoint adicional encontrado na rede não recebe necessariamente a mesma validação repetida dos alvos selecionados. Confira a etapa correspondente e a seção Cobertura do relatório.</p>
+      <link topic="etapa-automaticos">Validação dos servidores descobertos</link>
+    </topic>
+    <topic id="escopo" title="Procedimentos: visão geral e persistência" keywords="configurar teste parâmetros local janelas sondagem rota">
+      <p>A janela organiza quatro famílias: observação TCP, leituras repetidas, sondagem de rede e rotas. OK valida e aplica o conjunto; Cancelar descarta edições. Os parâmetros são guardados no perfil local para futuros ensaios; o arquivo .ffd guarda dispositivos/mapas e seleção de teste, mas não todos estes procedimentos.</p>
+      <table><head><cell>Grupo</cell><cell>Questão que resolve</cell></head>
+        <row><cell>Janelas de observação</cell><cell>Por quanto tempo medir referência e operação; qual pico de pacotes aciona um aviso?</cell></row>
+        <row><cell>Leituras repetidas</cell><cell>Quantas transações por bloco e qual pausa adicional entre rodadas?</cell></row>
+        <row><cell>Descoberta de rede</cell><cell>Quais IPs e portas sondar e com quais prazos, taxa e concorrência?</cell></row>
+        <row><cell>Rastreamento ICMP</cell><cell>Quantos destinos e saltos observar, com qual timeout?</cell></row>
+      </table>
+      <h>Tempo estimado</h><p>Duração inclui janelas passivas, sondagens, validação por alvo, mapa e rotas. Não é apenas a soma dos dois campos de tempo TCP. Em /24 com 254 candidatos, um ping e três portas por IP podem representar cerca de 1016 inícios de sondagem; a 5/s, a limitação de taxa sozinha exige aproximadamente 203 s, além de etapas e esperas pertinentes.</p>
+      <note>Aumentar duração melhora amostragem temporal; aumentar taxa/concorrência aumenta a demanda ativa. São escolhas com efeitos diferentes.</note>
+      <link topic="escopo-tempos">Tempos e tentativas, campo a campo</link><link topic="escopo-rede">Rede, portas e limites</link><link topic="escopo-rotas">Rastreamento ICMP</link>
+    </topic>
+    <topic id="escopo-tempos" title="Procedimentos: tempos e leituras repetidas" keywords="referência passiva monitoring tentativas intervalo pico limiar">
+      <table><head><cell>Campo</cell><cell>Limites, padrão inicial e efeito</cell></head>
+        <row><cell>Referência passiva inicial</cell><cell>1 a 3600 s; inicialmente 12 s. Observa antes das novas sondagens do teste. Comunicações previamente ativas continuam.</cell></row>
+        <row><cell>Monitorar linha do tempo TCP por</cell><cell>1 a 86400 s; inicialmente 30 s. Observa carga e sinais depois das sondagens, sem nova varredura de hosts nessa janela.</cell></row>
+        <row><cell>Avisar se pico ultrapassar</cell><cell>1 a 1000000 pacotes/s; inicialmente 5000. Atenção quando pico de um intervalo de 1 s for estritamente maior. É um limiar configurado, não certificação de saturação.</cell></row>
+        <row><cell>Tentativas por bloco habilitado</cell><cell>1 a 1000; inicialmente 15. Em cliente, planeja esse total para cada linha ativa; três blocos com 15 tentativas representam 45 transações de validação.</cell></row>
+        <row><cell>Intervalo adicional entre ciclos</cell><cell>100 a 60000 ms; inicialmente 1000. Pausa entre rodadas completas, somada ao tempo das transações. Não é a mesma configuração do scan operacional do alvo.</cell></row>
+      </table>
+      <h>Exemplo de planejamento</h><example>2 blocos / 15 tentativas / intervalo adicional 1000 ms
+Leituras planejadas: 2 × 15 = 30.
+Pausas entre rodadas: 14 × 1000 ms = 14 s.
+Tempo final: pausas + transações + espera pelo socket.</example>
+      <p>Latências são calculadas sobre respostas válidas. Com poucas respostas, p95 pouco representa a cauda; o relatório ressalva amostras abaixo de 20. Escolha duração/tentativas que cubram o ciclo e a periodicidade da falha investigada.</p>
+      <link topic="latencia">Métricas de resposta e amostragem</link>
+    </topic>
+    <topic id="escopo-rede" title="Procedimentos: CIDR, portas, taxa e concorrência" keywords="automático /16 /32 /24 sondagem timeout concorrência taxa">
+      <table><head><cell>Campo</cell><cell>Limites e comportamento</cell></head>
+        <row><cell>Descobrir equipamentos de toda a sub-rede</cell><cell>Habilita sondagem ativa. Desmarcado mantém evidências passivas e validações explicitamente selecionadas, sem enumerar a faixa adicional.</cell></row>
+        <row><cell>Identificar automaticamente a sub-rede</cell><cell>Usa interface local pertinente. Se houver várias redes e não puder decidir uma única, pede seleção da interface ou CIDR manual; não escolhe arbitrariamente toda rede disponível.</cell></row>
+        <row><cell>CIDR</cell><cell>IPv4 /16 a /32, fora de loopback e endereços de grupo. Exemplos: 172.27.30.0/24 ou 172.27.30.84/32. /31 inclui seus dois IPs; /32 um IP; nas faixas comuns exclui rede/broadcast.</cell></row>
+        <row><cell>Timeout TCP de sondagem</cell><cell>200 a 3000 ms; inicialmente 250. Aplica-se à descoberta. A confirmação Modbus usa no mínimo 1000 ms; conectividade e cliente têm prazos próprios.</cell></row>
+        <row><cell>Concorrência máxima</cell><cell>1 a 16; inicialmente 2. Número máximo de candidatos processados em paralelo. Não torna simultâneas todas as leituras de um único socket.</cell></row>
+        <row><cell>Taxa máxima de sondagens</cell><cell>1 a 100 tentativas/s; inicialmente 5. Espaça o início de sondagens, incluindo passos ICMP/TCP previstos. Concorrência e taxa controlam aspectos diferentes.</cell></row>
+        <row><cell>Portas TCP</cell><cell>1 a 16 entradas de 1 a 65535. Inicialmente 502,1501,1502. Portas não listadas não são enumeradas; portas dos alvos explicitamente incluídos também são consideradas.</cell></row>
+      </table>
+      <p>Mais portas e faixas maiores aumentam tempo e tentativas. /16 pode ter dezenas de milhares de candidatos; não trate como equivalente a /24. Descoberta começa com ICMP/TCP e confirma Modbus em etapa própria. Host com ICMP bloqueado ainda pode ser encontrado se sua porta TCP responder.</p>
+      <note>Fonte ARP ou captura não insere automaticamente todo IP de Internet no escopo ativo. Revise a faixa resolvida no contexto do relatório.</note>
+      <link topic="etapa-hosts">Resultado da varredura de hosts</link><link topic="etapa-descoberta">Confirmar protocolo</link>
+    </topic>
+    <topic id="escopo-rotas" title="Procedimentos: rastreamento ICMP" keywords="tracert TTL timeout salto alvos rota LLDP CDP">
+      <table><head><cell>Campo</cell><cell>Limites e efeito</cell></head>
+        <row><cell>Rastrear rotas ICMP</cell><cell>Inicialmente habilitado. Envia uma consulta por TTL, sem resolução DNS, para os destinos selecionados pela análise.</cell></row>
+        <row><cell>Máximo de saltos por alvo</cell><cell>1 a 30; inicialmente 12. Um destino além do limite pode ficar sem conclusão mesmo com TCP operacional.</cell></row>
+        <row><cell>Timeout por salto</cell><cell>200 a 3000 ms; inicialmente 500. Tempo de espera por ICMP. Ele não altera o timeout das leituras Modbus.</cell></row>
+        <row><cell>Máximo de alvos rastreados</cell><cell>1 a 32; inicialmente 8. Destinos excedentes são omitidos e precisam constar como limitação.</cell></row>
+      </table>
+      <p>No cliente, destinos vêm dos alvos e servidores confirmados; no servidor, incluem pares Modbus observados. Um salto Success indica destino alcançado; TtlExpired identifica resposta de roteador; TimedOut indica ausência de resposta ICMP naquele TTL. A consulta encerra ao alcançar destino ou receber erro de inacessibilidade pertinente.</p>
+      <h>Tempo de pior caso aproximado</h><p>Oito alvos × 12 saltos × 500 ms = 48 s de espera, antes de considerar espaçamento de sondagem. Destinos que respondem cedo encurtam a execução. Anúncios LLDP/CDP são recebidos passivamente e não dependem de um switch responder a ping.</p>
+      <link topic="topologia">Diagrama, rotas e vizinhos anunciados</link>
+    </topic>
+    <topic id="descoberta-mapa" title="Descoberta de mapa: todos os parâmetros" keywords="mapa até bloco fallback Unit IDs FC01 FC02 FC03 FC04">
+      <p>Abra Opções de descoberta de mapa. Em Cliente/Mestre a etapa investiga regiões de servidores confirmados. Em Servidor/Escravo registra o que clientes externos requisitam; limite de endereço/bloco/FC de sondagem não faz o cliente externo mudar suas consultas.</p>
+      <table><head><cell>Campo</cell><cell>Domínio, padrão e efeito</cell></head>
+        <row><cell>Habilitar descoberta</cell><cell>Adiciona a etapa. Inicialmente desabilitado.</cell></row>
+        <row><cell>Endereço máximo / Mapa até</cell><cell>0 a 65535, inclusive; inicialmente 120. Sondagem cliente começa em 0. Valor 100 significa investigar 0 a 100, total 101 posições.</cell></row>
+        <row><cell>Bloco</cell><cell>1 a 120; inicialmente 10. Quantidade por request de descoberta, inclusive para áreas de bits. Última janela é encurtada para não ultrapassar o máximo.</cell></row>
+        <row><cell>Varrer Unit IDs</cell><cell>Desabilitado inicialmente. Marcado percorre faixa inclusiva; desmarcado usa UID descoberto/cadastrado pertinente ao endpoint.</cell></row>
+        <row><cell>ID inicial / final</cell><cell>0 a 255; inicialmente 1 a 10. Inicial precisa ser menor ou igual ao final. A faixa é aplicada quando a varredura de IDs está habilitada.</cell></row>
+        <row><cell>FC01 / FC02 / FC03 / FC04</cell><cell>Selecionam COIL, DI, HR, IR. Pelo menos uma função deve ser marcada; inicialmente as quatro estão habilitadas.</cell></row>
+        <row><cell>Fallback ponto a ponto</cell><cell>Inicialmente habilitado. Para falha de bloco compatível, consulta posições individuais para encontrar trechos válidos. Adiciona requests.</cell></row>
+      </table>
+      <h>Quantidade de requests</h><example>Máximo 100 / bloco 10 / FC03 / um UID / um endpoint
+Janelas: 0–9, 10–19, ... 90–99, 100–100.
+São 11 requests iniciais, antes de fallback.
+Quatro FCs × 10 UIDs: até 440 janelas iniciais.
+Função não suportada ou falhas de transporte podem encurtar o percurso.</example>
+      <p>O algoritmo interrompe uma função quando ela é recusada como não suportada e pode interromper após duas falhas de transporte consecutivas. Não interpreta todo endereço não lido como inválido. O timeout por request segue o timeout de sondagem; não há escrita.</p>
+      <h>Referência visual</h>
+      <image src="ManualImages/MapDiscovery.png">Campos do diálogo de descoberta, apresentado com altura ampliada para mostrar todas as opções. O exemplo usa máximo 100 inclusivo e bloco 10.</image>
+      <link topic="mapa-descoberto">Colunas e nível de confiança</link>
+    </topic>
+    <topic id="mapa-descoberto" title="Mapa descoberto: colunas e confiança" keywords="endpoint Unit ID função início fim quantidade modo notas">
+      <table><head><cell>Coluna</cell><cell>Significado</cell></head>
+        <row><cell>Endpoint / Unit ID</cell><cell>Serviço e destino lógico aos quais a evidência pertence. Não transfira automaticamente o mapa para outro UID.</cell></row>
+        <row><cell>Função</cell><cell>Área/operação Modbus que produziu o resultado.</cell></row>
+        <row><cell>Início / Fim / Qtd</cell><cell>Intervalo inclusivo. Na descoberta ativa, quantidade corresponde a fim - início + 1.</cell></row>
+        <row><cell>Modo</cell><cell>Ativo/client: leituras realizadas; Observado no servidor: requests recebidos de clientes externos.</cell></row>
+        <row><cell>Confiança</cell><cell>Ponto/range validado: houve resposta de leitura. Range requisitado: somente evidencia a consulta; não equivale a mapa completo cadastrado no cliente.</cell></row>
+        <row><cell>Notas</cell><cell>Amostra de valor ou quantidade de requests/janela. Observe as limitações descritas.</cell></row>
+      </table>
+      <p>Uma leitura de um bloco confirmada comprova que esse bloco respondeu naquele instante. União de pequenos trechos válidos não garante que o servidor aceite toda a região unida em uma requisição grande. No servidor, um range requisitado pode ter produzido exceção; correlacione com envio/recebimento.</p>
+      <p>Região ausente pode estar além do máximo, em outra função/UID, protegida ou não ter sido consultada antes de interrupção. O resultado não fornece nomes, unidades de engenharia ou direitos de escrita do equipamento.</p>
+      <link topic="adicionar-descoberto">Reaproveitar a região como alvo</link>
+    </topic>
+    <topic id="resultado-status" title="Resumo, cobertura e estados do checklist" keywords="OK atenção falha inconclusivo não aplicável verde cinza azul amarelo">
+      <h>Achados e cobertura separados</h><p>Falhas e atenções identificadas apresenta primeiro as etapas com falha/erro, depois as atenções, com evidência abreviada e recomendação. Consultar etapa e evidências abre a etapa exata na subaba Execução. A conclusão agregada não gera um cartão redundante. Cobertura incompleta reúne inconclusivas e etapas canceladas separadamente: ausência de evidência não comprova defeito. Os contadores gerais e demais subabas preservam todos os resultados, inclusive etapas não aplicáveis.</p>
+      <table><head><cell>Estado</cell><cell>Interpretação</cell></head>
+        <row><cell>Pendente / cinza</cell><cell>A etapa ainda não foi executada; não representa resultado.</cell></row>
+        <row><cell>Executando / azul</cell><cell>Coleta ou operação em andamento; aguarde o fechamento da janela.</cell></row>
+        <row><cell>OK / verde</cell><cell>Critério da etapa atendido na configuração e janela medidas. Não atesta regiões ou tempo fora do ensaio.</cell></row>
+        <row><cell>Atenção / amarelo</cell><cell>Sinal/desvio ou cobertura parcial previsto pelo critério; leia a evidência.</cell></row>
+        <row><cell>Falha / vermelho</cell><cell>Validação falhou ou erro pertinente foi observado. Identifique o bloco e o tipo de falha.</cell></row>
+        <row><cell>Inconclusivo</cell><cell>Evidência insuficiente: captura vazia, ausência de requests externos, falta de mapa ou outra limitação.</cell></row>
+        <row><cell>Não aplicável</cell><cell>Procedimento sem objeto naquele contexto, como ARP para loopback ou leitura sem bloco habilitado.</cell></row>
+        <row><cell>Cancelado</cell><cell>Execução interrompida antes de conclusão; avalie somente etapas e amostras concluídas.</cell></row>
+      </table>
+      <p>Resumo informa início/fim, contagem de estados, rede, Modbus, rotas e carga. “Etapas testadas” é progresso do plano, diferente de tentativas de leitura. Conclusão prioriza Falha, depois Atenção, depois Inconclusivo; confira os resultados por alvo, porque um alvo com falha não invalida a evidência independente de outro.</p>
+      <link topic="etapa-conclusao">Critério de agregação</link>
+    </topic>
+    <topic id="latencia" title="Leituras válidas, mediana, p95 e período" keywords="latência min max sucesso tentadas planejadas percentil scan">
+      <table><head><cell>Métrica</cell><cell>Definição</cell></head>
+        <row><cell>Planejadas</cell><cell>Tentativas configuradas para o bloco antes da execução.</cell></row>
+        <row><cell>Tentadas</cell><cell>Operações realmente iniciadas. Cancelamento pode deixar este total abaixo do planejado.</cell></row>
+        <row><cell>Válidas</cell><cell>Respostas aceitas após validação de protocolo e dados. Sucesso (%) = válidas / tentadas × 100.</cell></row>
+        <row><cell>Min / mediana / max</cell><cell>Menor, valor central e maior tempo das respostas válidas; falhas não entram como respostas de latência válida.</cell></row>
+        <row><cell>p95</cell><cell>Valor da posição arredondada para cima de 95% da lista ordenada. Com 15 amostras, pode coincidir com o máximo.</cell></row>
+        <row><cell>p95 versus scan</cell><cell>Com pelo menos 5 respostas válidas, sinaliza lento quando p95 é maior ou igual ao scan do alvo. A comparação é por transação.</cell></row>
+      </table>
+      <example>15 planejadas / 15 tentadas / 14 válidas = 93,3% sucesso.
+Uma exceção não entra nas 14 latências válidas.
+30 válidas, mediana 8 ms, p95 40 ms, scan 1000 ms:
+transações abaixo da referência de scan, mas o ciclo total também depende dos demais blocos.</example>
+      <p>Tempo inclui espera pelo socket compartilhado e comunicação; não isola processamento do PLC. Amostras abaixo de 20 não caracterizam bem cauda de latência nem falhas raras. Sem latências válidas, “-”/sem respostas não representa 0 ms.</p>
+      <link topic="relatorio-completo">Onde encontrar as métricas no relatório</link>
+    </topic>
+  </section>
+  <section title="06 · Verificações do checklist">
+    <topic id="etapas" title="Índice das etapas e plano dinâmico" keywords="contexto ARP hosts descoberta mapa topologia TCP monitoramento conclusão">
+      <p>O plano muda conforme papel, alvos e descoberta de mapa. Há etapas comuns de rede, etapas por alvo e fechamento. A numeração não é fixa: inserir a descoberta ou outro alvo muda os números.</p>
+      <p>Uma etapa selecionada mostra nome, objetivo, resultado e recomendação. O status responde ao critério específico daquela operação, não a uma norma universal de rede industrial.</p>
+      <link topic="etapa-contexto">Contexto e preparação</link>
+      <link topic="etapa-interfaces">Interfaces e rotas IP</link>
+      <link topic="etapa-referencia">Referência passiva TCP</link>
+      <link topic="etapa-arp">Tabela ARP local</link>
+      <link topic="etapa-hosts">Varredura de hosts</link>
+      <link topic="etapa-descoberta">Descoberta Modbus</link>
+      <link topic="descoberta-mapa">Descoberta de mapa opcional</link>
+      <link topic="topologia">Topologia inferida</link>
+      <link topic="etapa-tcp">Conectividade TCP</link>
+      <link topic="etapa-mapa">Mapa e leituras repetidas</link>
+      <link topic="etapa-envio">Envio e recebimento</link>
+      <link topic="etapa-automaticos">Servidores descobertos sem alvos</link>
+      <link topic="etapa-monitoramento">Monitoramento TCP operacional</link>
+      <link topic="falhas-observadas">Falhas observadas</link>
+      <link topic="etapa-conclusao">Conclusão</link>
+    </topic>
+    <topic id="etapa-contexto" title="Etapa: contexto e preparação" keywords="serviços auto start captura interface escopo relatório">
+      <p>Registra a configuração efetivamente usada: papel, endpoints, UID, captura, filtro, janelas e sondagem. A preparação pode iniciar o serviço necessário e escolher interface com tráfego, mas depende do driver e da configuração local.</p>
+      <h>Itens para conferir</h><ul><li>Papel registrado corresponde ao ensaio pretendido.</li><li>Endpoints incluídos têm porta e UID corretos.</li><li>Interface e BPF permitem observar o tráfego necessário.</li><li>Rede resolvida automaticamente pertence à instalação pretendida.</li><li>Ações automáticas e qualquer falha de inicialização foram registradas.</li></ul>
+      <p>Se contexto divergir do pretendido, resultados subsequentes podem ser corretos para um ensaio errado. Interrompa, corrija configuração e execute novamente. Um listener iniciado localmente não comprova que o firewall permita acesso externo.</p>
+      <link topic="escopo">Configuração usada no ensaio</link>
+    </topic>
+    <topic id="etapa-interfaces" title="Etapa: interfaces e rotas IP" keywords="NIC gateway máscara velocidade rota">
+      <p>Consulta placas, endereços, máscara/prefixo, gateway, velocidade nominal e rotas do Windows. É uma leitura da configuração e dos caminhos locais disponíveis.</p>
+      <h>Interpretação item a item</h><ul><li>Interface ativa: sistema operacional informa link/estado; não garante alcance ao PLC.</li><li>IPv4/prefixo: define segmento direto. Confira colisão ou múltiplas placas em faixas semelhantes quando houver caminho inesperado.</li><li>Gateway: pertinente para destino roteado; pode ser irrelevante para vizinho direto.</li><li>Velocidade: capacidade nominal anunciada pelo adaptador, não medição de capacidade útil.</li></ul>
+      <p>Quando TCP falha, compare a rota para o endereço com a placa industrial esperada. Um adaptador virtual, VPN ou rota mais específica pode mudar o caminho. Confirme com configuração de rede e outra evidência; esta etapa não mede cabos ou contadores de switch.</p>
+      <link topic="interfaces">Exemplos de segmento local e remoto</link>
+    </topic>
+    <topic id="etapa-referencia" title="Etapa: referência passiva TCP" keywords="baseline referência janela RST pico captura inicial">
+      <p>Espera a duração de Referência passiva inicial e acumula pacotes aceitos pela interface/BPF antes das novas sondagens. Clientes e servidor previamente ativos continuam; “passiva” não significa que a rede esteja silenciosa.</p>
+      <h>Critérios</h><p>Zero pacotes ou descartes positivos informados pelo driver tornam a janela Inconclusiva. Com pacotes, sinais como RST, zero-window, segmentos repetidos, exceções, limiar de pico excedido ou limites/descartes podem gerar Atenção. Sem sinais monitorados, fica OK para a amostra.</p>
+      <p>Compare protocolos e principais conversas com o tráfego esperado. Essa janela fornece referência para a medição operacional posterior; diferenças de carga podem refletir início de polling e tráfego externo, não necessariamente degradação.</p>
+      <link topic="etapa-monitoramento">Definição dos sinais e contadores</link>
+    </topic>
+    <topic id="etapa-arp" title="Etapa: tabela ARP local" keywords="arp -a vizinho MAC routed loopback inconclusivo">
+      <p>Consulta ARP do Windows e relaciona entradas com os destinos pertinentes. A tabela pode incluir outros vizinhos e endereços especiais; não identifica automaticamente um PLC.</p>
+      <table><head><cell>Condição</cell><cell>Resultado interpretável</cell></head>
+        <row><cell>Loopback / 0.0.0.0</cell><cell>ARP não aplicável ao destino/escuta.</cell></row>
+        <row><cell>IP local da estação</cell><cell>Não exige entrada própria para demonstrar presença local.</cell></row>
+        <row><cell>Destino em outra sub-rede</cell><cell>ARP do destino não é esperado localmente; avalie rota e gateway.</cell></row>
+        <row><cell>Vizinho direto com MAC</cell><cell>Resolução conhecida; não comprova serviço Modbus.</cell></row>
+        <row><cell>Vizinho direto sem entrada</cell><cell>Pode gerar Inconclusivo. Ausência isolada não confirma erro de VLAN/IP nem host desligado.</cell></row>
+      </table>
+      <p>Para fechar diagnóstico, relacione ARP com uma tentativa TCP e a rota. Não force uma classificação industrial com base somente na fabricante do MAC ou no endereço IPv4.</p>
+    </topic>
+    <topic id="etapa-hosts" title="Etapa: varredura de hosts e portas" keywords="ping TCP candidatos ativos CIDR portas sondagem">
+      <p>Enumera candidatos autorizados e testa ICMP/portas. Um candidato é considerado respondente quando responde a ping ou aceita alguma conexão TCP. O inventário pode preservar um IP já observado mesmo sem resposta nessa rodada.</p>
+      <h>O resultado informa</h><ul><li>CIDR, quantidade de candidatos e quantidade respondente.</li><li>Portas abertas e portas sondadas.</li><li>Timeout, taxa e concorrência efetivos.</li><li>Limitações: ausência de resposta não distingue filtro, indisponibilidade ou host inexistente.</li></ul>
+      <p>Descoberta desabilitada: Não aplicável para faixa adicional. Faixa inválida/ambígua ou zero respondentes: Inconclusivo. Um ou mais respondentes: OK para enumeração, ainda sem confirmação de Modbus. Confira a lista de portas antes de concluir que um serviço em 1501 foi procurado.</p>
+      <link topic="escopo-rede">Todos os campos da varredura</link>
+    </topic>
+    <topic id="etapa-descoberta" title="Etapa: confirmação Modbus" keywords="protocolo validado porta aberta UID FC exception">
+      <p>Parte das portas abertas e endpoints explicitamente incluídos e envia leitura mínima. Para alvo cadastrado, usa o UID e primeiro bloco habilitado; sem bloco/cadastro pertinente, usa leitura FC03 no offset 0. Uma exceção Modbus coerente confirma protocolo sem validar o range.</p>
+      <h>Níveis de evidência</h><table><head><cell>Evidência</cell><cell>Conclusão sustentada</cell></head>
+        <row><cell>Conexão TCP</cell><cell>Serviço aceitou transporte; aplicação ainda desconhecida.</cell></row>
+        <row><cell>Resposta ou exceção validada</cell><cell>Modbus confirmado no endpoint/UID consultado; mapa inteiro não validado.</cell></row>
+        <row><cell>Resposta reconhecida na captura</cell><cell>Modbus observado passivamente; cobertura depende de ADU completo e protocolo suportado.</cell></row>
+      </table>
+      <p>Com algum endpoint confirmado/observado, a etapa pode ficar OK; nenhum confirmado gera Inconclusivo. Confira detalhe por candidato: um resultado global OK não significa que todas as portas responderam. IPs locais são agrupados na contagem de dispositivos, mantendo endpoints nas evidências.</p>
+      <link topic="verificar-ip">Confirmação pontual de um endereço</link>
+    </topic>
+    <topic id="etapa-tcp" title="Etapa: conectividade TCP por alvo" keywords="socket 3 segundos abrir servidor listener porta">
+      <p>No cliente, tenta abrir um socket para IP:porta do alvo com prazo de 3 segundos. O tempo registrado é do estabelecimento TCP, separado da latência Modbus.</p>
+      <h>Resultados</h><ul><li>OK: socket abriu. Prossiga para verificar Unit ID, função e mapa.</li><li>Falha/erro: mensagem da operação indica recusa, timeout ou outro problema de transporte.</li><li>No servidor: verifica se o listener local está em execução. O resultado não comprova alcance externo.</li></ul>
+      <p>Não há limiar universal de latência industrial aplicado ao tempo do handshake. Compare com ensaios do mesmo caminho e condições. Se a porta abre mas o mapa falha, analise a camada Modbus em vez de atribuir automaticamente a causa a cabeamento.</p>
+      <link topic="erro-tcp">Diferenças entre timeout, recusa e reset</link>
+    </topic>
+    <topic id="etapa-mapa" title="Etapa: mapa e leituras repetidas" keywords="tentativas bloqueadas sucesso latência validar read only">
+      <p>No cliente, percorre todos os blocos habilitados em cada rodada. Cada bloco acumula planejadas, tentadas, válidas, erros por tipo e latências. As consultas usam a função e região cadastradas e não escrevem.</p>
+      <table><head><cell>Condição</cell><cell>Critério do software</cell></head>
+        <row><cell>Nenhum bloco habilitado</cell><cell>Não aplicável; cobertura do mapa é zero.</cell></row>
+        <row><cell>Alguma leitura tentada não válida</cell><cell>Falha. Classifique erro por bloco: socket, timeout, exceção ou frame divergente.</cell></row>
+        <row><cell>Todas válidas, mas p95 ≥ scan com amostra suficiente</cell><cell>Atenção para a transação daquele bloco.</cell></row>
+        <row><cell>Todas válidas sem critério de lentidão</cell><cell>OK para blocos e tentativas executados.</cell></row>
+      </table>
+      <p>No servidor, esta etapa descreve pontos locais e quantos são graváveis. Mapa não vazio pode ficar OK; mapa vazio fica Inconclusivo. Essa verificação local não valida os requests dos clientes externos, que aparecem em envio/recebimento.</p>
+      <link topic="latencia">Fórmulas e tamanho da amostra</link>
+    </topic>
+    <topic id="etapa-envio" title="Etapa: envio e recebimento" keywords="TID UID correlacionar request response pendentes servidor">
+      <p>No cliente, realiza uma leitura do primeiro bloco habilitado e verifica resposta completa; nenhum bloco gera Não aplicável. O sucesso confirma aquela transação, função e região, sem testar escrita nem todo mapa.</p>
+      <h>No servidor local</h><table><head><cell>Contador</cell><cell>Significado</cell></head>
+        <row><cell>Requests / respostas correlacionadas</cell><cell>Associação por endpoint, TID e UID dos eventos desde início do ensaio, excluindo sondagens próprias pertinentes.</cell></row>
+        <row><cell>Exceptions</cell><cell>Respostas Modbus de exceção. Alguma pode gerar Falha nesta validação.</cell></row>
+        <row><cell>Pendentes</cell><cell>Request ainda sem resposta correlacionada no fechamento; pode estar em trânsito.</cell></row>
+        <row><cell>Sem correlação / limite</cell><cell>Evento sem par encontrado ou detalhe limitado. Não é uma contagem automática de perda física.</cell></row>
+      </table>
+      <p>Zero requests externos: Inconclusivo. Quantidades divergentes ou eventos sem correlação: Inconclusivo. Requests/respostas correlacionados sem exceções: OK. Esses contadores independem da retenção de 500 eventos da timeline Modbus.</p>
+      <link topic="erro-mapa">Requests fora do mapa local</link>
+    </topic>
+    <topic id="etapa-automaticos" title="Etapa: validar servidores descobertos sem alvos" keywords="master nenhum alvo protocolo mapa remoto automático">
+      <p>Esta etapa aparece no modo cliente quando nenhum servidor cadastrado foi incluído. A descoberta estabelece quais endpoints podem ser verificados; a validação usa apenas servidores confirmados dentro do alcance autorizado.</p>
+      <h>Como interpretar</h><ul><li>Protocolo confirmado sem range encontrado: cobertura de mapa permanece limitada.</li><li>Regiões descobertas: leituras podem ser repetidas conforme parâmetros para validar essas regiões.</li><li>Falha em um endpoint: examine o detalhe por UID e função; não extrapole para os demais.</li><li>Host visto apenas passivamente fora do escopo: não significa alvo autorizado a receber requests.</li></ul>
+      <p>O resultado automático não cadastra obrigatoriamente cada endpoint como alvo permanente. Para continuar o troubleshooting de um servidor, use Adicionar como alvo e revise os blocos. Uma região inferida não revela nomes de tags ou unidade física.</p>
+      <link topic="alvos-teste">Selecionar explicitamente a cobertura</link>
+    </topic>
+    <topic id="etapa-monitoramento" title="Etapa: monitoramento TCP e critérios de alerta" keywords="RST zero window segmento repetido driver drop UI pico">
+      <p>Acumula a janela operacional durante o tempo configurado, sem nova varredura de hosts nessa janela. O cálculo ocorre antes da fila da UI.</p>
+      <table><head><cell>Sinal</cell><cell>Definição usada e limite interpretativo</cell></head>
+        <row><cell>RST</cell><cell>Flag de reset TCP observada. Pode ser rejeição, encerramento ou erro; exige identificar emissor e contexto.</cell></row>
+        <row><cell>Zero-window</cell><cell>ACK com janela TCP zero, excluindo SYN/RST. Indica controle de fluxo do receptor, sem identificar causa de ocupação do buffer.</cell></row>
+        <row><cell>Segmentos repetidos</cell><cell>Mesma sequência e tamanho de payload por fluxo observado. Indício de repetição; não há remontagem completa para provar retransmissão ou perda.</cell></row>
+        <row><cell>Exceção Modbus</cell><cell>Frame reconhecido de exceção; classifique a função e código antes de inferir problema de Ethernet.</cell></row>
+        <row><cell>Pico acima do limiar</cell><cell>Contagem de 1 s estritamente maior que o valor configurado.</cell></row>
+        <row><cell>Descartes UI / SO / limites de detalhe</cell><cell>Sinais de cobertura ou operação local parcial. Contadores totais podem continuar mesmo com detalhe limitado.</cell></row>
+      </table>
+      <p>Zero pacotes ou descartes positivos do driver: Inconclusivo. Havendo pacotes, qualquer sinal monitorado/erro/limite relevante pode gerar Atenção. Ausência desses sinais gera OK para esta janela. Driver sem estatística disponível não equivale a confirmação de zero descartes.</p>
+      <p>Detalhes de hosts/fluxos têm limites; o acompanhamento de sequências pode ser parcial em volume elevado. Correlacione sinais com tempo de resposta e falhas por bloco, depois com contadores de infraestrutura quando disponíveis.</p>
+      <link topic="banda">Taxas e porcentagens</link><link topic="erro-captura">Limites de observação</link>
+    </topic>
+    <topic id="falhas-observadas" title="Etapa: falhas observadas no escopo da execução" keywords="consolidar avisos severidade histórico sessão assinatura">
+      <p>Consolida avisos desde o início do ensaio para as sessões testadas. O histórico global e outros alvos não reprovam esta execução por si mesmos. Cada grupo contém severidade, tipo, número de ocorrências e último detalhe.</p>
+      <table><head><cell>Condição</cell><cell>Resultado</cell></head>
+        <row><cell>Algum grupo com Erro/Falha</cell><cell>Falha nesta consolidação; consulte a evidência por alvo.</cell></row>
+        <row><cell>Grupos presentes sem Erro/Falha</cell><cell>Atenção.</cell></row>
+        <row><cell>Nenhum aviso pertinente</cell><cell>OK para os eventos monitorados na janela.</cell></row>
+      </table>
+      <p>Quantidade de ocorrências não é quantidade de causas raízes. Uma configuração errada pode gerar dezenas de exceções iguais. Priorize um erro reproduzível, com endpoint, UID, FC e endereço, antes de investigar volume genérico de tráfego.</p>
+      <link topic="avisos">Histórico e agrupamento de avisos</link>
+    </topic>
+    <topic id="etapa-conclusao" title="Etapa: conclusão e força da evidência" keywords="agregação geral falha atenção inconclusivo cobertura">
+      <p>A conclusão agrega as etapas anteriores; não realiza uma nova consulta. Prioridade de resultado: alguma Falha/Erro → Falha; caso contrário alguma Atenção → Atenção; caso contrário alguma Inconclusiva → Inconclusivo; demais verificações concluídas sem esses estados → OK.</p>
+      <h>Itens obrigatórios para interpretar</h><ul><li>Alvos e blocos efetivamente exercitados.</li><li>Janelas medidas e quantidade tentada versus planejada.</li><li>Etapas sem objeto, não executadas ou canceladas.</li><li>Interface/BPF e descartes da coleta.</li><li>Regiões somente descobertas versus repetidamente validadas.</li></ul>
+      <p>Falha em uma sessão não transforma leituras válidas de outra em falhas. OK restrito a um bloco não certifica a rede completa. Se a amostra foi curta para uma falha intermitente, registre essa condição e repita com duração compatível com a recorrência investigada.</p>
+      <link topic="relatorio-resumido">Apresentar a conclusão no resumo</link>
+    </topic>
+  </section>
+  <section title="07 · Topologia e infraestrutura">
+    <topic id="topologia" title="Topologia: ler o diagrama de evidências" keywords="switch enlace diagrama Modbus físico lógico infraestrutura">
+      <p>Abra Teste completo &gt; Topologia. O cabeçalho informa participantes Modbus, anúncios e outros hosts fora do foco. A cobertura esclarece quais caminhos são observados ou inferidos.</p>
+      <table><head><cell>Elemento do diagrama</cell><cell>Evidência representada</cell></head>
+        <row><cell>Estação local</cell><cell>Ponto de captura/operação do ensaio e seu papel analisado.</cell></row>
+        <row><cell>Participante Modbus</cell><cell>IP com evidência de servidor ou cliente. Rótulo mostra papel, portas e origem da evidência.</cell></row>
+        <row><cell>Infraestrutura intermediária</cell><cell>Pode ser agrupamento inferido ou vizinho anunciado. Leia o texto de evidência: não garante um switch específico em cada caminho.</cell></row>
+        <row><cell>Enlace</cell><cell>Relação lógica de comunicação/confirmacão ou evidência amostrada. Não é levantamento físico de cabo.</cell></row>
+        <row><cell>Outros hosts</cell><cell>Contagem de hosts detectados fora do foco Modbus; presença na mesma coleta não comprova conexão na mesma porta/VLAN/switch.</cell></row>
+      </table>
+      <h>Verificação prática</h><ol><li>Confira se IPs dos PLCs estão nos participantes e se as portas são as esperadas.</li><li>Leia Evidências Modbus para identificar captura versus confirmação ativa.</li><li>Confira Rotas ICMP para caminhos de camada 3.</li><li>Confira Vizinhos LLDP/CDP para identidade anunciada na interface.</li><li>Compare com inventário físico antes de associar cada enlace a um switch ou porta.</li></ol>
+      <p>Switch L2 transparente não aparece como salto ICMP. Sem anúncio ou consulta de gestão/inventário, o software não identifica sua marca, configuração de portas ou integridade. A implementação atual não faz consulta SNMP aos switches.</p>
+      <link topic="topologia-evidencias">Colunas de evidências</link><link topic="topologia-rotas">Colunas de rastreamento ICMP</link><link topic="topologia-vizinhos">Colunas LLDP/CDP</link>
+    </topic>
+    <topic id="topologia-evidencias" title="Topologia: tabela de evidências Modbus" keywords="origem destino evidência contagem detalhes confirmado captura">
+      <table><head><cell>Coluna</cell><cell>Como usar</cell></head>
+        <row><cell>Origem / Destino</cell><cell>Participantes da relação registrada. Direção lógica não determina cabos físicos.</cell></row>
+        <row><cell>Evidência</cell><cell>Captura Modbus TCP: conversa reconhecida; Modbus confirmado: resposta validada por sondagem; LLDP/CDP anunciado: anúncio recebido.</cell></row>
+        <row><cell>Contagem</cell><cell>Quantidade associada àquela evidência; em conversa pode ser volume observado, em confirmação pode indicar endpoints. Compare o tipo antes de usar como taxa.</cell></row>
+        <row><cell>Detalhes</cell><cell>Portas, contexto e ressalvas que qualificam a relação.</cell></row>
+      </table>
+      <p>O inventário de conversas tem limites de detalhes; a apresentação prioriza relações relevantes. Um fluxo ausente pode estar fora de BPF, em outra interface, sem ADU reconhecível ou fora da retenção/priorização. Ausência não comprova que os equipamentos nunca se comunicam.</p>
+      <example>Aplicação / Cliente → 172.27.30.84:1501
+Evidência: Modbus confirmado
+Comprova resposta de protocolo desse serviço; não identifica o cabo nem todo mapa.</example>
+      <link topic="etapa-descoberta">Como a confirmação ativa é feita</link>
+    </topic>
+    <topic id="topologia-rotas" title="Topologia: tabela de saltos ICMP" keywords="TTL alvo resposta timedout tracert consulta ms roteador">
+      <table><head><cell>Coluna</cell><cell>Definição</cell></head>
+        <row><cell>Alvo</cell><cell>Destino que a consulta tenta alcançar.</cell></row>
+        <row><cell>TTL / salto</cell><cell>Valor de TTL usado naquele request; cresce de 1 até o limite ou encerramento.</cell></row>
+        <row><cell>IP respondeu</cell><cell>Endereço retornado por destino ou roteador, quando há resposta pertinente.</cell></row>
+        <row><cell>Status ICMP</cell><cell>Destino alcançado; TTL expirado; sem resposta; destino/rede inacessível; ou erro local.</cell></row>
+        <row><cell>Consulta (ms)</cell><cell>Tempo da operação ICMP, incluindo espera. Não é tempo de resposta Modbus.</cell></row>
+      </table>
+      <example>TTL 1: 172.27.30.1 / TTL expirado
+TTL 2: sem resposta
+TTL 3: 172.27.31.84 / destino alcançado
+Há evidência de caminho L3; o salto sem resposta continua desconhecido.</example>
+      <p>Timeout de um salto pode resultar de filtro/política de ICMP. O TCP pode continuar funcional. Um destino no mesmo segmento pode responder em TTL 1 mesmo havendo vários switches físicos intermediários.</p>
+      <link topic="escopo-rotas">Limites, prazo e quantidade de destinos</link>
+    </topic>
+    <topic id="topologia-vizinhos" title="Topologia: vizinhos LLDP / CDP" keywords="nome chassi porta MAC IP gestão TTL anúncios">
+      <table><head><cell>Coluna</cell><cell>Significado recebido</cell></head>
+        <row><cell>Protocolo</cell><cell>LLDP ou CDP, conforme anúncio reconhecido.</cell></row>
+        <row><cell>Nome / Chassi</cell><cell>Identificação anunciada. Pode faltar nome amigável; chassi ajuda a distinguir origem.</cell></row>
+        <row><cell>Porta anunciada</cell><cell>Identificador informado pelo anunciante; não é necessariamente a porta de gestão TCP.</cell></row>
+        <row><cell>MAC / IP gestão</cell><cell>MAC de origem e endereço de gestão quando presente. Não representam teste de conectividade à gestão.</cell></row>
+        <row><cell>TTL (s)</cell><cell>Validade anunciada. A aplicação expira evidências conforme tempo e pode remover anúncio com TTL zero.</cell></row>
+        <row><cell>Descrição</cell><cell>Texto recebido de capacidade/sistema quando disponível.</cell></row>
+      </table>
+      <p>Para observar anúncios, use filtro que preserve LLDP/CDP na interface Ethernet pertinente e uma janela compatível com a periodicidade dos anúncios. Restrição por host IP ou porta pode excluí-los. Zero anúncios pode significar protocolo desabilitado, filtro, outra interface ou janela curta.</p>
+      <p>Um vizinho anunciado junto à interface ajuda a identificar infraestrutura próxima, mas não comprova que todos os PLCs detectados atravessem esse mesmo equipamento. O anúncio também não informa contadores de erro ou utilização de suas portas.</p>
+      <link topic="captura-config">Preparar o filtro para anúncios</link>
+    </topic>
+  </section>
+  <section title="08 · Relatórios e configuração salva">
+    <topic id="relatorio-resumido" title="Relatório resumido: estrutura e leitura" keywords="exportar resumo MD PDF triagem achados tabela por servidor">
+      <p>Relatório é apresentado dentro do Teste completo. “Exportar resumo” salva uma versão focada na execução; escolha .md ou .pdf no diálogo. A versão visível na tela é resumida, mas conserva métricas e cobertura relevantes.</p>
+      <table><head><cell>Seção</cell><cell>O que conferir</cell></head>
+        <row><cell>Identificação / resultado</cell><cell>Caso, papel, início/fim e duração. Confirme que corresponde ao ensaio que pretende compartilhar.</cell></row>
+        <row><cell>Resumo por servidor</cell><cell>Endpoint/UID, blocos exercitados, válidas/tentadas/planejadas, sucesso, TCP e resultado.</cell></row>
+        <row><cell>Achados prioritários</cell><cell>Falhas, atenção, inconclusivas e cancelamentos relevantes, com horário, evidência e próxima verificação.</cell></row>
+        <row><cell>Desempenho das leituras</cell><cell>FC, região, mediana, p95, scan e interpretação por bloco.</cell></row>
+        <row><cell>Cobertura e limitações</cell><cell>Escopo, amostra, captura, endpoints apenas descobertos e procedimentos não validados.</cell></row>
+        <row><cell>Tráfego observado</cell><cell>Comparação de referência e operação: duração, média/pico e sinais TCP.</cell></row>
+      </table>
+      <p>No papel servidor, o relatório destaca requests externos, respostas correlacionadas, exceções e pendentes, em vez de tratar o simulador como alvo remoto. Sem alvos no cliente, registra a descoberta/validação automática e seus limites.</p>
+      <link topic="latencia">Ler p95 e taxa de sucesso</link><link topic="erro-relatorio">Evitar conclusões indevidas</link>
+    </topic>
+    <topic id="relatorio-completo" title="Relatório completo: formato e evidências" keywords="exportar completo markdown PDF resultado recomendação etapa inventário">
+      <p>“Exportar completo” inclui a base do resumo e apêndices das etapas, rede, topologia e mapa. Markdown preserva texto estruturado e tabelas; PDF organiza a leitura/impressão. Eles registram a execução já realizada, sem iniciar um novo teste.</p>
+      <table><head><cell>Bloco / apêndice</cell><cell>Conteúdo e uso</cell></head>
+        <row><cell>Etapas</cell><cell>Nome, status, objetivo, resultado técnico e recomendação; use para explicar por que uma classificação foi emitida.</cell></row>
+        <row><cell>Dispositivos</cell><cell>IP, identidade, evidência, portas e notas. Distingue observação e confirmação.</cell></row>
+        <row><cell>Topologia</cell><cell>Resumo lógico, participantes/enlaces, saltos ICMP e anúncios quando disponíveis. O diagrama textual acompanha suas limitações.</cell></row>
+        <row><cell>Mapa descoberto</cell><cell>Endpoint, UID, função, início/fim, modo e confiança. Região requisitada no servidor é diferente de leitura validada no cliente.</cell></row>
+        <row><cell>Conversas e contadores</cell><cell>Volume e sinais nas janelas; distingue contador da captura, SO e lista UI.</cell></row>
+      </table>
+      <h>Como investigar</h><ol><li>Leia contexto e cobertura antes da classificação geral.</li><li>Localize o alvo/bloco com falha.</li><li>Leia seu resultado completo e o código exato.</li><li>Compare horário com sinais TCP pertinentes.</li><li>Verifique se a hipótese tem suporte ou se depende de outra coleta.</li></ol>
+      <p>Uma exportação parcial/cancelada conserva limitações do ensaio; não preencha os campos ausentes com zero para produzir uma conclusão de sucesso. MD pode ser usado para comparação textual de versões; PDF é apropriado para leitura e encaminhamento.</p>
+    </topic>
+    <topic id="ffd" title="Salvar e abrir configuração .ffd" keywords="importar exportar salvar como abrir projeto formato versões limites">
+      <table><head><cell>Comando / dado</cell><cell>Comportamento</cell></head>
+        <row><cell>Salvar</cell><cell>Usa o caminho atual ou pede arquivo na primeira vez.</cell></row>
+        <row><cell>Salvar como</cell><cell>Escolhe novo nome/local e passa a usá-lo nos próximos salvamentos.</cell></row>
+        <row><cell>Abrir</cell><cell>Valida o arquivo e pede confirmação para substituir clientes e mapa local. Exige teste, sondagem, servidor, leituras e captura parados.</cell></row>
+        <row><cell>Conteúdo</cell><cell>Nomes, endpoints, UIDs, intervalo/política TCP, blocos, faixas e valores locais, papel de teste e índices de alvos incluídos.</cell></row>
+        <row><cell>Após abertura</cell><cell>Sessões importadas ficam paradas; resultados atuais são limpos. Não abre conexões automaticamente.</cell></row>
+        <row><cell>Procedimentos do teste</cell><cell>Tempos/taxa/CIDR são guardados separadamente no perfil local; revise-os no computador de destino.</cell></row>
+      </table>
+      <h>Validação do arquivo</h><p>Formato e versão precisam ser suportados. Limite de arquivo 32 MB; até 64 alvos, 1000 blocos por alvo e 1000 faixas locais. Blocos de leitura precisam ter função 1–4, quantidade válida e região dentro de 0–65535; mapa de um cliente limitado a 65536 pontos. Pontos locais precisam corresponder às faixas aplicadas e ao acesso definido.</p>
+      <ol><li>Aplique o mapa local e salve o .ffd.</li><li>No outro computador, abra com operações paradas.</li><li>Revise IP local, endpoints remotos, captura e procedimentos.</li><li>Inicie operação explicitamente e valide uma leitura.</li></ol>
+      <p>Um arquivo .ffd contém configuração, não histórico integral de pacotes nem certificação de comunicação. Guarde relatórios da execução separadamente.</p>
+    </topic>
+    <topic id="logs" title="Logs e exportação do caso JSON" keywords="suporte startup localappdata logs falha inicialização JSON">
+      <p>Os logs técnicos ficam normalmente em %LOCALAPPDATA%\ModbusTcpTroubleshooter\logs. Se essa pasta não puder ser usada, o aplicativo tenta uma pasta temporária. Uma falha fatal informa o caminho possível do diagnóstico.</p>
+      <table><head><cell>Arquivo / exportação</cell><cell>Uso</cell></head>
+        <row><cell>startup.log</cell><cell>Registro básico de inicialização.</cell></row>
+        <row><cell>startup-error.log</cell><cell>Detalhes de falha fatal, runtime, arquitetura e exceção interna.</cell></row>
+        <row><cell>modbus-troubleshooter-…log</cell><cell>Eventos técnicos com rotação diária, úteis para horário e mensagens de operação.</cell></row>
+        <row><cell>Caso de diagnóstico JSON</cell><cell>Exportação dos dados do caso para análise/suporte. É distinta de .ffd reutilizável e relatório MD/PDF de leitura.</cell></row>
+      </table>
+      <h>Material útil para suporte</h><ul><li>Horário exato e sequência de ações que reproduzem o problema.</li><li>Windows, arquitetura, build e mensagem completa.</li><li>Endpoint, UID, função, região e papel do teste.</li><li>Relatório completo e trecho de log correspondente.</li></ul>
+      <p>Se nada abrir no outro computador, procure startup-error.log no perfil daquela pessoa. Um log do seu computador não descreve o runtime ou driver dela. Revise dados sensíveis antes de compartilhar IPs, mapas, valores e inventário.</p>
+    </topic>
+  </section>
+  <section title="09 · Catálogo de erros e investigação">
+    <topic id="erro-tcp" title="Timeout, conexão recusada e reset" keywords="socket refused timeout RST bind porta firewall">
+      <table><head><cell>Sintoma</cell><cell>Hipóteses e próxima verificação</cell></head>
+        <row><cell>Conexão recusada</cell><cell>Listener ausente, porta errada ou política que rejeita conexão. Confirme serviço e porta antes de alterar timeout.</cell></row>
+        <row><cell>Timeout ao abrir</cell><cell>Destino/caminho sem resposta no prazo: IP, rota, firewall, disponibilidade ou carga. Compare SYN e respostas capturadas.</cell></row>
+        <row><cell>Socket abre, leitura expira</cell><cell>Servidor pode não processar FC/UID, estar ocupado, exigir outro serviço ou ter resposta excluída da análise. Confira request e prazo da operação.</cell></row>
+        <row><cell>RST</cell><cell>Identifique quem enviou e em qual etapa. Pode ser rejeição, limite de sessões, encerramento ou reset após frame não aceito.</cell></row>
+        <row><cell>Erro ao iniciar listener</cell><cell>Porta em uso, IP não presente na estação, permissão/política ou falha local. Confira endereço de escuta e outras instâncias.</cell></row>
+      </table>
+      <h>Isolar a camada</h><ol><li>Confirme IP/porta e serviço em execução.</li><li>Confira rota/interface e acesso externo permitido.</li><li>Verifique abertura TCP.</li><li>Se abriu, confira request e resposta Modbus com UID/FC/região.</li><li>Compare com outro bloco/documentação do equipamento antes de ampliar carga.</li></ol>
+      <p>Ping OK prova somente resposta ICMP naquele momento. Aumentar timeout pode mascarar atraso sem corrigir sua causa. Em erro de escrita, confirme se o valor foi aplicado antes de repetir: timeout não prova que o servidor deixou de executar a ação.</p>
+    </topic>
+    <topic id="erro-modbus" title="Exceções Modbus: código e ação" keywords="exception exceção 01 02 03 04 05 06 08 0A 0B">
+      <p>Uma exceção é resposta de protocolo, diferente de ausência de resposta. O FC da resposta marca exceção e o código identifica o motivo reportado. Use o código junto da requisição: UID, função, início e quantidade.</p>
+      <table><head><cell>Código</cell><cell>Significado resumido</cell></head>
+        <row><cell>01 · Illegal Function</cell><cell>Função não aceita.</cell></row>
+        <row><cell>02 · Illegal Data Address</cell><cell>Endereço ou intervalo não disponível.</cell></row>
+        <row><cell>03 · Illegal Data Value</cell><cell>Estrutura/parâmetro da requisição inválido; não representa automaticamente valor de processo fora de faixa.</cell></row>
+        <row><cell>04 · Server Device Failure</cell><cell>Falha interna ao executar a operação.</cell></row>
+        <row><cell>05 · Acknowledge</cell><cell>Operação aceita para processamento demorado.</cell></row>
+        <row><cell>06 · Server Device Busy</cell><cell>Servidor ocupado.</cell></row>
+        <row><cell>08 · Memory Parity Error</cell><cell>Erro de consistência de memória, em funções pertinentes.</cell></row>
+        <row><cell>0A · Gateway Path Unavailable</cell><cell>Caminho do gateway indisponível.</cell></row>
+        <row><cell>0B · Gateway Target Device Failed to Respond</cell><cell>Destino do gateway não respondeu.</cell></row>
+      </table>
+      <h>Procedimento nesta aplicação</h><ol><li>01: confira a área/FC disponível no equipamento; não insista em sondar toda a região da função recusada.</li><li>02: confira base zero/um, quantidade e atravessamento de lacuna; diminua para a leitura documentada pertinente.</li><li>03: confira quantidade/formato e função, em vez de assumir limite de engenharia de uma variável.</li><li>04/06: consulte estado e diagnóstico do equipamento e compare carga/horário.</li><li>0A/0B: investigue gateway, UID e trecho downstream, distinguindo Ethernet do caminho interno.</li></ol>
+      <p>A descoberta considera uma exceção coerente como confirmação de Modbus; a validação de mapa considera a leitura não válida. Essas classificações atendem objetivos diferentes.</p>
+      <external url="https://www.modbus.org/file/secure/modbusprotocolspecification.pdf">Referência oficial: MODBUS Application Protocol V1.1b3, seção 7</external>
+    </topic>
+    <topic id="erro-frame" title="Resposta divergente: TID, UID, FC e comprimento" keywords="MBAP byte count protocol identifier echo resposta inválida">
+      <p>O cliente valida identidade e estrutura da resposta antes de aceitar o dado. Uma conexão TCP bem-sucedida não basta se a resposta não corresponde ao request.</p>
+      <table><head><cell>Divergência</cell><cell>Investigação</cell></head>
+        <row><cell>TID diferente</cell><cell>Resposta associada a outra transação, intermediário ou implementação incorreta. Compare o request no mesmo socket.</cell></row>
+        <row><cell>Unit ID diferente</cell><cell>Gateway/destino lógico respondeu com identificador inesperado.</cell></row>
+        <row><cell>FC inesperado</cell><cell>Função não correspondente ou resposta não Modbus. Separe exceção válida de FC arbitrário.</cell></row>
+        <row><cell>MBAP/protocol identifier/comprimento</cell><cell>Frame estruturalmente inválido ou serviço distinto. Examine bytes e identidade do serviço.</cell></row>
+        <row><cell>Byte count</cell><cell>Dados não correspondem à quantidade solicitada; pode haver resposta truncada ou firmware não conforme.</cell></row>
+        <row><cell>Eco de escrita diferente</cell><cell>Resposta FC05/06 não confirma endereço/valor solicitado.</cell></row>
+      </table>
+      <p>Para análise passiva, a aplicação não remonta integralmente streams TCP. Um ADU dividido em segmentos pode não ser reconhecido nessa visão, embora a leitura pelo cliente funcione. Diferencie falha na resposta validada pelo cliente de ausência de classificação na captura.</p>
+      <link topic="timeline">Campos para correlação</link>
+    </topic>
+    <topic id="erro-captura" title="Captura vazia, incompleta ou sem driver" keywords="Npcap loopback BPF zero pacote descartes fila insuficiente">
+      <h>Sequência de verificação</h><ol><li>Confirme que a captura está ativa e que há interface disponível pelo driver.</li><li>Confira Ethernet/Wi-Fi/loopback conforme o caminho; tráfego 127.0.0.1 não passa pelo cabo.</li><li>Limpe filtros de apresentação e examine o BPF aplicado.</li><li>Gere uma operação pertinente e observe se entra na janela.</li><li>Confira descartes do driver, fila UI e tempo de amostra.</li></ol>
+      <table><head><cell>Informação</cell><cell>Conclusão permitida</cell></head>
+        <row><cell>Zero pacotes na janela</cell><cell>Nenhum pacote foi recebido por aquela coleta. Não comprova silêncio de toda a rede.</cell></row>
+        <row><cell>Fila UI zero</cell><cell>Sem detalhe pendente para apresentação; pode haver muito tráfego já processado.</cell></row>
+        <row><cell>Descartes driver positivos</cell><cell>Pacotes podem ter sido perdidos na captura. Volume observado é limite inferior.</cell></row>
+        <row><cell>Estatística driver indisponível</cell><cell>Não há informação suficiente desse contador, diferente de zero descartes medidos.</cell></row>
+        <row><cell>Modbus não classificado</cell><cell>Filtro, função não suportada, segmentação ou frame incompleto podem explicar ausência de classificação.</cell></row>
+      </table>
+      <p>Npcap é dependência de captura no Windows e não é a mesma função do socket Modbus. Leitura pode funcionar sem captura. Se outro computador não expõe interfaces, verifique a instalação/permissão do driver naquele computador, não apenas no seu.</p>
+      <link topic="captura-config">Configuração de filtro/interface</link>
+    </topic>
+    <topic id="erro-mapa" title="Mapa incorreto, valores antigos e escrita parcial" keywords="fora mapa qualidade RW HR COIL offset range">
+      <h>Leitura incorreta</h><ol><li>Confira alvo/UID e área FC.</li><li>Converta endereço documental conforme o fabricante.</li><li>Confira quantidade e lacunas.</li><li>Leia status e horário; um número antigo não comprova nova resposta.</li><li>Compare palavras brutas com escala/tipo do dispositivo.</li></ol>
+      <h>Servidor simulado</h><p>Se o cliente externo retorna exceção 02, compare região solicitada com as faixas aplicadas. Uma consulta começando no endereço válido pode terminar além da região ou atravessar lacuna. R/W de COIL/HR controla escrita remota; editar o valor local de simulação é outra operação.</p>
+      <h>Escrita manual</h><p>Range precisa estar dentro do bloco; IR/DI não são escritos remotamente pelo popup. Valor de COIL é convertido para estado binário. Se um intervalo falhar, pontos anteriores podem estar modificados; faça leitura de conferência antes de repetir ou supor rollback.</p>
+      <example>Mapa local HR 0–9; request FC03 início 8 / Qtd 3
+Solicita 8, 9 e 10. HR 10 ausente pode invalidar a leitura inteira.</example>
+      <link topic="faixas-servidor">Limites e aplicação das faixas</link><link topic="escrita">Campos e execução de escrita</link>
+    </topic>
+    <topic id="erro-descoberta" title="Servidor não encontrado ou topologia inconclusiva" keywords="porta 1501 IP CIDR não descoberto LLDP CDP">
+      <table><head><cell>Sintoma</cell><cell>Conferência dirigida</cell></head>
+        <row><cell>IP em ARP, sem Modbus</cell><cell>Confira portas sondadas e notas; ARP não identifica protocolo. Verifique serviço e UID com a janela Verificar IP.</cell></row>
+        <row><cell>Servidor em 1501 não aparece</cell><cell>Confirme 1501 na lista de portas, IP dentro da faixa ou alvo explícito, listener ativo e acesso permitido.</cell></row>
+        <row><cell>TCP aberto, Modbus sem confirmação</cell><cell>Confirme UID/FC, prazo e serviço. Outro protocolo também pode aceitar TCP.</cell></row>
+        <row><cell>Mapa vazio</cell><cell>Confirme funções, IDs, endereço máximo e transporte; ausência de região não prova inexistência de registradores além do limite.</cell></row>
+        <row><cell>Topologia sem switch</cell><cell>Switch L2 não aparece por TTL. Confira anúncios, interface/filtro e inventário.</cell></row>
+      </table>
+      <p>O software não identifica todos os tipos de equipamento pelo fato de existir um IPv4. Um host pode ter serviço Modbus em porta não enumerada, ser somente cliente, switch silencioso ou dispositivo sem protocolo observável. Mantenha “não identificado” até obter evidência.</p>
+      <link topic="etapa-descoberta">Níveis de confirmação</link><link topic="topologia-vizinhos">Condições de recepção de anúncios</link>
+    </topic>
+    <topic id="erro-relatorio" title="Interpretar resultado sem extrapolar a cobertura" keywords="falso positivo negativo certificado causa raiz cobertura">
+      <table><head><cell>Afirmação</cell><cell>Evidência necessária</cell></head>
+        <row><cell>“TCP acessível”</cell><cell>Socket abriu para o IP:porta, a partir da estação de teste.</cell></row>
+        <row><cell>“Modbus presente”</cell><cell>Resposta/exception coerente, com método de confirmação ou observação informado.</cell></row>
+        <row><cell>“Bloco respondeu corretamente”</cell><cell>Leitura aceita de FC, UID e região especificados.</cell></row>
+        <row><cell>“Sem falhas nas tentativas”</cell><cell>Válidas igual a tentadas; também confira se tentadas atingiu planejadas.</cell></row>
+        <row><cell>“Sem sinal TCP monitorado”</cell><cell>Janela com captura adequada e ausência dos sinais selecionados; não cobre outras interfaces/horários.</cell></row>
+        <row><cell>“Switch no caminho”</cell><cell>Inventário/gestão ou evidência pertinente; anúncio local isolado não garante caminho de todos os destinos.</cell></row>
+      </table>
+      <p>Separe resultado de hipótese. Exemplo: RST + timeout do mesmo endpoint no mesmo horário sustenta investigação da sessão; RST em fluxo de Internet não comprova falha do PLC. Uma exceção 02 repetida no mesmo bloco aponta primeiro para mapa/endereço, sem excluir outras causas.</p>
+      <p>Depois da correção, repita o mesmo alcance e parâmetros, preserve relatórios e compare válidas/tentadas, latência e sinais. Se mudou a janela ou o conjunto de alvos, registre a diferença antes de comparar porcentagens.</p>
+    </topic>
+  </section>
+  <section title="10 · Referência">
+    <topic id="glossario" title="Glossário e unidades" keywords="MBAP TID UID ADU FC PLC BPF CIDR ms pkt KB">
+      <table><head><cell>Termo</cell><cell>Uso neste manual</cell></head>
+        <row><cell>ADU / MBAP</cell><cell>Mensagem Modbus transportada e seu cabeçalho TCP de identificação/comprimento.</cell></row>
+        <row><cell>TID / UID</cell><cell>Identificação de transação / identificação de unidade lógica.</cell></row>
+        <row><cell>FC</cell><cell>Function Code, função solicitada.</cell></row>
+        <row><cell>PLC / CLP</cell><cell>Controlador lógico programável; pode atuar como cliente, servidor ou ambos conforme a aplicação.</cell></row>
+        <row><cell>Endpoint</cell><cell>IP:porta de serviço. Para configuração Modbus, considere também Unit ID.</cell></row>
+        <row><cell>CIDR</cell><cell>Endereço e prefixo da rede, como 172.27.30.0/24.</cell></row>
+        <row><cell>ARP / MAC</cell><cell>Resolução local IPv4→endereço de enlace.</cell></row>
+        <row><cell>BPF</cell><cell>Filtro aplicado à captura; restringe evidência antes da análise.</cell></row>
+        <row><cell>LLDP / CDP</cell><cell>Protocolos de anúncio de vizinhança reconhecidos na coleta.</cell></row>
+        <row><cell>ms / s / pkt/s</cell><cell>Milissegundo / segundo / pacotes por segundo.</cell></row>
+        <row><cell>B/s versus bit/s</cell><cell>Bytes por segundo versus bits por segundo. Velocidade nominal de placa costuma ser apresentada em bit/s; taxa capturada pode ser formatada em B/s.</cell></row>
+        <row><cell>p95 / mediana</cell><cell>Referências da distribuição de tempos; consulte amostra e cálculo da página de latência.</cell></row>
+      </table>
+      <link topic="latencia">Métricas e percentis</link>
+    </topic>
+    <topic id="limites" title="Limites funcionais e evidência complementar" keywords="SNMP física loss remontagem tags float identificação certificado">
+      <table><head><cell>Objetivo</cell><cell>Alcance e complemento necessário</cell></head>
+        <row><cell>Mapa de engenharia</cell><cell>Descoberta fornece regiões que responderam ou foram solicitadas, não nomes de tags, escala, unidade física ou autorização de escrita.</cell></row>
+        <row><cell>Identificação do equipamento</cell><cell>Classificação por protocolo/evidência. Não há identificação universal de fabricante/modelo para todo IPv4.</cell></row>
+        <row><cell>Topologia física</cell><cell>Diagrama é lógico; cabeamento, portas e VLANs dependem de inventário e consulta autorizada.</cell></row>
+        <row><cell>Saúde de switches</cell><cell>Sem consulta SNMP; anúncios não fornecem diagnóstico de portas.</cell></row>
+        <row><cell>Perda e retransmissão</cell><cell>Sequência repetida é indício; não há remontagem completa ou cálculo de perda física por enlace.</cell></row>
+        <row><cell>Estabilidade</cell><cell>Resultado limitado à janela e blocos. Falhas raras exigem tempo/amostras compatíveis com sua recorrência.</cell></row>
+      </table>
+      <p>Combine relatório com diagnósticos do PLC, contadores de portas, captura em outros pontos e documentação do fabricante quando a hipótese ultrapassar o alcance local. Registre as fontes adicionais, mantendo separado o que foi observado e o que foi inferido.</p>
+    </topic>
+  </section>
+</manual>

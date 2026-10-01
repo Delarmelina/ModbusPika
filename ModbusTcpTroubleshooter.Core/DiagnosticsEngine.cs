@@ -10,7 +10,7 @@ public sealed class DiagnosticsEngine
 
         if (trafficEvent.Summary.Contains("fora do mapa", StringComparison.OrdinalIgnoreCase))
         {
-            severity = "Alerta";
+            severity = "Erro";
             recommendation = "Compare offset 0-based/1-based e confirme se o mapa carregado cobre o range solicitado.";
         }
         else if (trafficEvent.Summary.Contains("exception", StringComparison.OrdinalIgnoreCase))
@@ -18,15 +18,16 @@ public sealed class DiagnosticsEngine
             severity = "Erro";
             recommendation = "Verifique function code, permissao de escrita e range do endereco.";
         }
-        else if (trafficEvent.Summary.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+        else if (trafficEvent.Summary.StartsWith("Falha", StringComparison.OrdinalIgnoreCase)
+            || trafficEvent.Summary.Contains("timeout", StringComparison.OrdinalIgnoreCase))
         {
             severity = "Erro";
             recommendation = "Confirme IP, porta, firewall, cabo/rede e se outro software ja esta usando a porta.";
         }
         else if (trafficEvent.FunctionCode is 5 or 6 or 15 or 16)
         {
-            severity = "Atencao";
-            recommendation = "Escrita detectada. Confirme se esse ponto pode ser alterado em ambiente real.";
+            severity = "Info";
+            recommendation = "Transacao de escrita observada; sem evidencia de falha de protocolo neste evento.";
         }
 
         return new DiagnosticFinding(DateTimeOffset.Now, severity, message, recommendation);

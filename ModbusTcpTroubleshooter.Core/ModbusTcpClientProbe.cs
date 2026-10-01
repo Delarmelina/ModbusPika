@@ -9,6 +9,9 @@ public sealed class ModbusTcpClientProbe
     private TcpClient? _persistentClient;
     private string? _persistentEndpoint;
     private bool _keepConnectionOpen = true;
+    private long _connectionOpenCount, _connectionCloseCount;
+    public long ConnectionOpenCount => Interlocked.Read(ref _connectionOpenCount);
+    public long ConnectionCloseCount => Interlocked.Read(ref _connectionCloseCount);
 
     public event EventHandler<TrafficEvent>? TrafficObserved;
     public bool KeepConnectionOpen => _keepConnectionOpen;
@@ -43,6 +46,7 @@ public sealed class ModbusTcpClientProbe
             try
             {
                 await client.ConnectAsync(host, port, timeout.Token);
+                Interlocked.Increment(ref _connectionOpenCount);
                 _persistentClient = client;
                 _persistentEndpoint = endpoint;
             }
@@ -156,6 +160,7 @@ public sealed class ModbusTcpClientProbe
                     try
                     {
                         await requestClient.ConnectAsync(host, port, timeout.Token);
+                        Interlocked.Increment(ref _connectionOpenCount);
                         _persistentClient = requestClient;
                         _persistentEndpoint = endpoint;
                         client = requestClient;
@@ -167,7 +172,9 @@ public sealed class ModbusTcpClientProbe
             else
             {
                 requestClient = new TcpClient();
-                await requestClient.ConnectAsync(host, port, timeout.Token);
+                try { await requestClient.ConnectAsync(host, port, timeout.Token); }
+                catch { requestClient.Dispose(); throw; }
+                Interlocked.Increment(ref _connectionOpenCount);
                 client = requestClient;
             }
 
@@ -194,7 +201,7 @@ public sealed class ModbusTcpClientProbe
             }
             finally
             {
-                requestClient?.Dispose();
+                if (requestClient is not null) { requestClient.Dispose(); Interlocked.Increment(ref _connectionCloseCount); }
             }
         }
         finally { _ioGate.Release(); }
@@ -231,7 +238,10 @@ public sealed class ModbusTcpClientProbe
 
     private void ClosePersistentClient()
     {
-        try { _persistentClient?.Dispose(); }
+        try
+        {
+            if (_persistentClient is not null) { _persistentClient.Dispose(); Interlocked.Increment(ref _connectionCloseCount); }
+        }
         finally
         {
             _persistentClient = null;

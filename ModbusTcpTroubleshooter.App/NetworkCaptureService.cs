@@ -1,5 +1,6 @@
 using PacketDotNet;
 using SharpPcap;
+using ModbusTcpTroubleshooter.Core;
 
 namespace ModbusTcpTroubleshooter.App;
 
@@ -19,8 +20,9 @@ public sealed class NetworkCaptureService : IDisposable
                 .Select((device, index) => new CaptureDeviceOption(index, Clean(device.Description), device.Name))
                 .ToList();
         }
-        catch
+        catch (Exception ex)
         {
+            Serilog.Log.Warning(ex, "Captura indisponivel: falha ao listar interfaces Npcap. Cliente/servidor continuam disponiveis.");
             return [];
         }
     }
@@ -53,7 +55,7 @@ public sealed class NetworkCaptureService : IDisposable
 
         _device = devices[deviceOption.Index];
         _device.OnPacketArrival += OnPacketArrival;
-        _device.Open(DeviceModes.Promiscuous, 1000);
+        _device.Open(DeviceModes.Promiscuous, 100);
 
         if (!string.IsNullOrWhiteSpace(filter))
         {
@@ -63,6 +65,16 @@ public sealed class NetworkCaptureService : IDisposable
         _firstPacketAt = null;
         _packetNumber = 0;
         _device.StartCapture();
+    }
+
+    public (long Received, long Dropped, long InterfaceDropped)? ReadStatistics()
+    {
+        try
+        {
+            var stats = _device?.Statistics;
+            return stats is null ? null : (stats.ReceivedPackets, stats.DroppedPackets, stats.InterfaceDroppedPackets);
+        }
+        catch { return null; }
     }
 
     public void Stop()
@@ -123,16 +135,25 @@ public sealed class NetworkCaptureService : IDisposable
         var tcp = packet.Extract<TcpPacket>();
         var udp = packet.Extract<UdpPacket>();
         var arp = packet.Extract<ArpPacket>();
+        var ethernet = packet.Extract<EthernetPacket>();
+        var neighbor = ethernet is null ? null : NeighborDiscovery.Parse(ethernet.Bytes, timestamp);
 
         var protocol = "Other";
         var source = "";
         var destination = "";
         var info = packet.GetType().Name;
 
-        if (tcp is not null && ip is not null)
+        if (neighbor is not null)
+        {
+            protocol = neighbor.Protocol;
+            source = neighbor.SourceMac;
+            destination = ethernet?.DestinationHardwareAddress.ToString() ?? "";
+            info = $"{neighbor.Name} / {neighbor.Chassis}, porta {neighbor.Port}, TTL {neighbor.Ttl}s";
+        }
+        else if (tcp is not null && ip is not null)
         {
             var isModbusTcp = IsLikelyModbusTcp(tcp);
-            protocol = isModbusTcp || tcp.SourcePort == 502 || tcp.DestinationPort == 502 ? "Modbus/TCP" : "TCP";
+            protocol = isModbusTcp ? "Modbus/TCP" : "TCP";
             source = $"{ip.SourceAddress}:{tcp.SourcePort}";
             destination = $"{ip.DestinationAddress}:{tcp.DestinationPort}";
             info = isModbusTcp ? BuildModbusTcpInfo(tcp) : BuildTcpInfo(tcp);
@@ -167,6 +188,18 @@ public sealed class NetworkCaptureService : IDisposable
             Destination = destination,
             Protocol = protocol,
             Length = length,
+            Timestamp = timestamp,
+            Neighbor = neighbor,
+            SourceHost = ip?.SourceAddress.ToString() ?? arp?.SenderProtocolAddress?.ToString() ?? "",
+            DestinationHost = ip?.DestinationAddress.ToString() ?? arp?.TargetProtocolAddress?.ToString() ?? "",
+            IsTcp = tcp is not null,
+            TcpReset = tcp?.Reset ?? false,
+            TcpSynchronize = tcp?.Synchronize ?? false,
+            TcpAcknowledgment = tcp?.Acknowledgment ?? false,
+            TcpWindow = tcp?.WindowSize ?? 0,
+            TcpSequence = tcp?.SequenceNumber ?? 0,
+            TcpPayloadLength = tcp?.PayloadData?.Length ?? 0,
+            ModbusKind = tcp is null ? "" : ModbusFrameClassifier.Classify(tcp.PayloadData ?? []),
             Info = info
         };
     }
@@ -186,20 +219,7 @@ public sealed class NetworkCaptureService : IDisposable
 
     private static bool IsLikelyModbusTcp(TcpPacket tcp)
     {
-        var payload = tcp.PayloadData;
-        if (payload is null || payload.Length < 8)
-        {
-            return false;
-        }
-
-        var protocolId = (payload[2] << 8) | payload[3];
-        var length = (payload[4] << 8) | payload[5];
-        var functionCode = payload[7] & 0x7F;
-
-        return protocolId == 0
-            && length >= 2
-            && length <= payload.Length - 6
-            && functionCode is >= 1 and <= 127;
+        return ModbusFrameClassifier.Classify(tcp.PayloadData ?? []).Length > 0;
     }
 
     private static string BuildModbusTcpInfo(TcpPacket tcp)

@@ -21,36 +21,38 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly ModbusDataMap _serverMap = new();
     private readonly DiagnosticsEngine _diagnostics = new();
-    private readonly ModbusTcpClientProbe _client = new();
+    private ModbusTcpClientProbe _client => SelectedClientSession.Client;
     private readonly NetworkCaptureService _networkCapture = new();
     private readonly ConcurrentQueue<TcpTimelineRow> _passivePacketQueue = new();
     private readonly DispatcherTimer _passivePacketFlushTimer;
     private ModbusTcpServer? _server;
     private CancellationTokenSource? _serverCts;
-    private CancellationTokenSource? _scanCts;
-    private TaskCompletionSource? _scanStopped;
     private CancellationTokenSource? _fullTestCts;
     private DateTimeOffset _fullTestStartedAt;
     private long _droppedPassivePackets;
     private long _reportedDroppedPassivePackets;
+    private bool _captureStartedForData;
     private readonly Dictionary<string, DateTimeOffset> _lastRequestBySignature = [];
     private readonly Dictionary<string, Queue<double>> _pollingIntervalsBySignature = [];
     private readonly Dictionary<string, int> _exceptionCounts = [];
     private readonly Dictionary<string, int> _outOfMapCounts = [];
     private readonly List<string> _fullTestStartupActions = [];
+    private int _nextClientNumber = 1;
+    private ClientConnectionSession[] _fullTestClients = [];
+    private readonly Dictionary<string, ImportantWarningSummary> _runWarnings = [];
+    private readonly HashSet<string> _fullTestSessionIds = [];
 
     [ObservableProperty] private string caseName = "Troubleshoot Modbus TCP";
     [ObservableProperty] private string selectedMode = "Client";
     [ObservableProperty] private string localIp = "0.0.0.0";
-    [ObservableProperty] private string targetIp = "127.0.0.1";
-    [ObservableProperty] private int port = 1502;
-    [ObservableProperty] private byte unitId = 1;
-    [ObservableProperty] private int scanRateMs = 1000;
-    [ObservableProperty] private bool keepClientConnectionOpen = true;
+    [ObservableProperty] private ClientConnectionSession selectedClientSession = new();
+    [ObservableProperty] private int serverPort = 1502;
+    [ObservableProperty] private byte serverUnitId = 1;
+    [ObservableProperty] private string serverConnectionStatus = "Parado";
     [ObservableProperty] private string status = "Pronto.";
     [ObservableProperty] private bool isServerRunning;
-    [ObservableProperty] private bool isClientScanning;
     [ObservableProperty] private bool isNetworkCaptureRunning;
+    [ObservableProperty] private bool hasCompletedNetworkCapture;
     [ObservableProperty] private ClientMapRow? selectedClientMapRow;
     [ObservableProperty] private ServerMapRange? selectedServerMapRange;
     [ObservableProperty] private CaptureDeviceOption? selectedCaptureDevice;
@@ -69,6 +71,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool isFullTestRunning;
     [ObservableProperty] private FullTestStep? selectedFullTestStep;
     [ObservableProperty] private string fullTestReport = "";
+    private string _fullTestDetailedReport = "";
     [ObservableProperty] private string fullTestOverallStatus = "Aguardando";
     [ObservableProperty] private string fullTestScore = "0/0";
     [ObservableProperty] private int fullTestCompletedSteps;
@@ -88,7 +91,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool enableMapDiscovery;
     [ObservableProperty] private bool enableMapDiscoveryUnitSweep;
     [ObservableProperty] private int activeScanTimeoutMs = 250;
-    [ObservableProperty] private int activeScanConcurrency = 48;
+    [ObservableProperty] private int activeScanConcurrency = 2;
     [ObservableProperty] private int passiveObservationSeconds = 12;
     [ObservableProperty] private int mapDiscoveryUnitIdStart = 1;
     [ObservableProperty] private int mapDiscoveryUnitIdEnd = 10;
@@ -101,17 +104,18 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool enableMapDiscoveryPointFallback = true;
 
     public ObservableCollection<string> Modes { get; } = ["Client", "Server"];
-    public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP"];
+    public ObservableCollection<string> CaptureProtocols { get; } = ["Todos", "TCP", "UDP", "ARP", "ICMP", "Modbus TCP", "LLDP", "CDP"];
     public ObservableCollection<string> CaptureDirections { get; } = ["Origem ou destino", "Somente origem", "Somente destino"];
     public ObservableCollection<CaptureDeviceOption> CaptureDevices { get; } = [];
     public ObservableCollection<ServerPointRow> ServerPoints { get; } = [];
     public ObservableCollection<ServerMapRange> ServerMapRanges { get; } = [];
-    public ObservableCollection<ClientMapRow> ClientMapRows { get; } = [];
-    public ObservableCollection<ClientCommunicationPointRow> ClientCommunicationPoints { get; } = [];
-    public ObservableCollection<ClientCommunicationPointRow> ClientHoldingRegisterPoints { get; } = [];
-    public ObservableCollection<ClientCommunicationPointRow> ClientInputRegisterPoints { get; } = [];
-    public ObservableCollection<ClientCommunicationPointRow> ClientCoilPoints { get; } = [];
-    public ObservableCollection<ClientCommunicationPointRow> ClientDiscreteInputPoints { get; } = [];
+    public ObservableCollection<ClientConnectionSession> ClientSessions { get; } = [];
+    public ObservableCollection<ClientMapRow> ClientMapRows => SelectedClientSession.Rows;
+    public ObservableCollection<ClientCommunicationPointRow> ClientCommunicationPoints => SelectedClientSession.Points;
+    public ObservableCollection<ClientCommunicationPointRow> ClientHoldingRegisterPoints => SelectedClientSession.HoldingPoints;
+    public ObservableCollection<ClientCommunicationPointRow> ClientInputRegisterPoints => SelectedClientSession.InputPoints;
+    public ObservableCollection<ClientCommunicationPointRow> ClientCoilPoints => SelectedClientSession.CoilPoints;
+    public ObservableCollection<ClientCommunicationPointRow> ClientDiscreteInputPoints => SelectedClientSession.DiscretePoints;
     public ObservableCollection<TrafficEvent> Traffic { get; } = [];
     public ObservableCollection<TcpTimelineRow> TcpTimeline { get; } = [];
     public ObservableCollection<TcpTimelineRow> FilteredTcpTimeline { get; } = [];
@@ -125,26 +129,42 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsClientMode => SelectedMode == "Client";
     public bool IsServerMode => SelectedMode == "Server";
     public string SelectedModeLabel => IsClientMode ? "Cliente" : "Servidor";
-    public bool CanConfigureClient => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
-    public bool CanConfigureServer => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
-    public bool CanUseClientOperations => !IsServerRunning && !IsFullTestRunning;
-    public bool CanDisconnectClient => CanUseClientOperations;
+    public string TargetIp { get => SelectedClientSession.Address; set => SelectedClientSession.Address = value; }
+    public int Port { get => IsServerMode ? ServerPort : SelectedClientSession.Port; set { if (IsServerMode) ServerPort = value; else SelectedClientSession.Port = value; } }
+    public byte UnitId { get => IsServerMode ? ServerUnitId : SelectedClientSession.UnitId; set { if (IsServerMode) ServerUnitId = value; else SelectedClientSession.UnitId = value; } }
+    public int ScanRateMs { get => SelectedClientSession.ScanRateMs; set => SelectedClientSession.ScanRateMs = value; }
+    public bool KeepClientConnectionOpen { get => SelectedClientSession.KeepConnectionOpen; set => SelectedClientSession.KeepConnectionOpen = value; }
+    public bool IsClientScanning { get => SelectedClientSession.IsScanning; set => SelectedClientSession.IsScanning = value; }
+    public int RunningClientCount => ClientSessions.Count(x => x.IsScanning);
+    public bool AnyClientRunning => RunningClientCount > 0;
+    public bool HasClientTargets => ClientSessions.Count > 0;
+    public string ServerEndpoint => $"{LocalIp}:{ServerPort}";
+    public string ServerStateColor => IsServerRunning ? "#2D9B62" : ServerConnectionStatus.StartsWith("Falha") ? "#CB5048" : "#8A99A5";
+    public bool CanConfigureClient => ClientSessions.Contains(SelectedClientSession) && !IsClientScanning && !SelectedClientSession.IsReading && !IsFullTestRunning;
+    public bool CanConfigureServer => !IsServerRunning && !IsFullTestRunning;
+    public bool CanUseClientOperations => !IsFullTestRunning;
+    public bool CanDisconnectClient => ClientSessions.Contains(SelectedClientSession) && !IsFullTestRunning;
+    public bool CanRemoveClientSession => CanConfigureClient;
+    public bool CanConfigureClientMap => HasClientTargets && !IsFullTestRunning;
     public bool CanConfigureFullTest => !IsFullTestRunning;
     public bool CanOpenFullTestReport => !string.IsNullOrWhiteSpace(FullTestReport);
     public string ActiveEndpoint => $"{(IsServerMode ? LocalIp : TargetIp)}:{Port}";
 
     public MainViewModel()
     {
+        InitializeDiscoveryGroups();
+        RefreshLocalIpv4Addresses();
         _serverMap.LoadDefaults();
         LoadDefaultServerRanges();
         ApplyServerMapRanges();
         RefreshServerPoints();
-        LoadDefaultClientMap();
+        RegisterClientSession(SelectedClientSession);
+        LoadTestScopeSettings();
+        SelectedClientMapRow = ClientMapRows.FirstOrDefault();
         LoadVerificationChecks();
         LoadCaptureDevices();
         CreateFullTestPlan();
         UpdateFullTestSummaryCards();
-        _client.TrafficObserved += OnTrafficObserved;
         _networkCapture.PacketCaptured += OnPassivePacketCaptured;
         _passivePacketFlushTimer = new DispatcherTimer
         {
@@ -157,19 +177,100 @@ public sealed partial class MainViewModel : ObservableObject
     public void StopAllOperations()
     {
         _passivePacketFlushTimer.Stop();
-        _client.TrafficObserved -= OnTrafficObserved;
+        foreach (var session in ClientSessions)
+        {
+            session.Client.TrafficObserved -= OnTrafficObserved;
+            session.FindingObserved -= OnTrafficObserved;
+            session.PropertyChanged -= OnClientSessionPropertyChanged;
+            session.CancelScan();
+            _ = session.DisconnectAsync();
+        }
         _networkCapture.PacketCaptured -= OnPassivePacketCaptured;
         if (_server is not null) _server.TrafficObserved -= OnTrafficObserved;
         _fullTestCts?.Cancel();
-        _scanCts?.Cancel();
         _serverCts?.Cancel();
         _server?.Stop();
-        _ = _client.DisconnectAsync();
         try { _networkCapture.Dispose(); }
         catch (Exception ex) { Log.Warning(ex, "Falha ao encerrar captura"); }
     }
 
-    [RelayCommand]
+    private void RegisterClientSession(ClientConnectionSession session)
+    {
+        session.Client.TrafficObserved += OnTrafficObserved;
+        session.FindingObserved += OnTrafficObserved;
+        session.PropertyChanged += OnClientSessionPropertyChanged;
+        ClientSessions.Add(session);
+        RefreshFullTestScope();
+        OnPropertyChanged(nameof(HasClientTargets));
+    }
+
+    public ClientConnectionSession AddClientSession(string address, int endpointPort, byte id, int scanMs, bool persistent)
+    {
+        var session = new ClientConnectionSession
+        {
+            Name = $"Alvo {++_nextClientNumber}", Address = address, Port = endpointPort,
+            UnitId = id, ScanRateMs = scanMs, KeepConnectionOpen = persistent
+        };
+        RegisterClientSession(session);
+        SelectedClientSession = session;
+        return session;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRemoveClientSession))]
+    private async Task RemoveClientSessionAsync()
+    {
+        var session = SelectedClientSession;
+        await session.DisconnectAsync();
+        session.Client.TrafficObserved -= OnTrafficObserved;
+        session.FindingObserved -= OnTrafficObserved;
+        session.PropertyChanged -= OnClientSessionPropertyChanged;
+        ClientSessions.Remove(session);
+        if (ClientSessions.Count == 0)
+        {
+            var empty = new ClientConnectionSession { Name = "Nenhum alvo", Address = "" };
+            foreach (var row in empty.Rows.ToArray()) empty.RemoveRow(row);
+            SelectedClientSession = empty;
+            Status = "Nenhum servidor-alvo cadastrado. O servidor local e a descoberta continuam disponiveis.";
+        }
+        else SelectedClientSession = ClientSessions.First();
+        OnPropertyChanged(nameof(HasClientTargets));
+        RefreshFullTestScope();
+    }
+
+    private void OnClientSessionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, SelectedClientSession)) RefreshClientSessionBindings();
+        OnPropertyChanged(nameof(RunningClientCount));
+        OnPropertyChanged(nameof(AnyClientRunning));
+        if (e.PropertyName is nameof(ClientConnectionSession.IncludeInFullTest) or nameof(ClientConnectionSession.Name)
+            or nameof(ClientConnectionSession.Address) or nameof(ClientConnectionSession.Port) or nameof(ClientConnectionSession.UnitId))
+            RefreshFullTestScope();
+    }
+
+    partial void OnSelectedClientSessionChanged(ClientConnectionSession value)
+    {
+        if (ClientSessions.Contains(value)) SelectedMode = "Client";
+        SelectedClientMapRow = value.Rows.FirstOrDefault();
+        RefreshClientSessionBindings();
+    }
+
+    private void RefreshClientSessionBindings()
+    {
+        foreach (var property in new[] { nameof(TargetIp), nameof(Port), nameof(UnitId), nameof(ScanRateMs),
+            nameof(KeepClientConnectionOpen), nameof(IsClientScanning), nameof(ActiveEndpoint),
+            nameof(ClientMapRows), nameof(ClientCommunicationPoints), nameof(ClientHoldingRegisterPoints),
+            nameof(ClientInputRegisterPoints), nameof(ClientCoilPoints), nameof(ClientDiscreteInputPoints),
+            nameof(CanConfigureClient), nameof(CanDisconnectClient), nameof(CanRemoveClientSession),
+            nameof(CanConfigureClientMap), nameof(HasClientTargets) }) OnPropertyChanged(property);
+        ReadOnceCommand.NotifyCanExecuteChanged();
+        StartClientScanCommand.NotifyCanExecuteChanged();
+        DisconnectClientCommand.NotifyCanExecuteChanged();
+        RemoveClientSessionCommand.NotifyCanExecuteChanged();
+        AddClientMapRowCommand.NotifyCanExecuteChanged();
+        RemoveClientMapRowCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanConfigureClientMap))]
     private void AddClientMapRow()
     {
         var nextAddress = ClientMapRows.Count == 0 ? 0 : ClientMapRows.Max(x => x.StartAddress + x.Quantity);
@@ -186,7 +287,7 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedClientMapRow = row;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanConfigureClientMap))]
     private void RemoveClientMapRow()
     {
         if (SelectedClientMapRow is null)
@@ -194,8 +295,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        SelectedClientMapRow.PropertyChanged -= OnClientMapRowPropertyChanged;
-        ClientMapRows.Remove(SelectedClientMapRow);
+        SelectedClientSession.RemoveRow(SelectedClientMapRow);
         SelectedClientMapRow = ClientMapRows.FirstOrDefault();
         RefreshClientCommunicationMapFromConfiguration();
     }
@@ -239,32 +339,41 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanStartServer))]
-    private async Task StartServerAsync()
+    private Task StartServerAsync()
     {
         SelectedMode = "Server";
+        return StartServerRuntimeAsync();
+    }
+
+    private async Task StartServerRuntimeAsync()
+    {
         _serverCts = new CancellationTokenSource();
         _server = new ModbusTcpServer(_serverMap);
         _server.TrafficObserved += OnTrafficObserved;
         IsServerRunning = true;
-        Status = $"Servidor escutando em {LocalIp}:{Port}.";
+        ServerConnectionStatus = "Escutando";
+        Status = $"Servidor escutando em {ServerEndpoint}.";
 
         try
         {
             var address = IPAddress.Parse(LocalIp);
-            await _server.StartAsync(address, Port, _serverCts.Token);
+            await _server.StartAsync(address, ServerPort, _serverCts.Token);
         }
         catch (OperationCanceledException)
         {
             Status = "Servidor parado.";
+            ServerConnectionStatus = "Parado";
         }
         catch (Exception ex)
         {
             Status = $"Falha ao iniciar servidor: {ex.Message}";
+            ServerConnectionStatus = "Falha ao iniciar";
             Log.Error(ex, "Falha ao iniciar servidor");
         }
         finally
         {
             IsServerRunning = false;
+            if (!ServerConnectionStatus.StartsWith("Falha")) ServerConnectionStatus = "Parado";
         }
     }
 
@@ -280,66 +389,35 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task ReadOnceAsync()
     {
         SelectedMode = "Client";
-        await ReadEnabledClientRowsAsync(CancellationToken.None);
+        var session = SelectedClientSession;
+        await session.ReadCycleAsync(CancellationToken.None);
+        Status = $"{session.Endpoint}: {session.ConnectionState}";
     }
 
-    [RelayCommand(CanExecute = nameof(CanStartClientScan))]
+    [RelayCommand(CanExecute = nameof(CanStartClientScan), AllowConcurrentExecutions = true)]
     private async Task StartClientScanAsync()
     {
         SelectedMode = "Client";
-        using var scanCts = new CancellationTokenSource();
-        _scanCts = scanCts;
-        _scanStopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        IsClientScanning = true;
-        Status = KeepClientConnectionOpen
-            ? $"Conectando a {TargetIp}:{Port}; scan a cada {ScanRateMs} ms..."
-            : $"Scan iniciado a cada {ScanRateMs} ms; cada requisicao abrira e fechara a conexao.";
-
-        try
-        {
-            if (KeepClientConnectionOpen)
-            {
-                await _client.ConnectAsync(TargetIp, Port, scanCts.Token);
-                Status = $"Conectado a {TargetIp}:{Port}; scan a cada {ScanRateMs} ms.";
-            }
-
-            while (!scanCts.IsCancellationRequested)
-            {
-                await ReadEnabledClientRowsAsync(scanCts.Token);
-                await Task.Delay(Math.Max(100, ScanRateMs), scanCts.Token);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Status = "Scan parado.";
-        }
-        catch (Exception ex)
-        {
-            Status = $"Falha ao conectar no client: {ex.Message}";
-            Log.Error(ex, "Falha ao iniciar sessao de polling do client");
-        }
-        finally
-        {
-            _scanCts = null;
-            IsClientScanning = false;
-            _scanStopped?.TrySetResult();
-        }
+        var session = SelectedClientSession;
+        Status = $"Conectando a {session.Endpoint}; scan a cada {session.ScanRateMs} ms.";
+        await session.ScanAsync();
+        Status = $"{session.Endpoint}: {session.ConnectionState}";
     }
 
     [RelayCommand(CanExecute = nameof(CanDisconnectClient))]
     private async Task DisconnectClientAsync()
     {
-        _scanCts?.Cancel();
-        if (_scanStopped is not null) await _scanStopped.Task;
-        await _client.DisconnectAsync();
-        Status = "Client desconectado; scan parado.";
+        var session = SelectedClientSession;
+        await session.DisconnectAsync();
+        Status = $"Cliente {session.Endpoint} desconectado; scan parado.";
         DisconnectClientCommand.NotifyCanExecuteChanged();
     }
 
     public async Task SetClientConnectionModeAsync(bool keepConnectionOpen)
     {
-        await _client.ConfigureConnectionModeAsync(keepConnectionOpen);
-        KeepClientConnectionOpen = keepConnectionOpen;
+        var session = SelectedClientSession;
+        await session.Client.ConfigureConnectionModeAsync(keepConnectionOpen);
+        session.KeepConnectionOpen = keepConnectionOpen;
         Status = keepConnectionOpen
             ? "Modo Client configurado para manter uma conexao TCP."
             : "Modo Client configurado para reconectar a cada requisicao.";
@@ -347,6 +425,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public async Task WriteRangeFromMapAsync(ClientMapRow row, ushort address, ushort endAddress, ushort value)
     {
+        var session = ClientSessions.FirstOrDefault(x => x.Rows.Contains(row)) ?? SelectedClientSession;
         var rangeEnd = row.StartAddress + Math.Max(1, (int)row.Quantity) - 1;
         if (address < row.StartAddress || endAddress > rangeEnd)
         {
@@ -372,15 +451,15 @@ public sealed partial class MainViewModel : ObservableObject
 
                 if (row.FunctionCode == ModbusProtocol.ReadHoldingRegisters)
                 {
-                    await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, currentAddress, value, CancellationToken.None);
+                    await session.Client.WriteSingleRegisterAsync(session.Address, session.Port, session.UnitId, currentAddress, value, CancellationToken.None);
                 }
                 else
                 {
-                    await _client.WriteSingleCoilAsync(TargetIp, Port, UnitId, currentAddress, value != 0, CancellationToken.None);
+                    await session.Client.WriteSingleCoilAsync(session.Address, session.Port, session.UnitId, currentAddress, value != 0, CancellationToken.None);
                 }
 
                 row.LastValue = ReplaceRegisterValue(row.LastValue, row.StartAddress, row.Quantity, currentAddress, displayValue);
-                UpdateClientCommunicationPointAfterWrite(row, currentAddress, displayValue);
+                session.RecordValue(row, currentAddress, displayValue, "Escrita OK");
                 writes++;
             }
 
@@ -401,13 +480,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     public async Task WritePointFromCommunicationPointAsync(ClientCommunicationPointRow point, ushort value)
     {
+        var session = ClientSessions.FirstOrDefault(x => x.Points.Contains(point)) ?? SelectedClientSession;
         if (point.FunctionCode is not (ModbusProtocol.ReadHoldingRegisters or ModbusProtocol.ReadCoils))
         {
             Status = $"Escrita bloqueada: {point.Type} nao usa FC05/FC06.";
             return;
         }
 
-        var row = ClientMapRows.FirstOrDefault(x =>
+        var row = session.Rows.FirstOrDefault(x =>
             x.FunctionCode == point.FunctionCode
             && x.StartAddress <= point.Address
             && point.Address <= x.StartAddress + Math.Max(1, (int)x.Quantity) - 1);
@@ -421,11 +501,11 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (point.FunctionCode == ModbusProtocol.ReadHoldingRegisters)
             {
-                await _client.WriteSingleRegisterAsync(TargetIp, Port, UnitId, point.Address, value, CancellationToken.None);
+                await session.Client.WriteSingleRegisterAsync(session.Address, session.Port, session.UnitId, point.Address, value, CancellationToken.None);
             }
             else
             {
-                await _client.WriteSingleCoilAsync(TargetIp, Port, UnitId, point.Address, value != 0, CancellationToken.None);
+                await session.Client.WriteSingleCoilAsync(session.Address, session.Port, session.UnitId, point.Address, value != 0, CancellationToken.None);
             }
 
             point.Value = point.FunctionCode == ModbusProtocol.ReadHoldingRegisters
@@ -434,7 +514,7 @@ public sealed partial class MainViewModel : ObservableObject
             point.Quality = "Escrita OK";
             point.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
             Status = $"Escrita OK: {point.Type} {point.Address} = {value}";
-            SyncClientCommunicationPointViews();
+            session.SyncViews();
         }
         catch (Exception ex)
         {
@@ -471,232 +551,22 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void UpsertClientCommunicationPoints(ClientMapRow row, IReadOnlyList<ushort> values, string quality)
     {
-        RefreshClientCommunicationMapFromConfiguration();
-        var now = DateTime.Now.ToString("HH:mm:ss.fff");
-        for (var i = 0; i < values.Count; i++)
-        {
-            var address = (ushort)(row.StartAddress + i);
-            var point = ClientCommunicationPoints.FirstOrDefault(x =>
-                x.SourceLine == row.Name
-                && x.FunctionCode == row.FunctionCode
-                && x.Address == address);
-
-            if (point is null)
-            {
-                ClientCommunicationPoints.Add(new ClientCommunicationPointRow
-                {
-                    SourceLine = row.Name,
-                    Function = FormatFunctionCode(row.FunctionCode),
-                    FunctionCode = row.FunctionCode,
-                    Type = ClientPointType(row.FunctionCode),
-                    Address = address,
-                    Value = values[i],
-                    Quality = quality,
-                    LastUpdatedAt = now,
-                    Writable = IsClientWritableFunction(row.FunctionCode)
-                });
-                continue;
-            }
-
-            point.Value = values[i];
-            point.Quality = quality;
-            point.LastUpdatedAt = now;
-            point.Writable = IsClientWritableFunction(row.FunctionCode);
-        }
-
-        SyncClientCommunicationPointViews();
+        SelectedClientSession.RecordValues(row, values, quality);
     }
 
     private void MarkClientCommunicationRangeFailed(ClientMapRow row, string error)
     {
-        RefreshClientCommunicationMapFromConfiguration();
-        var now = DateTime.Now.ToString("HH:mm:ss.fff");
-        for (var i = 0; i < row.Quantity; i++)
-        {
-            var address = (ushort)(row.StartAddress + i);
-            var point = ClientCommunicationPoints.FirstOrDefault(x =>
-                x.SourceLine == row.Name
-                && x.FunctionCode == row.FunctionCode
-                && x.Address == address);
-
-            if (point is null)
-            {
-                ClientCommunicationPoints.Add(new ClientCommunicationPointRow
-                {
-                    SourceLine = row.Name,
-                    Function = FormatFunctionCode(row.FunctionCode),
-                    FunctionCode = row.FunctionCode,
-                    Type = ClientPointType(row.FunctionCode),
-                    Address = address,
-                    Value = 0,
-                    Quality = error,
-                    LastUpdatedAt = now,
-                    Writable = IsClientWritableFunction(row.FunctionCode)
-                });
-                continue;
-            }
-
-            point.Quality = error;
-            point.LastUpdatedAt = now;
-        }
-
-        SyncClientCommunicationPointViews();
+        SelectedClientSession.RecordFailure(row, error);
     }
 
     private void AddClientMapRowToCollection(ClientMapRow row)
     {
-        row.PropertyChanged += OnClientMapRowPropertyChanged;
-        ClientMapRows.Add(row);
-        RefreshClientCommunicationMapFromConfiguration();
-    }
-
-    private void OnClientMapRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (sender is not ClientMapRow row)
-        {
-            return;
-        }
-
-        if (e.PropertyName is nameof(ClientMapRow.Enabled)
-            or nameof(ClientMapRow.Function)
-            or nameof(ClientMapRow.StartAddress)
-            or nameof(ClientMapRow.Quantity))
-        {
-            row.LastValue = "";
-            row.LastStatus = "Nao lido";
-            row.LastReadAt = "";
-            RefreshClientCommunicationMapFromConfiguration();
-            return;
-        }
-
-        if (e.PropertyName == nameof(ClientMapRow.Name))
-        {
-            RefreshClientCommunicationMapFromConfiguration();
-        }
+        SelectedClientSession.AddRow(row);
     }
 
     private void RefreshClientCommunicationMapFromConfiguration()
     {
-        var configuredKeys = new HashSet<string>();
-
-        foreach (var row in ClientMapRows.Where(x => x.Enabled))
-        {
-            var quantity = Math.Max(1, (int)row.Quantity);
-            for (var i = 0; i < quantity; i++)
-            {
-                var addressValue = row.StartAddress + i;
-                if (addressValue > ushort.MaxValue)
-                {
-                    break;
-                }
-
-                var address = (ushort)addressValue;
-                configuredKeys.Add(ClientCommunicationPointKey(row.Name, row.FunctionCode, address));
-
-                var point = ClientCommunicationPoints.FirstOrDefault(x =>
-                    x.SourceLine == row.Name
-                    && x.FunctionCode == row.FunctionCode
-                    && x.Address == address);
-
-                if (point is null)
-                {
-                    ClientCommunicationPoints.Add(new ClientCommunicationPointRow
-                    {
-                        SourceLine = row.Name,
-                        Function = FormatFunctionCode(row.FunctionCode),
-                        FunctionCode = row.FunctionCode,
-                        Type = ClientPointType(row.FunctionCode),
-                        Address = address,
-                        Value = 0,
-                        Quality = "Nao lido",
-                        LastUpdatedAt = "",
-                        Writable = IsClientWritableFunction(row.FunctionCode)
-                    });
-                    continue;
-                }
-
-                point.Function = FormatFunctionCode(row.FunctionCode);
-                point.Type = ClientPointType(row.FunctionCode);
-                point.Writable = IsClientWritableFunction(row.FunctionCode);
-            }
-        }
-
-        var stalePoints = ClientCommunicationPoints
-            .Where(x => !configuredKeys.Contains(ClientCommunicationPointKey(x.SourceLine, x.FunctionCode, x.Address)))
-            .ToList();
-        foreach (var point in stalePoints)
-        {
-            ClientCommunicationPoints.Remove(point);
-        }
-
-        SyncClientCommunicationPointViews();
-    }
-
-    private static string ClientCommunicationPointKey(string sourceLine, byte functionCode, ushort address)
-    {
-        return $"{sourceLine}\u001f{functionCode}\u001f{address}";
-    }
-
-    private void UpdateClientCommunicationPointAfterWrite(ClientMapRow row, ushort address, ushort value)
-    {
-        var point = ClientCommunicationPoints.FirstOrDefault(x =>
-            x.SourceLine == row.Name
-            && x.FunctionCode == row.FunctionCode
-            && x.Address == address);
-        if (point is null)
-        {
-            ClientCommunicationPoints.Add(new ClientCommunicationPointRow
-            {
-                SourceLine = row.Name,
-                Function = FormatFunctionCode(row.FunctionCode),
-                FunctionCode = row.FunctionCode,
-                Type = ClientPointType(row.FunctionCode),
-                Address = address,
-                Value = value,
-                Quality = "Escrita OK",
-                LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff"),
-                Writable = IsClientWritableFunction(row.FunctionCode)
-            });
-            return;
-        }
-
-        point.Value = value;
-        point.Quality = "Escrita OK";
-        point.LastUpdatedAt = DateTime.Now.ToString("HH:mm:ss.fff");
-        SyncClientCommunicationPointViews();
-    }
-
-    private void RemoveClientCommunicationPoints(ClientMapRow row)
-    {
-        var rows = ClientCommunicationPoints
-            .Where(x => x.SourceLine == row.Name && x.FunctionCode == row.FunctionCode)
-            .ToList();
-        foreach (var point in rows)
-        {
-            ClientCommunicationPoints.Remove(point);
-        }
-
-        SyncClientCommunicationPointViews();
-    }
-
-    private void SyncClientCommunicationPointViews()
-    {
-        ReplaceClientCommunicationPointView(ClientHoldingRegisterPoints, ModbusProtocol.ReadHoldingRegisters);
-        ReplaceClientCommunicationPointView(ClientInputRegisterPoints, ModbusProtocol.ReadInputRegisters);
-        ReplaceClientCommunicationPointView(ClientCoilPoints, ModbusProtocol.ReadCoils);
-        ReplaceClientCommunicationPointView(ClientDiscreteInputPoints, ModbusProtocol.ReadDiscreteInputs);
-    }
-
-    private void ReplaceClientCommunicationPointView(ObservableCollection<ClientCommunicationPointRow> target, byte functionCode)
-    {
-        target.Clear();
-        foreach (var point in ClientCommunicationPoints
-            .Where(x => x.FunctionCode == functionCode)
-            .OrderBy(x => x.Address)
-            .ThenBy(x => x.SourceLine))
-        {
-            target.Add(point);
-        }
+        SelectedClientSession.RefreshMap();
     }
 
     [RelayCommand]
@@ -720,6 +590,10 @@ public sealed partial class MainViewModel : ObservableObject
             TargetIp = TargetIp,
             Port = Port,
             UnitId = UnitId,
+            ServerPort = ServerPort,
+            ServerUnitId = ServerUnitId,
+            ClientSessions = ClientSessions.Select(x => new ClientSessionCase(x.Name, x.Address, x.Port, x.UnitId, x.ScanRateMs, x.KeepConnectionOpen,
+                x.Rows.Select(row => new ClientBlockCase(row.Name, row.FunctionCode, row.StartAddress, row.Quantity, row.Enabled)).ToList())).ToList(),
             Map = ServerPoints.Select(x => x.ToModbusPoint()).ToList(),
             Traffic = Traffic.ToList(),
             Diagnostics = Diagnostics.ToList()
@@ -752,9 +626,13 @@ public sealed partial class MainViewModel : ObservableObject
     public void ResetDiagnosticSession()
     {
         ClearTimeline();
+        ResetTopology();
+        TopologySummary = "Sem coleta. Execute o teste completo.";
         NetworkDiscoveryRows.Clear();
         DiscoveredMapRows.Clear();
         FullTestReport = string.Empty;
+        FullTestRunScope = "Nenhuma execucao realizada.";
+        _fullTestClients = [];
         FullTestStartedAtText = "-";
         FullTestFinishedAtText = "-";
         FullTestOverallStatus = "Aguardando";
@@ -771,13 +649,15 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanStartFullTest))]
     private async Task StartFullTestAsync()
     {
+        if (!CanStartFullTest()) return;
         using var testCts = new CancellationTokenSource();
         _fullTestCts = testCts;
-        _fullTestStartedAt = DateTimeOffset.Now;
+        PrepareFullTestScope();
         IsFullTestRunning = true;
         try
         {
         FullTestReport = "";
+        _fullTestDetailedReport = "";
         FullTestOverallStatus = "Executando";
         FullTestScore = "0/0";
         FullTestCompletedSteps = 0;
@@ -808,7 +688,10 @@ public sealed partial class MainViewModel : ObservableObject
             await ExecuteFullTestStepAsync(step!, action, testCts.Token);
         }
 
+        _fullTestFinishedAt = DateTimeOffset.Now;
+        UpdateFullTestSummaryCards();
         FullTestReport = BuildFullTestReport();
+        _fullTestDetailedReport = BuildDetailedFullTestReport(FullTestReport);
         UpdateFullTestSummaryCards();
         FullTestFinishedAtText = DateTimeOffset.Now.ToString("HH:mm:ss");
         FullTestProgressLabel = "Teste concluído";
@@ -819,7 +702,9 @@ public sealed partial class MainViewModel : ObservableObject
             FullTestOverallStatus = "Cancelado";
             FullTestFinishedAtText = DateTimeOffset.Now.ToString("HH:mm:ss");
             FullTestProgressLabel = "Teste cancelado";
+            _fullTestFinishedAt = DateTimeOffset.Now;
             FullTestReport = BuildFullTestReport();
+            _fullTestDetailedReport = BuildDetailedFullTestReport(FullTestReport);
             Status = "Teste cancelado. Relatorio parcial disponivel; scan e captura podem continuar ativos.";
         }
         catch (Exception ex)
@@ -827,8 +712,10 @@ public sealed partial class MainViewModel : ObservableObject
             FullTestOverallStatus = "Falha";
             FullTestFinishedAtText = DateTimeOffset.Now.ToString("HH:mm:ss");
             FullTestProgressLabel = "Teste interrompido por falha";
+            _fullTestFinishedAt = DateTimeOffset.Now;
             Status = $"Falha no teste: {ex.Message}";
             FullTestReport = BuildFullTestReport();
+            _fullTestDetailedReport = BuildDetailedFullTestReport(FullTestReport);
             Log.Error(ex, "Falha na execucao do teste completo");
         }
         finally
@@ -838,11 +725,52 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    private void PrepareFullTestScope()
+    {
+        _fullTestMode = TestMode;
+        _fullTestStartedAt = DateTimeOffset.Now;
+        RefreshLocalIpv4Addresses();
+        _runWarnings.Clear();
+        _fullTestClients = TestMode == "Client" ? ConfiguredTestTargets() : [];
+        FullTestRunScope = TestMode == "Client"
+            ? _fullTestClients.Length == 0
+                ? "Cliente / Mestre: descoberta automatica; nenhum alvo pre-configurado. Apenas servidores Modbus confirmados serao validados."
+                : "Cliente / Mestre: " + string.Join("; ", _fullTestClients.Select(x => $"{x.Name} ({x.Endpoint}, ID {x.UnitId})"))
+            : $"Servidor / Escravo: {ServerName} ({ServerEndpoint}, ID {ServerUnitId})";
+        _fullTestSessionIds.Clear();
+        foreach (var session in _fullTestClients) _fullTestSessionIds.Add(session.Id);
+        if (FullTestIsServerMode) _fullTestSessionIds.Add("local-server");
+        _lastRequestBySignature.Clear();
+        _pollingIntervalsBySignature.Clear();
+        _exceptionCounts.Clear();
+        _outOfMapCounts.Clear();
+        _baselineTraffic = _operationalTraffic = null;
+        ResetTopology();
+        _blockReadStatistics.Clear();
+        _confirmedModbusEndpoints.Clear();
+        _openDiscoveryEndpoints.Clear();
+        _discoveredUnitIds.Clear();
+        _connectionBaselines.Clear();
+        foreach (var session in _fullTestClients) _connectionBaselines[session.Id] = (session.Client.ConnectionOpenCount, session.Client.ConnectionCloseCount);
+        _serverPendingRequests.Clear();
+        _serverBlocks.Clear();
+        _serverWindowRequests = _serverWindowReplies = _serverWindowExceptions = _serverWindowUnmatched = 0;
+        _nextProbeAt = DateTimeOffset.MinValue;
+        _windowUiDrops = 0;
+        _fullTestFinishedAt = null;
+        FullTestCoverage = "Preparando coleta";
+    }
+
     [RelayCommand(CanExecute = nameof(IsFullTestRunning))]
     private void CancelFullTest() => _fullTestCts?.Cancel();
 
     [RelayCommand(CanExecute = nameof(CanSaveFullTestReport))]
-    private async Task SaveFullTestReportAsync()
+    private Task SaveFullTestReportAsync() => ExportFullTestReportAsync(false);
+
+    [RelayCommand(CanExecute = nameof(CanSaveFullTestReport))]
+    private Task SaveDetailedFullTestReportAsync() => ExportFullTestReportAsync(true);
+
+    private async Task ExportFullTestReportAsync(bool detailed)
     {
         if (string.IsNullOrWhiteSpace(FullTestReport))
         {
@@ -852,8 +780,11 @@ public sealed partial class MainViewModel : ObservableObject
 
         var dialog = new SaveFileDialog
         {
-            Filter = "Relatorio Markdown (*.md)|*.md|Texto (*.txt)|*.txt",
-            FileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm}-teste-completo-modbus.md"
+            Title = detailed ? "Exportar relatorio completo" : "Exportar relatorio resumido",
+            Filter = "Relatorio Markdown (*.md)|*.md|Relatorio PDF (*.pdf)|*.pdf",
+            DefaultExt = ".md",
+            AddExtension = true,
+            FileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm}-teste-modbus-{(detailed ? "completo" : "resumo")}"
         };
 
         if (dialog.ShowDialog() != true)
@@ -861,8 +792,21 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        await File.WriteAllTextAsync(dialog.FileName, FullTestReport, Encoding.UTF8);
-        Status = $"Relatorio exportado: {dialog.FileName}";
+        var report = detailed ? _fullTestDetailedReport : FullTestReport;
+        try
+        {
+            Status = "Exportando relatorio...";
+            await ReportExporter.ExportAsync(dialog.FileName, report, _fullTestTopologySnapshot,
+                NetworkDiscoveryRows.ToArray(), TopologyNeighbors.ToArray(), FullTestIsServerMode);
+            Status = $"Relatorio exportado: {dialog.FileName}";
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Falha ao exportar relatorio");
+            Status = $"Falha ao exportar relatorio: {ex.Message}";
+            System.Windows.MessageBox.Show($"Nao foi possivel exportar o relatorio.\n{ex.Message}",
+                "Exportar relatorio", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
     }
 
     [RelayCommand]
@@ -875,17 +819,25 @@ public sealed partial class MainViewModel : ObservableObject
     {
         await EnsureNetworkCaptureForFullTestAsync();
         _fullTestCts?.Token.ThrowIfCancellationRequested();
+        _fullTestStartupActions.Add("Novas leituras/servidor serao iniciados apos a referencia passiva; operacoes previamente ativas continuam.");
+    }
 
-        if (IsServerMode)
+    private void StartModbusRuntimeAfterBaseline()
+    {
+
+        if (FullTestIsServerMode)
         {
             EnsureServerForFullTest();
         }
-        else if (IsClientMode)
+        else if (FullTestIsClientMode)
         {
-            EnsureClientScanForFullTest();
+            foreach (var session in _fullTestClients)
+            {
+                if (!session.IsScanning) _ = session.ScanAsync();
+                _fullTestStartupActions.Add($"Cliente {session.Name}: leitura ativa solicitada em {session.Endpoint}, UID {session.UnitId}.");
+            }
         }
 
-        await Task.Delay(500, _fullTestCts?.Token ?? CancellationToken.None);
     }
 
     private async Task EnsureNetworkCaptureForFullTestAsync()
@@ -949,20 +901,28 @@ public sealed partial class MainViewModel : ObservableObject
                 ? $"{x.Device.Index}:{x.Device.Description}={x.PacketCount} pkt/{FormatBytes(x.ByteCount)}"
                 : $"{x.Device.Index}:{x.Device.Description}=erro {x.Error}"));
 
-        var best = samples
+        var loopbackOnly = FullTestIsClientMode
+            ? _fullTestClients.Length > 0 && _fullTestClients.All(x => IPAddress.TryParse(x.Address, out var ip) && IPAddress.IsLoopback(ip))
+            : IPAddress.TryParse(LocalIp, out var listenIp) && IPAddress.IsLoopback(listenIp);
+        var loopbackSample = loopbackOnly && !EnableActiveSubnetScan ? samples.FirstOrDefault(x => string.IsNullOrWhiteSpace(x.Error)
+            && (x.Device.Name.Contains("loopback", StringComparison.OrdinalIgnoreCase)
+                || x.Device.Description.Contains("loopback", StringComparison.OrdinalIgnoreCase))) : null;
+        var best = loopbackSample ?? samples
             .Where(x => string.IsNullOrWhiteSpace(x.Error))
+            .Where(x => !EnableActiveSubnetScan || !Regex.IsMatch(x.Device.Description + " " + x.Device.Name, "Loopback|WFP|Filter|Pseudo", RegexOptions.IgnoreCase))
             .OrderByDescending(x => x.PacketCount)
             .ThenByDescending(x => x.ByteCount)
             .FirstOrDefault();
 
-        if (best is null || best.PacketCount == 0)
+        if (best is null || (best.PacketCount == 0 && loopbackSample is null))
         {
             _fullTestStartupActions.Add($"Selecao de interface: nenhuma interface apresentou trafego em 2 s com BPF '{probeFilter}'. Amostras: {sampleSummary}. Usando interface selecionada atual.");
             return SelectedCaptureDevice;
         }
 
         var matchingDevice = CaptureDevices.FirstOrDefault(x => x.Index == best.Device.Index) ?? best.Device;
-        _fullTestStartupActions.Add($"Selecao de interface: escolhida '{matchingDevice.Description}' por maior trafego em 2 s ({best.PacketCount} pkt, {FormatBytes(best.ByteCount)}). Amostras: {sampleSummary}.");
+        var reason = loopbackSample is not null ? "todos os alvos do teste sao loopback" : "maior trafego em 2 s";
+        _fullTestStartupActions.Add($"Selecao de interface: escolhida '{matchingDevice.Description}' por {reason} ({best.PacketCount} pkt, {FormatBytes(best.ByteCount)}). Amostras: {sampleSummary}.");
         return matchingDevice;
     }
 
@@ -975,20 +935,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         ApplyServerMapRanges();
-        _ = StartServerAsync();
-        _fullTestStartupActions.Add($"Servidor Modbus: start automatico solicitado em {LocalIp}:{Port}, Unit ID {UnitId}.");
-    }
-
-    private void EnsureClientScanForFullTest()
-    {
-        if (IsClientScanning)
-        {
-            _fullTestStartupActions.Add("Scan do client: ja estava ativo.");
-            return;
-        }
-
-        _ = StartClientScanAsync();
-        _fullTestStartupActions.Add($"Scan do client: start automatico solicitado para {TargetIp}:{Port}, Unit ID {UnitId}, taxa {Math.Max(100, ScanRateMs)} ms.");
+        _ = StartServerRuntimeAsync();
+        _fullTestStartupActions.Add($"Servidor Modbus: start automatico solicitado em {ServerEndpoint}, Unit ID {ServerUnitId}.");
     }
 
     [RelayCommand(CanExecute = nameof(CanStartNetworkCapture))]
@@ -1044,65 +992,19 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private async Task ReadEnabledClientRowsAsync(CancellationToken cancellationToken)
-    {
-        var rows = ClientMapRows.Where(x => x.Enabled).ToList();
-        if (rows.Count == 0)
-        {
-            Status = "Nenhuma linha habilitada no mapa do client.";
-            return;
-        }
 
-        foreach (var row in rows)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
-            {
-                var functionCode = row.FunctionCode;
-                if (functionCode is ModbusProtocol.ReadCoils or ModbusProtocol.ReadDiscreteInputs)
-                {
-                    var values = await _client.ReadBitsAsync(TargetIp, Port, UnitId, functionCode, row.StartAddress, row.Quantity, cancellationToken);
-                    row.LastValue = string.Join(", ", values.Select(x => x ? "1" : "0"));
-                    UpsertClientCommunicationPoints(row, values.Select(x => x ? (ushort)1 : (ushort)0).ToList(), "OK");
-                }
-                else
-                {
-                    var values = await _client.ReadRegistersAsync(TargetIp, Port, UnitId, functionCode, row.StartAddress, row.Quantity, cancellationToken);
-                    row.LastValue = string.Join(", ", values);
-                    UpsertClientCommunicationPoints(row, values, "OK");
-                }
-
-                row.LastStatus = "OK";
-                row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                row.LastStatus = ex.Message;
-                row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
-                MarkClientCommunicationRangeFailed(row, ex.Message);
-                AddSystemFinding($"Falha/timeout na leitura '{row.Name}': {ex.Message}");
-                Log.Error(ex, "Falha na linha de mapa client {MapRow}", row.Name);
-            }
-        }
-
-        Status = $"Leitura finalizada: {rows.Count} linha(s).";
-    }
-
-    private bool CanStartServer() => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
-    private bool CanReadOnce() => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
-    private bool CanStartClientScan() => !IsServerRunning && !IsClientScanning && !IsFullTestRunning;
-    private bool CanEditServerMap() => !IsServerRunning;
+    private bool CanStartServer() => !IsServerRunning && !IsFullTestRunning;
+    private bool CanReadOnce() => CanConfigureClient;
+    private bool CanStartClientScan() => CanConfigureClient;
+    private bool CanEditServerMap() => !IsServerRunning && !IsFullTestRunning;
     private bool CanStartNetworkCapture() => !IsNetworkCaptureRunning && SelectedCaptureDevice is not null;
-    private bool CanStartFullTest() => !IsFullTestRunning;
+    private bool CanStartFullTest() => !IsFullTestRunning && !IsDeviceProbeRunning;
     private bool CanSaveFullTestReport() => !string.IsNullOrWhiteSpace(FullTestReport) && !IsFullTestRunning;
 
     partial void OnFullTestReportChanged(string value)
     {
         SaveFullTestReportCommand.NotifyCanExecuteChanged();
+        SaveDetailedFullTestReportCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanOpenFullTestReport));
     }
 
@@ -1120,11 +1022,14 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsServerMode));
         OnPropertyChanged(nameof(SelectedModeLabel));
         OnPropertyChanged(nameof(ActiveEndpoint));
+        OnPropertyChanged(nameof(Port));
+        OnPropertyChanged(nameof(UnitId));
     }
 
-    partial void OnLocalIpChanged(string value) => OnPropertyChanged(nameof(ActiveEndpoint));
-    partial void OnTargetIpChanged(string value) => OnPropertyChanged(nameof(ActiveEndpoint));
-    partial void OnPortChanged(int value) => OnPropertyChanged(nameof(ActiveEndpoint));
+    partial void OnLocalIpChanged(string value) { OnPropertyChanged(nameof(ActiveEndpoint)); OnPropertyChanged(nameof(ServerEndpoint)); }
+    partial void OnServerPortChanged(int value) { OnPropertyChanged(nameof(Port)); OnPropertyChanged(nameof(ServerEndpoint)); OnPropertyChanged(nameof(ActiveEndpoint)); }
+    partial void OnServerUnitIdChanged(byte value) => OnPropertyChanged(nameof(UnitId));
+    partial void OnServerConnectionStatusChanged(string value) => OnPropertyChanged(nameof(ServerStateColor));
 
     partial void OnIsServerRunningChanged(bool value)
     {
@@ -1132,6 +1037,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CanConfigureServer));
         OnPropertyChanged(nameof(CanUseClientOperations));
         OnPropertyChanged(nameof(CanDisconnectClient));
+        OnPropertyChanged(nameof(ServerStateColor));
         StartServerCommand.NotifyCanExecuteChanged();
         ReadOnceCommand.NotifyCanExecuteChanged();
         StartClientScanCommand.NotifyCanExecuteChanged();
@@ -1141,33 +1047,51 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyServerMapCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnIsClientScanningChanged(bool value)
-    {
-        OnPropertyChanged(nameof(CanConfigureClient));
-        OnPropertyChanged(nameof(CanConfigureServer));
-        ReadOnceCommand.NotifyCanExecuteChanged();
-        StartClientScanCommand.NotifyCanExecuteChanged();
-        StartServerCommand.NotifyCanExecuteChanged();
-        DisconnectClientCommand.NotifyCanExecuteChanged();
-        StartFullTestCommand.NotifyCanExecuteChanged();
-    }
-
     partial void OnIsFullTestRunningChanged(bool value)
     {
+        OnPropertyChanged(nameof(FullTestIsClientMode));
+        OnPropertyChanged(nameof(FullTestIsServerMode));
+        OnPropertyChanged(nameof(FullTestModeLabel));
+        AddServerRangeCommand.NotifyCanExecuteChanged();
+        RemoveServerRangeCommand.NotifyCanExecuteChanged();
+        ApplyServerMapCommand.NotifyCanExecuteChanged();
+        AddClientMapRowCommand.NotifyCanExecuteChanged();
+        RemoveClientMapRowCommand.NotifyCanExecuteChanged();
         StartServerCommand.NotifyCanExecuteChanged();
         StartClientScanCommand.NotifyCanExecuteChanged();
         ReadOnceCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanConfigureClient));
         OnPropertyChanged(nameof(CanConfigureServer));
         OnPropertyChanged(nameof(CanDisconnectClient));
+        OnPropertyChanged(nameof(CanUseClientOperations));
+        OnPropertyChanged(nameof(CanRemoveClientSession));
+        RemoveClientSessionCommand.NotifyCanExecuteChanged();
         StartFullTestCommand.NotifyCanExecuteChanged();
         CancelFullTestCommand.NotifyCanExecuteChanged();
         SaveFullTestReportCommand.NotifyCanExecuteChanged();
+        SaveDetailedFullTestReportCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanConfigureFullTest));
     }
 
     partial void OnIsNetworkCaptureRunningChanged(bool value)
     {
+        if (value)
+        {
+            _captureStartedForData = true;
+            NetworkCaptureStartedAt = DateTimeOffset.Now;
+            OnPropertyChanged(nameof(NetworkCaptureStartedAt));
+            HasCompletedNetworkCapture = false;
+        }
+        else if (_captureStartedForData)
+        {
+            while (!_passivePacketQueue.IsEmpty)
+            {
+                FlushPassivePackets();
+            }
+            _captureStartedForData = false;
+            HasCompletedNetworkCapture = true;
+        }
+
         StartNetworkCaptureCommand.NotifyCanExecuteChanged();
         StopNetworkCaptureCommand.NotifyCanExecuteChanged();
     }
@@ -1239,12 +1163,6 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private void LoadDefaultClientMap()
-    {
-        AddClientMapRowToCollection(new ClientMapRow { Name = "Holding 0-9", Function = "FC03 Holding Registers", StartAddress = 0, Quantity = 10, Enabled = true });
-        AddClientMapRowToCollection(new ClientMapRow { Name = "Input 0-9", Function = "FC04 Input Registers", StartAddress = 0, Quantity = 10, Enabled = false });
-        SelectedClientMapRow = ClientMapRows[0];
-    }
 
     private void LoadDefaultServerRanges()
     {
@@ -1334,6 +1252,9 @@ public sealed partial class MainViewModel : ObservableObject
     {
         App.Current.Dispatcher.Invoke(() =>
         {
+            var session = ClientSessions.FirstOrDefault(x => ReferenceEquals(x.Client, sender) || ReferenceEquals(x, sender));
+            if (session is not null) e = e with { SessionId = session.Id, Origin = $"Cliente · {session.Name}" };
+            else if (sender is ModbusTcpServer) e = e with { SessionId = "local-server", Origin = "Servidor local" };
             Traffic.Insert(0, e);
             while (Traffic.Count > 500)
             {
@@ -1353,13 +1274,18 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             UpdateVerificationChecks(e, finding);
+            RecordServerWindowEvent(e);
             AnalyzeCommunicationPattern(e);
-            RefreshServerPoints();
+            if (sender is ModbusTcpServer && e.Direction == TrafficDirection.ServerToClient
+                && e.FunctionCode is 5 or 6 or 15 or 16) RefreshServerPoints();
         });
     }
 
     private void OnPassivePacketCaptured(object? sender, TcpTimelineRow row)
     {
+        row.CapturePhase = _capturePhase;
+        _trafficWindow.Observe(row);
+        ObserveTopologyPacket(row);
         if (_passivePacketQueue.Count >= 10000)
         {
             Interlocked.Increment(ref _droppedPassivePackets);
@@ -1402,6 +1328,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void AddTcpTimelineRow(TcpTimelineRow row)
     {
+        if (row.ModbusKind is "Response" or "Exception" && (!IsFullTestRunning || row.Timestamp >= _fullTestStartedAt))
+            RegisterModbusDevice(row.Source, false, "ADU de resposta/exception Modbus estruturalmente reconhecido na captura; sem remontagem TCP.");
         TcpTimeline.Insert(0, row);
         if (MatchesTcpFilter(row))
         {
@@ -1417,6 +1345,13 @@ public sealed partial class MainViewModel : ObservableObject
             FilteredTcpTimeline.RemoveAt(FilteredTcpTimeline.Count - 1);
         }
     }
+
+    public long PassivePacketsDropped => Interlocked.Read(ref _droppedPassivePackets);
+
+    public DateTimeOffset? NetworkCaptureStartedAt { get; private set; }
+
+    public (long Received, long Dropped, long InterfaceDropped)? ReadCaptureStatistics() =>
+        _networkCapture.ReadStatistics();
 
     private void ApplyTcpViewFilter()
     {
@@ -1461,8 +1396,12 @@ public sealed partial class MainViewModel : ObservableObject
             "UDP" => "udp",
             "ARP" => "arp",
             "ICMP" => "icmp",
+            "LLDP" => "ether proto 0x88cc",
+            "CDP" => "ether dst 01:00:0c:cc:cc:cc",
             "Modbus TCP" => "tcp",
-            _ => "tcp or udp or arp or icmp"
+            _ => SelectedCaptureDevice?.Description.Contains("loopback", StringComparison.OrdinalIgnoreCase) == true
+                ? "tcp or udp or arp or icmp"
+                : "tcp or udp or arp or icmp or ether proto 0x88cc or ether dst 01:00:0c:cc:cc:cc"
         };
         parts.Add($"({protocol})");
 
@@ -1517,23 +1456,40 @@ public sealed partial class MainViewModel : ObservableObject
     {
         FullTestSteps.Clear();
         SelectedFullTestStep = null;
-        return
+        List<(FullTestStep? Step, Func<CancellationToken, Task<FullTestStepResult>> Action)> plan =
         [
             CreateFullTestStep("Contexto do teste", "Registra alvo, modo, porta, interface, filtro e premissas de seguranca.", RunFullTestContextAsync),
             CreateFullTestStep("Interfaces e rotas IP", "Mapeia placas ativas, gateways, mascara, velocidade nominal e rotas do Windows.", RunIpRouteAnalysisAsync),
-            CreateFullTestStep("Inventario passivo TCP", "Resume endpoints e protocolos vistos na captura TCP atual.", RunPassiveInventoryAsync),
+            CreateFullTestStep("Referencia passiva TCP", "Coleta janela completa antes das sondagens adicionais do teste.", RunPassiveInventoryAsync),
             CreateFullTestStep("Tabela ARP local", "Consulta ARP do Windows para descobrir dispositivos ja resolvidos na rede.", RunArpSnapshotAsync),
             CreateFullTestStep("Varredura de hosts", "Testa hosts candidatos da sub-rede e consolida dispositivos possivelmente ativos.", RunHostDiscoveryAsync),
-            CreateFullTestStep("Descoberta Modbus", "Procura servidores Modbus/TCP nos hosts descobertos e no alvo configurado.", RunModbusDiscoveryAsync),
+            CreateFullTestStep("Descoberta Modbus", "Procura servidores Modbus/TCP nos hosts descobertos e nos alvos configurados.", RunModbusDiscoveryAsync),
             CreateOptionalMapDiscoveryStep(),
-            CreateFullTestStep("Conectividade TCP", "Testa abertura de socket TCP no alvo e porta configurados.", RunTcpConnectivityAsync),
-            CreateFullTestStep("Banda e carga", "Mede contadores de interface e analisa taxa aproximada de pacotes capturados.", RunTrafficLoadAsync),
-            CreateFullTestStep("Topologia inferida", "Infere gateway, possiveis switches/infraestrutura e lacunas de visibilidade.", RunTopologyInferenceAsync),
-            CreateFullTestStep("Mapa Modbus", "Valida todas as linhas habilitadas do mapa configurado por leitura real.", RunClientMapValidationAsync),
-            CreateFullTestStep("Envio e recebimento", "Executa uma transacao Modbus read-only para confirmar request/response.", RunSendReceiveValidationAsync),
-            CreateFullTestStep("Falhas observadas", "Consolida avisos importantes e checks automaticos ja detectados.", RunObservedFailuresAsync),
-            CreateFullTestStep("Conclusao", "Gera parecer final com proximas acoes de troubleshooting.", RunFullTestConclusionAsync)
+            CreateFullTestStep("Topologia inferida", "Mapeia conversas, rastreia rotas ICMP e identifica vizinhos LLDP/CDP anunciados; nao valida infraestrutura fisica.", RunTopologyInferenceAsync)
         ];
+        var targets = IsFullTestRunning ? _fullTestClients
+            : FullTestIsClientMode ? ConfiguredTestTargets() : [];
+        if (FullTestIsClientMode && targets.Length == 0)
+            plan.Add(CreateFullTestStep("Validacao dos servidores descobertos",
+                "Repete leituras apenas em servidores Modbus confirmados; mapa nao descoberto limita a conclusao ao protocolo.",
+                RunDiscoveredServersValidationAsync));
+        if (FullTestIsServerMode)
+        {
+            plan.Add(CreateFullTestStep("Conectividade TCP", "Verifica servidor local.", t => RunTcpConnectivityAsync(t, null)));
+            plan.Add(CreateFullTestStep("Mapa Modbus", "Verifica mapa local.", t => RunClientMapValidationAsync(t, null)));
+        }
+        foreach (var target in targets)
+        {
+            var label = $"{target.Name} · {target.Endpoint} · UID {target.UnitId}";
+            plan.Add(CreateFullTestStep($"Conectividade TCP - {label}", "Testa abertura TCP deste alvo.", t => RunTcpConnectivityAsync(t, target)));
+            plan.Add(CreateFullTestStep($"Mapa Modbus - {label}", "Valida as linhas habilitadas do mapa deste alvo, sem escrita.", t => RunClientMapValidationAsync(t, target)));
+            plan.Add(CreateFullTestStep($"Envio e recebimento - {label}", "Confirma request/response deste alvo, sem escrita.", t => RunSendReceiveValidationAsync(t, target)));
+        }
+        plan.Add(CreateFullTestStep("Monitoramento TCP operacional", "Observa erros, sinais TCP e picos de carga pela duracao configurada, sem nova varredura.", RunTrafficLoadAsync));
+        if (FullTestIsServerMode) plan.Add(CreateFullTestStep("Envio e recebimento", "Correlaciona transacoes externas coletadas durante a janela operacional.", t => RunSendReceiveValidationAsync(t, null)));
+        plan.Add(CreateFullTestStep("Falhas observadas", "Consolida somente eventos dos alvos testados nesta execucao.", RunObservedFailuresAsync));
+        plan.Add(CreateFullTestStep("Conclusao", "Agrega os resultados desta execucao.", RunFullTestConclusionAsync));
+        return plan;
     }
 
     private (FullTestStep Step, Func<CancellationToken, Task<FullTestStepResult>> Action) CreateFullTestStep(
@@ -1562,6 +1518,8 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedFullTestStep = step;
         step.Status = "Executando";
         step.StartedAt = DateTimeOffset.Now;
+        _capturePhase = step.Name is "Varredura de hosts" or "Descoberta Modbus" or "Descoberta de mapa" ? "Sondagem"
+            : step.Name.StartsWith("Mapa Modbus", StringComparison.Ordinal) ? "Validacao de mapa" : "Operacional";
         FullTestProgressLabel = $"Etapa {step.Order} de {FullTestSteps.Count}: {step.Name}";
         Status = $"Teste completo: {step.Name}...";
 
@@ -1589,6 +1547,12 @@ public sealed partial class MainViewModel : ObservableObject
         finally
         {
             step.FinishedAt = DateTimeOffset.Now;
+            if (_capturePhase == "Validacao de mapa")
+            {
+                _lastRequestBySignature.Clear();
+                _pollingIntervalsBySignature.Clear();
+            }
+            _capturePhase = "Operacional";
             UpdateFullTestSummaryCards();
         }
     }
@@ -1596,18 +1560,18 @@ public sealed partial class MainViewModel : ObservableObject
     private Task<FullTestStepResult> RunFullTestContextAsync(CancellationToken cancellationToken)
     {
         var interfaceName = SelectedCaptureDevice?.Description ?? "Nenhuma interface selecionada";
-        var enabledRows = ClientMapRows.Count(x => x.Enabled);
+        var enabledRows = _fullTestClients.Sum(x => x.Rows.Count(r => r.Enabled));
         var serverRanges = ServerMapRanges.Count(x => x.Enabled);
         var details = string.Join(Environment.NewLine, [
-            $"Modo: {SelectedMode}",
-            $"Local IP: {LocalIp}",
-            $"Alvo: {TargetIp}:{Port}",
-            $"Unit ID: {UnitId}",
+            $"Papel do teste: {FullTestModeLabel}",
+            $"Escopo desta execucao: {FullTestRunScope}",
+            $"Clientes em leitura simultanea: {RunningClientCount}",
+            $"Servidor local: {ServerEndpoint} ({ServerConnectionStatus})",
             $"Interface de captura: {interfaceName}",
             $"Filtro BPF atual: {GeneratedCaptureFilter}",
             $"Captura passiva ativa: {(IsNetworkCaptureRunning ? "sim" : "nao")}",
             $"Servidor ativo: {(IsServerRunning ? "sim" : "nao")}",
-            $"Scan client ativo: {(IsClientScanning ? "sim" : "nao")}",
+            $"Alvos incluidos em leitura: {_fullTestClients.Count(x => x.IsScanning)}",
             $"Linhas habilitadas no mapa client: {enabledRows}",
             $"Faixas habilitadas no server simulado: {serverRanges}",
             "Inicializacao automatica:",
@@ -1615,10 +1579,12 @@ public sealed partial class MainViewModel : ObservableObject
             "Seguranca: o teste completo executa apenas leituras Modbus. Escritas sao puladas por padrao para nao alterar PLC/equipamento."
         ]);
 
-        var status = string.IsNullOrWhiteSpace(TargetIp) ? "Falha" : "OK";
+        var status = FullTestIsServerMode || _fullTestClients.Length > 0 || EnableActiveSubnetScan || IsNetworkCaptureRunning ? "OK" : "Atencao";
         var recommendation = status == "OK"
-            ? "Confirme se o IP/porta correspondem ao dispositivo que sera testado."
-            : "Configure IP alvo, porta e Unit ID antes de executar o teste completo.";
+            ? _fullTestClients.Length == 0 && FullTestIsClientMode
+                ? "Sem alvos cadastrados: a varredura autorizada e a captura determinam os servidores testaveis. Somente respostas Modbus confirmadas entram na validacao automatica."
+                : "Escopo independente da selecao lateral. A execucao utiliza as configuracoes cadastradas dos alvos incluidos ou do servidor local."
+            : "Sem alvo e sem sondagem ativa/captura disponivel; habilite uma fonte de descoberta para avaliar servidores remotos.";
 
         return Task.FromResult(new FullTestStepResult(status, details, recommendation));
     }
@@ -1659,251 +1625,29 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task<FullTestStepResult> RunPassiveInventoryAsync(CancellationToken cancellationToken)
     {
-        var rows = await CollectPassiveTrafficSampleAsync(minNewPackets: 10, cancellationToken);
-        if (rows.Count == 0)
-        {
-            return new FullTestStepResult(
-                "Atencao",
-                $"Nenhum pacote TCP/UDP/ARP/ICMP foi observado na timeline TCP apos {Math.Clamp(PassiveObservationSeconds, 3, 60)} s de observacao. Captura ativa: {(IsNetworkCaptureRunning ? "sim" : "nao")}. Fila pendente UI: {QueuedPassivePackets}.",
-                "Inicie a captura passiva sem filtro ou com filtro amplo, confirme a interface correta/Npcap e repita o teste. Se voce ve pacotes na aba TCP, use Atualizar filtro e confira se eles nao estao apenas na visao filtrada antiga.");
-        }
-
-        var endpoints = rows
-            .SelectMany(x => new[] { ExtractHost(x.Source), ExtractHost(x.Destination) })
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(x => x)
-            .ToList();
-
-        foreach (var endpoint in endpoints)
-        {
-            UpsertDiscovery(endpoint, "", "Captura TCP", GuessRole(endpoint), "", "Host observado passivamente na timeline TCP.");
-        }
-
-        var protocols = rows
-            .GroupBy(x => x.Protocol)
-            .OrderByDescending(x => x.Count())
-            .Select(x => $"{x.Key}: {x.Count()} ({FormatPercent(x.Count(), rows.Count)})")
-            .Take(8);
-
-        var modbusRows = rows.Count(x => x.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase));
-        var externalEndpoints = endpoints.Where(IsPublicIPv4).ToList();
-        var dominantProtocol = rows.GroupBy(x => x.Protocol).OrderByDescending(x => x.Count()).FirstOrDefault();
-        var details = string.Join(Environment.NewLine, [
-            $"Pacotes observados: {rows.Count}",
-            $"Endpoints unicos: {endpoints.Count}",
-            $"Endpoints: {string.Join(", ", endpoints.Take(25))}{(endpoints.Count > 25 ? " ..." : "")}",
-            $"Protocolos: {string.Join("; ", protocols)}",
-            $"Pacotes identificados como Modbus/TCP: {modbusRows} ({FormatPercent(modbusRows, rows.Count)})",
-            "",
-            "Interpretacao:",
-            InterpretPassiveInventory(rows.Count, endpoints.Count, modbusRows, externalEndpoints.Count, dominantProtocol?.Key ?? "", dominantProtocol?.Count() ?? 0),
-            "Switches: identificacao direta exige SNMP/LLDP/porta espelhada documentada. Nesta etapa o sistema infere apenas hosts vistos em trafego/ARP."
-        ]);
-
-        var status = endpoints.Count < 2 ? "Atencao" : "OK";
-        var recommendation = status == "OK"
-            ? "Comparar endpoints observados com inventario/topologia esperada."
-            : "Validar interface de captura, filtro BPF, SPAN/port mirror e volume minimo de amostra.";
-
-        return new FullTestStepResult(status, details, recommendation);
+        var result = await ObserveTrafficWindowAsync(true, cancellationToken);
+        StartModbusRuntimeAfterBaseline();
+        return result;
     }
 
-    private async Task<FullTestStepResult> RunArpSnapshotAsync(CancellationToken cancellationToken)
-    {
-        var output = await RunProcessAsync("arp", "-a", cancellationToken);
-        var lines = output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        var arpEntries = ParseArpEntries(output);
+    private Task<FullTestStepResult> RunArpSnapshotAsync(CancellationToken cancellationToken) => RunScopedArpAsync(cancellationToken);
 
-        foreach (var entry in arpEntries)
-        {
-            UpsertDiscovery(entry.Ip, entry.Mac, "ARP", GuessRole(entry.Ip), "", $"Entrada ARP {entry.Type}.");
-        }
 
-        var entries = arpEntries.Count;
-        var targetSeen = arpEntries.Any(x => x.Ip.Equals(TargetIp, StringComparison.OrdinalIgnoreCase));
-        var status = entries == 0 ? "Atencao" : targetSeen || TargetIp is "127.0.0.1" or "localhost" ? "OK" : "Atencao";
+    private Task<FullTestStepResult> RunHostDiscoveryAsync(CancellationToken cancellationToken) => RunScopedHostDiscoveryAsync(cancellationToken);
 
-        var details = string.Join(Environment.NewLine, [
-            $"Entradas ARP encontradas: {entries}",
-            $"Alvo aparece na tabela ARP: {(targetSeen ? "sim" : "nao")}",
-            "",
-            "Interpretacao:",
-            InterpretArp(entries, targetSeen),
-            "",
-            "Amostra ARP:",
-            string.Join(Environment.NewLine, lines.Take(20))
-        ]);
-        var recommendation = status == "OK"
-            ? "Correlacionar IP/MAC com inventario de ativos e tabela CAM do switch."
-            : "Validar se o alvo esta no mesmo dominio L2; revisar VLAN, mascara, gateway e porta fisica.";
 
-        return new FullTestStepResult(status, details, recommendation);
-    }
+    private Task<FullTestStepResult> RunModbusDiscoveryAsync(CancellationToken cancellationToken) => RunConfirmedModbusDiscoveryAsync(cancellationToken);
 
-    private async Task<FullTestStepResult> RunHostDiscoveryAsync(CancellationToken cancellationToken)
-    {
-        var candidates = BuildDiscoveryCandidates();
-        if (candidates.Count == 0)
-        {
-            FullTestNetworkSummary = "Nenhum host candidato.";
-            return new FullTestStepResult("Atencao", "Nenhum host candidato foi encontrado por ARP, captura passiva, alvo configurado ou sub-rede local.", "Configure o IP alvo e/ou inicie uma captura passiva antes da varredura.");
-        }
-
-        var timeoutMs = Math.Clamp(ActiveScanTimeoutMs, 100, 3000);
-        var concurrency = Math.Clamp(ActiveScanConcurrency, 4, 128);
-        var semaphore = new SemaphoreSlim(concurrency);
-        var results = new ConcurrentBag<HostProbeResult>();
-
-        var tasks = candidates.Select(async ip =>
-        {
-            await semaphore.WaitAsync(cancellationToken);
-            try
-            {
-                var pingOk = await TryPingAsync(ip, timeoutMs);
-                var configuredPortOpen = await TryTcpConnectAsync(ip, Port, timeoutMs, cancellationToken);
-                var modbusPortOpen = Port == 502 ? configuredPortOpen : await TryTcpConnectAsync(ip, 502, timeoutMs, cancellationToken);
-                results.Add(new HostProbeResult(ip, pingOk, configuredPortOpen, modbusPortOpen));
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
-
-        await Task.WhenAll(tasks);
-
-        var active = results
-            .Where(x => x.PingOk || x.ConfiguredPortOpen || x.ModbusPortOpen)
-            .OrderBy(x => IpSortKey(x.Ip))
-            .ToList();
-
-        foreach (var result in active)
-        {
-            var openPorts = new List<string>();
-            if (result.ConfiguredPortOpen)
-            {
-                openPorts.Add(Port.ToString());
-            }
-            if (result.ModbusPortOpen && Port != 502)
-            {
-                openPorts.Add("502");
-            }
-
-            UpsertDiscovery(
-                result.Ip,
-                "",
-                "Varredura ativa",
-                GuessRole(result.Ip),
-                string.Join(", ", openPorts.Distinct()),
-                $"Ping: {(result.PingOk ? "OK" : "sem resposta")}; porta configurada {Port}: {(result.ConfiguredPortOpen ? "aberta" : "fechada/filtrada")}; porta 502: {(result.ModbusPortOpen ? "aberta" : "fechada/filtrada")}.");
-        }
-
-        FullTestNetworkSummary = $"{active.Count}/{candidates.Count} hosts candidatos responderam; {active.Count(x => x.ModbusPortOpen || x.ConfiguredPortOpen)} com porta Modbus/configurada aberta.";
-
-        var status = active.Count == 0 ? "Atencao" : "OK";
-        var activePct = FormatPercent(active.Count, candidates.Count);
-        var modbusOpen = active.Count(x => x.ModbusPortOpen || x.ConfiguredPortOpen);
-        var details = string.Join(Environment.NewLine, [
-            $"Candidatos testados: {candidates.Count}",
-            $"Timeout por tentativa: {timeoutMs} ms",
-            $"Concorrencia: {concurrency}",
-            $"Hosts ativos/provaveis: {active.Count} ({activePct})",
-            $"Hosts com porta Modbus/configurada aberta: {modbusOpen} ({FormatPercent(modbusOpen, Math.Max(1, active.Count))} dos ativos)",
-            "",
-            "Interpretacao:",
-            InterpretHostDiscovery(candidates.Count, active.Count, modbusOpen),
-            "",
-            active.Count == 0 ? "Nenhum host respondeu a ping ou TCP." : string.Join(Environment.NewLine, active.Take(80).Select(x => $"{x.Ip} | ping={x.PingOk} | port {Port}={x.ConfiguredPortOpen} | port 502={x.ModbusPortOpen}"))
-        ]);
-        var recommendation = status == "OK"
-            ? "Correlacionar hosts ativos com inventario de rede; classificar IPs nao documentados."
-            : "Confirmar se ICMP/TCP probe e permitido; caso contrario, usar ARP/captura passiva para inventario.";
-
-        return new FullTestStepResult(status, details, recommendation);
-    }
-
-    private async Task<FullTestStepResult> RunModbusDiscoveryAsync(CancellationToken cancellationToken)
-    {
-        var hosts = BuildDiscoveryCandidates()
-            .Concat(NetworkDiscoveryRows.Select(x => x.Ip))
-            .Where(IsIPv4)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(256)
-            .ToList();
-
-        if (!hosts.Contains(TargetIp) && IsIPv4(TargetIp))
-        {
-            hosts.Insert(0, TargetIp);
-        }
-
-        var ports = new[] { Port, 502 }.Distinct().Where(x => x > 0 && x <= 65535).ToList();
-        var modbusCandidates = new ConcurrentBag<(string Ip, int Port, bool Open)>();
-        var timeoutMs = Math.Clamp(ActiveScanTimeoutMs, 100, 3000);
-        var semaphore = new SemaphoreSlim(Math.Clamp(ActiveScanConcurrency, 4, 128));
-
-        var tasks = hosts.SelectMany(ip => ports.Select(async port =>
-        {
-            await semaphore.WaitAsync(cancellationToken);
-            try
-            {
-                var open = await TryTcpConnectAsync(ip, port, timeoutMs, cancellationToken);
-                modbusCandidates.Add((ip, port, open));
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        }));
-
-        await Task.WhenAll(tasks);
-
-        var openEndpoints = modbusCandidates
-            .Where(x => x.Open)
-            .OrderBy(x => IpSortKey(x.Ip))
-            .ThenBy(x => x.Port)
-            .ToList();
-
-        foreach (var endpoint in openEndpoints)
-        {
-            UpsertDiscovery(endpoint.Ip, "", "Descoberta Modbus", endpoint.Port == 502 ? "Possivel server Modbus" : "Porta TCP configurada aberta", endpoint.Port.ToString(), $"Porta TCP {endpoint.Port} aceitou conexao.");
-        }
-
-        var passiveModbusHosts = TcpTimeline
-            .Where(x => x.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase) || x.Info.Contains("Modbus", StringComparison.OrdinalIgnoreCase))
-            .SelectMany(x => new[] { ExtractHost(x.Source), ExtractHost(x.Destination) })
-            .Where(IsIPv4)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        FullTestModbusSummary = $"{openEndpoints.Count} endpoint(s) TCP Modbus/configurado aberto(s); {passiveModbusHosts.Count} host(s) Modbus vistos passivamente.";
-
-        var status = openEndpoints.Count > 0 || passiveModbusHosts.Count > 0 ? "OK" : "Atencao";
-        var details = string.Join(Environment.NewLine, [
-            $"Hosts avaliados: {hosts.Count}",
-            $"Portas avaliadas: {string.Join(", ", ports)}",
-            $"Endpoints com porta aberta: {openEndpoints.Count}",
-            $"Percentual de hosts com Modbus/configurado aberto: {FormatPercent(openEndpoints.Select(x => x.Ip).Distinct().Count(), Math.Max(1, hosts.Count))}",
-            "",
-            "Interpretacao:",
-            InterpretModbusDiscovery(hosts.Count, openEndpoints, passiveModbusHosts.Count),
-            "",
-            openEndpoints.Count == 0 ? "Nenhuma porta Modbus/configurada aberta encontrada." : string.Join(Environment.NewLine, openEndpoints.Take(80).Select(x => $"{x.Ip}:{x.Port} aberto")),
-            $"Hosts Modbus na captura passiva: {(passiveModbusHosts.Count == 0 ? "nenhum" : string.Join(", ", passiveModbusHosts))}"
-        ]);
-        var recommendation = status == "OK"
-            ? "Comparar endpoints Modbus encontrados com inventario de PLCs, gateways e simuladores autorizados."
-            : "Validar porta Modbus usada, firewall local/remoto, segmentacao/VLAN e filtros de captura.";
-
-        return new FullTestStepResult(status, details, recommendation);
-    }
 
     private async Task<FullTestStepResult> RunMapDiscoveryAsync(CancellationToken cancellationToken)
     {
         DiscoveredMapRows.Clear();
-        return IsServerMode
-            ? await RunServerRequestedMapDiscoveryAsync(cancellationToken)
-            : await RunClientActiveMapDiscoveryAsync(cancellationToken);
+        if (!FullTestIsServerMode) return await RunClientActiveMapDiscoveryAsync(cancellationToken);
+        var requested = await RunServerRequestedMapDiscoveryAsync(cancellationToken);
+        var active = await RunClientActiveMapDiscoveryAsync(cancellationToken);
+        return new FullTestStepResult(active.Status == "OK" || requested.Status == "OK" ? "OK" : "Inconclusivo",
+            "Clientes observados:\n" + requested.Detail + "\nServidores descobertos na rede:\n" + active.Detail,
+            "Mapas de servidores obtidos por leitura; mapas de clientes limitados as requisicoes observadas.");
     }
 
     private async Task<FullTestStepResult> RunClientActiveMapDiscoveryAsync(CancellationToken cancellationToken)
@@ -1936,7 +1680,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         foreach (var endpoint in endpoints)
         {
-            foreach (var unitId in unitIds)
+            foreach (var unitId in EnableMapDiscoveryUnitSweep ? unitIds
+                : new[] { _discoveredUnitIds.GetValueOrDefault($"{endpoint.Ip}:{endpoint.Port}", ClientSessions.FirstOrDefault(x => x.Address == endpoint.Ip && x.Port == endpoint.Port)?.UnitId ?? (byte)1) })
             {
                 foreach (var functionCode in functions)
                 {
@@ -2048,88 +1793,21 @@ public sealed partial class MainViewModel : ObservableObject
         return new FullTestStepResult(status, details, recommendation);
     }
 
-    private async Task<FullTestStepResult> RunServerRequestedMapDiscoveryAsync(CancellationToken cancellationToken)
+    private Task<FullTestStepResult> RunServerRequestedMapDiscoveryAsync(CancellationToken cancellationToken)
+        => ObserveRequestedServerMapAsync(cancellationToken);
+
+
+    private async Task<FullTestStepResult> RunTcpConnectivityAsync(CancellationToken cancellationToken, ClientConnectionSession? session)
     {
-        var startedAt = DateTimeOffset.Now;
-        var observationSeconds = Math.Clamp(PassiveObservationSeconds, 3, 60);
-        await Task.Delay(TimeSpan.FromSeconds(observationSeconds), cancellationToken);
-
-        var requests = Traffic
-            .Where(x => x.Timestamp >= startedAt
-                && x.Direction == TrafficDirection.ClientToServer
-                && x.FunctionCode is not null
-                && x.StartAddress is not null
-                && x.Quantity is not null)
-            .ToList();
-
-        var grouped = requests
-            .GroupBy(x => new
-            {
-                x.Endpoint,
-                UnitId = x.UnitId ?? 0,
-                FunctionCode = x.FunctionCode ?? 0,
-                StartAddress = x.StartAddress ?? 0,
-                Quantity = x.Quantity ?? 0
-            })
-            .OrderBy(x => x.Key.Endpoint)
-            .ThenBy(x => x.Key.UnitId)
-            .ThenBy(x => x.Key.FunctionCode)
-            .ThenBy(x => x.Key.StartAddress)
-            .ToList();
-
-        foreach (var group in grouped)
-        {
-            var isWrite = group.Key.FunctionCode is ModbusProtocol.WriteSingleCoil
-                or ModbusProtocol.WriteSingleRegister
-                or ModbusProtocol.WriteMultipleCoils
-                or ModbusProtocol.WriteMultipleRegisters;
-            var endAddress = group.Key.Quantity == 0
-                ? group.Key.StartAddress
-                : group.Key.StartAddress + group.Key.Quantity - 1;
-
-            DiscoveredMapRows.Add(new MapDiscoveryRow
-            {
-                Endpoint = group.Key.Endpoint,
-                UnitId = group.Key.UnitId.ToString(),
-                Function = FormatFunctionCode(group.Key.FunctionCode),
-                StartAddress = group.Key.StartAddress,
-                EndAddress = endAddress,
-                Quantity = Math.Max(1, (int)group.Key.Quantity),
-                DiscoveryMode = "Passivo/server",
-                Confidence = group.Count() >= 3 ? "Alta recorrencia" : "Observado",
-                Notes = $"{group.Count()} requisicao(oes) em {observationSeconds} s. {(isWrite ? "Escrita observada." : "Leitura observada.")}"
-            });
-        }
-
-        var status = DiscoveredMapRows.Count > 0 ? "OK" : "Atencao";
-        var details = string.Join(Environment.NewLine, [
-            $"Modo: Server passivo",
-            $"Janela analisada: {observationSeconds} s",
-            $"Requests Modbus client->server observados: {requests.Count}",
-            $"Ranges requisitados distintos: {DiscoveredMapRows.Count}",
-            "",
-            "Interpretacao:",
-            InterpretServerRequestedMapDiscovery(requests.Count, DiscoveredMapRows.Count),
-            "",
-            DiscoveredMapRows.Count == 0
-                ? "Nenhum cliente requisitou ranges Modbus durante a janela da etapa."
-                : string.Join(Environment.NewLine, DiscoveredMapRows.Take(120).Select(x => $"{x.Endpoint} UID {x.UnitId} {x.Function} {x.StartAddress}-{x.EndAddress} ({x.Quantity}) | {x.Confidence} | {x.Notes}"))
-        ]);
-        var recommendation = status == "OK"
-            ? "Usar estes ranges como mapa consumido pelos clientes; comparar com o mapa configurado no server simulado e com o mapa oficial do PLC."
-            : "Aumentar a janela de observacao ou confirmar se o cliente esta apontando para este simulador durante o teste.";
-
-        return new FullTestStepResult(status, details, recommendation);
-    }
-
-    private async Task<FullTestStepResult> RunTcpConnectivityAsync(CancellationToken cancellationToken)
-    {
-        if (IsServerMode)
+        if (FullTestIsServerMode)
         {
             return new FullTestStepResult(IsServerRunning ? "OK" : "Falha",
-                $"Servidor local {ActiveEndpoint}: {(IsServerRunning ? "escutando" : "parado")}. Esta verificacao nao comprova acesso a partir de outros hosts.",
+                $"Servidor local {ServerEndpoint}: {(IsServerRunning ? "escutando" : "parado")}. Esta verificacao nao comprova acesso a partir de outros hosts.",
                 "A acessibilidade externa depende das requisicoes recebidas, firewall e caminho de rede.");
         }
+        session ??= CurrentTestTargets().FirstOrDefault() ?? throw new InvalidOperationException("Nenhum alvo incluido no teste.");
+        var TargetIp = session.Address;
+        var Port = session.Port;
         if (string.IsNullOrWhiteSpace(TargetIp))
         {
             return new FullTestStepResult("Falha", "IP alvo vazio.", "Configure o IP do PLC/server Modbus antes do teste.");
@@ -2142,7 +1820,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         await client.ConnectAsync(TargetIp, Port, timeout.Token);
         started.Stop();
-        var latencyStatus = started.ElapsedMilliseconds <= 50 ? "baixo" : started.ElapsedMilliseconds <= 200 ? "moderado" : "alto";
 
         return new FullTestStepResult(
             "OK",
@@ -2150,218 +1827,45 @@ public sealed partial class MainViewModel : ObservableObject
                 $"Socket TCP abriu em {started.ElapsedMilliseconds} ms para {TargetIp}:{Port}.",
                 "",
                 "Interpretacao:",
-                $"Criterio: latencia de abertura TCP. Resultado: {started.ElapsedMilliseconds} ms, classificado como {latencyStatus}. Implicacao: <50 ms e esperado para LAN local; 50-200 ms indica caminho com latencia moderada; >200 ms sugere roteamento intermediario, firewall, VPN, fila no equipamento ou retransmissao TCP."
+                "Abertura TCP confirmada. Esse tempo inclui estabelecimento do socket, nao resposta Modbus nem varredura do PLC. Comparar com referencia do mesmo caminho; nao ha limiar universal de latencia industrial aplicado aqui."
             ]),
             "Conectividade TCP basica OK. Se Modbus falhar, investigue Unit ID, mapa, function code, gateway ou resposta de aplicacao.");
     }
 
-    private async Task<FullTestStepResult> RunTrafficLoadAsync(CancellationToken cancellationToken)
+    private Task<FullTestStepResult> RunTrafficLoadAsync(CancellationToken cancellationToken)
+        => ObserveTrafficWindowAsync(false, cancellationToken);
+
+    private Task<FullTestStepResult> RunTopologyInferenceAsync(CancellationToken cancellationToken) => RunScopedTopologyAsync(cancellationToken);
+
+
+    private Task<FullTestStepResult> RunClientMapValidationAsync(CancellationToken cancellationToken, ClientConnectionSession? session)
     {
-        var before = TakeInterfaceSnapshots();
-        var rows = await CollectPassiveTrafficSampleAsync(minNewPackets: 20, cancellationToken);
-        var after = TakeInterfaceSnapshots();
-        var bandwidthLines = new List<string>();
-        var observationSeconds = Math.Clamp(PassiveObservationSeconds, 3, 60);
-
-        foreach (var end in after)
-        {
-            if (!before.TryGetValue(end.Key, out var start))
-            {
-                continue;
-            }
-
-            var rxBytesPerSecond = Math.Max(0, end.Value.BytesReceived - start.BytesReceived) / (double)observationSeconds;
-            var txBytesPerSecond = Math.Max(0, end.Value.BytesSent - start.BytesSent) / (double)observationSeconds;
-            bandwidthLines.Add($"{end.Value.Name}: RX {FormatBytesPerSecond(rxBytesPerSecond)}, TX {FormatBytesPerSecond(txBytesPerSecond)}, nominal {FormatBitsPerSecond(end.Value.SpeedBitsPerSecond)}");
-        }
-
-        if (rows.Count < 2)
-        {
-            FullTestBandwidthSummary = bandwidthLines.Count == 0 ? "Sem contadores de interface." : string.Join(" | ", bandwidthLines.Take(3));
-            return new FullTestStepResult(
-                "Atencao",
-                string.Join(Environment.NewLine, [
-                    $"Amostra TCP insuficiente para carga por protocolo. Pacotes: {rows.Count}. Fila pendente UI: {QueuedPassivePackets}.",
-                    $"Janela de observacao: {observationSeconds} s. Captura ativa: {(IsNetworkCaptureRunning ? "sim" : "nao")}.",
-                    "Contadores de interface:",
-                    bandwidthLines.Count == 0 ? "Nenhum contador coletado." : string.Join(Environment.NewLine, bandwidthLines)
-                ]),
-                "Aumente a janela de observacao, confirme a interface de captura e mantenha trafego ativo durante o teste para estimar carga por protocolo.");
-        }
-
-        var minTime = rows.Min(x => x.RelativeTime);
-        var maxTime = rows.Max(x => x.RelativeTime);
-        var span = Math.Max(0.001, maxTime - minTime);
-        var packetsPerSecond = rows.Count / span;
-        var bytesPerSecond = rows.Sum(x => x.Length) / span;
-        var topTalkers = rows
-            .GroupBy(x => $"{ExtractHost(x.Source)} -> {ExtractHost(x.Destination)}")
-            .OrderByDescending(x => x.Count())
-            .Take(5)
-            .Select(x => $"{x.Key}: {x.Count()} pkt ({FormatPercent(x.Count(), rows.Count)})")
-            .ToList();
-        var publicPacketCount = rows.Count(x => IsPublicIPv4(ExtractHost(x.Source)) || IsPublicIPv4(ExtractHost(x.Destination)));
-        var modbusPacketCount = rows.Count(x => x.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase));
-        var broadcastOrMulticastCount = rows.Count(x => IsBroadcastOrMulticast(ExtractHost(x.Source)) || IsBroadcastOrMulticast(ExtractHost(x.Destination)));
-
-        var status = QueuedPassivePackets > 5000 || packetsPerSecond > 5000 || publicPacketCount > rows.Count * 0.25 ? "Atencao" : "OK";
-        FullTestBandwidthSummary = $"{packetsPerSecond:0.0} pkt/s capturados | {(bandwidthLines.Count == 0 ? "sem contador de interface" : bandwidthLines[0])}";
-        var details = string.Join(Environment.NewLine, [
-            $"Contadores de interface em janela de {observationSeconds}s:",
-            bandwidthLines.Count == 0 ? "Nenhum contador coletado." : string.Join(Environment.NewLine, bandwidthLines),
-            "",
-            $"Janela analisada: {span:0.0} s",
-            $"Pacotes analisados: {rows.Count}",
-            $"Taxa aproximada: {packetsPerSecond:0.0} pkt/s, {bytesPerSecond / 1024:0.0} KB/s",
-            $"Fila pendente na UI: {QueuedPassivePackets}",
-            $"Pacotes Modbus/TCP: {modbusPacketCount} ({FormatPercent(modbusPacketCount, rows.Count)})",
-            $"Pacotes com IP publico: {publicPacketCount} ({FormatPercent(publicPacketCount, rows.Count)})",
-            $"Broadcast/multicast estimado: {broadcastOrMulticastCount} ({FormatPercent(broadcastOrMulticastCount, rows.Count)})",
-            $"Top conversas: {string.Join("; ", topTalkers)}",
-            "",
-            "Interpretacao:",
-            InterpretTrafficLoad(packetsPerSecond, bytesPerSecond, rows.Count, modbusPacketCount, publicPacketCount, broadcastOrMulticastCount, topTalkers)
-        ]);
-        var recommendation = status == "OK"
-            ? "Registrar valores como referencia numerica da janela analisada."
-            : "Ha sinal de alto volume ou backlog. Filtre por VLAN/IP/porta, valide broadcast storm, multicast excessivo ou porta espelhada muito ampla.";
-
-        return new FullTestStepResult(status, details, recommendation);
-    }
-
-    private Task<FullTestStepResult> RunTopologyInferenceAsync(CancellationToken cancellationToken)
-    {
-        var profiles = GetNetworkProfiles().Where(x => x.IsOperational).ToList();
-        var gateways = profiles.Select(x => x.Gateway).Where(IsIPv4).Distinct().ToList();
-        var knownHosts = NetworkDiscoveryRows.ToList();
-        var modbusHosts = knownHosts.Where(x => x.ModbusStatus.Contains("aberta", StringComparison.OrdinalIgnoreCase)
-            || x.RoleGuess.Contains("Modbus", StringComparison.OrdinalIgnoreCase)).ToList();
-        var passiveOnly = knownHosts.Where(x => x.Source.Contains("Captura", StringComparison.OrdinalIgnoreCase)).ToList();
-        var gatewayRows = knownHosts.Where(x => gateways.Contains(x.Ip)).ToList();
-
-        foreach (var gateway in gateways)
-        {
-            UpsertDiscovery(gateway, "", "Rota IP", "Gateway / possivel roteador industrial", "", "Gateway padrao detectado nas interfaces IPv4.");
-        }
-
-        var possibleInfrastructure = knownHosts
-            .Where(x => gateways.Contains(x.Ip)
-                || x.Notes.Contains("ARP", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(x.ModbusStatus))
-            .Take(20)
-            .ToList();
-
-        var details = string.Join(Environment.NewLine, [
-            $"Gateways detectados: {(gateways.Count == 0 ? "nenhum" : string.Join(", ", gateways))}",
-            $"Dispositivos conhecidos na tabela visual: {knownHosts.Count}",
-            $"Possiveis servidores Modbus: {modbusHosts.Count}",
-            $"Hosts vistos apenas passivamente: {passiveOnly.Count}",
-            $"Gateways tambem vistos em ARP/captura: {gatewayRows.Count}",
-            "",
-            "Interpretacao:",
-            InterpretTopology(gateways.Count, knownHosts.Count, modbusHosts.Count, passiveOnly.Count),
-            "",
-            "Possivel infraestrutura:",
-            possibleInfrastructure.Count == 0 ? "Sem candidatos claros." : string.Join(Environment.NewLine, possibleInfrastructure.Select(x => $"{x.Ip} | {x.RoleGuess} | {x.Source} | {x.Notes}")),
-            "",
-            "Limite tecnico: switch L2 puro normalmente nao aparece como hop IP. Para identificar switch, porta fisica, VLAN e fabricante com confianca, o proximo passo e SNMP/LLDP/CDP ou leitura do switch gerenciavel."
-        ]);
-
-        var status = gateways.Count == 0 ? "Atencao" : "OK";
-        var recommendation = status == "OK"
-            ? "Usar gateway, ARP e captura passiva como topologia logica inicial; topologia fisica exige SNMP/LLDP/CDP."
-            : "Validar se a rede e uma ilha L2 sem gateway ou se ha erro de VLAN/mascara/roteamento.";
-
-        return Task.FromResult(new FullTestStepResult(status, details, recommendation));
-    }
-
-    private async Task<FullTestStepResult> RunClientMapValidationAsync(CancellationToken cancellationToken)
-    {
-        if (IsServerMode)
+        if (FullTestIsServerMode)
         {
             var points = _serverMap.ToPoints();
-            return new FullTestStepResult(points.Count > 0 ? "OK" : "Atencao",
-                $"Mapa local do servidor: {points.Count} pontos, {points.Count(x => x.IsWritable)} gravaveis. Validacao de configuracao; nao representa leitura por cliente externo.",
-                "Compare com os ranges requisitados na etapa de descoberta de mapa e com as exceptions recebidas.");
+            return Task.FromResult(new FullTestStepResult(points.Count == 0 ? "Inconclusivo" : "OK",
+                $"Mapa local: {points.Count} pontos, {points.Count(x => x.IsWritable)} gravaveis. Apenas configuracao local, nao valida requisicoes externas.",
+                "A validacao externa depende de clientes externos e da etapa envio/recebimento."));
         }
-        var rows = ClientMapRows.Where(x => x.Enabled).ToList();
-        if (rows.Count == 0)
-        {
-            return new FullTestStepResult("Atencao", "Nenhuma linha habilitada no mapa client.", "Configure o mapa real do PLC/equipamento antes de validar ranges.");
-        }
-
-        var ok = 0;
-        var failures = new List<string>();
-
-        foreach (var row in rows)
-        {
-            try
-            {
-                if (row.FunctionCode is ModbusProtocol.ReadCoils or ModbusProtocol.ReadDiscreteInputs)
-                {
-                    var values = await _client.ReadBitsAsync(TargetIp, Port, UnitId, row.FunctionCode, row.StartAddress, row.Quantity, cancellationToken);
-                    row.LastValue = string.Join(", ", values.Select(x => x ? "1" : "0"));
-                    UpsertClientCommunicationPoints(row, values.Select(x => x ? (ushort)1 : (ushort)0).ToList(), "OK");
-                }
-                else
-                {
-                    var values = await _client.ReadRegistersAsync(TargetIp, Port, UnitId, row.FunctionCode, row.StartAddress, row.Quantity, cancellationToken);
-                    row.LastValue = string.Join(", ", values);
-                    UpsertClientCommunicationPoints(row, values, "OK");
-                }
-
-                row.LastStatus = "OK";
-                row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
-                ok++;
-            }
-            catch (Exception ex)
-            {
-                row.LastStatus = ex.Message;
-                row.LastReadAt = DateTime.Now.ToString("HH:mm:ss.fff");
-                MarkClientCommunicationRangeFailed(row, ex.Message);
-                failures.Add($"{row.Name} FC{row.FunctionCode} addr={row.StartAddress} qty={row.Quantity}: {ex.Message}");
-            }
-        }
-
-        var status = failures.Count == 0 ? "OK" : ok > 0 ? "Atencao" : "Falha";
-        var successPct = FormatPercent(ok, rows.Count);
-        var details = string.Join(Environment.NewLine, [
-            $"Linhas testadas: {rows.Count}",
-            $"OK: {ok} ({successPct})",
-            $"Falhas: {failures.Count} ({FormatPercent(failures.Count, rows.Count)})",
-            "",
-            "Interpretacao:",
-            InterpretMapValidation(ok, failures.Count, rows.Count, failures),
-            "",
-            failures.Count == 0 ? "Todas as linhas habilitadas responderam." : string.Join(Environment.NewLine, failures.Take(20))
-        ]);
-        var recommendation = status == "OK"
-            ? "Mapa habilitado validado para as linhas testadas; registrar como referencia do caso."
-            : "Revise function code, endereco base zero/um, quantidade, Unit ID e ranges realmente publicados pelo equipamento.";
-
-        return new FullTestStepResult(status, details, recommendation);
+        return ValidateClientRepeatedAsync(session ?? CurrentTestTargets().FirstOrDefault() ?? throw new InvalidOperationException("Nenhum alvo incluido no teste."), cancellationToken);
     }
 
-    private async Task<FullTestStepResult> RunSendReceiveValidationAsync(CancellationToken cancellationToken)
+    private async Task<FullTestStepResult> RunSendReceiveValidationAsync(CancellationToken cancellationToken, ClientConnectionSession? session)
     {
-        if (IsServerMode)
+        if (FullTestIsServerMode)
         {
-            var observed = Traffic.Where(x => x.Timestamp >= _fullTestStartedAt).ToList();
-            var requests = observed.Where(x => x.Direction == TrafficDirection.ClientToServer).ToList();
-            var replies = observed.Where(x => x.Direction == TrafficDirection.ServerToClient).ToList();
-            var matched = requests.Count(x => replies.Any(y => y.Endpoint == x.Endpoint && y.TransactionId == x.TransactionId && y.UnitId == x.UnitId && y.Timestamp >= x.Timestamp));
-            var exceptions = replies.Count(x => x.Summary.Contains("exception", StringComparison.OrdinalIgnoreCase));
-            return new FullTestStepResult(requests.Count == 0 || matched != requests.Count || exceptions > 0 ? "Atencao" : "OK",
-                $"Amostra retida desde o inicio do teste: {requests.Count} requisicoes, {matched} com resposta correlacionada por endpoint/TID/UID; {exceptions} exceptions. Limite de retencao: 500 eventos. Sem requests, comunicacao externa nao foi comprovada.",
-                "Use clientes externos apontados ao servidor simulado. Correlacao limitada a amostra retida; nao representa historico integral.");
+            return new FullTestStepResult(_serverWindowExceptions > 0 ? "Falha" : _serverWindowRequests == 0 ? "Inconclusivo"
+                    : _serverWindowReplies != _serverWindowRequests || _serverWindowUnmatched > 0 ? "Inconclusivo" : "OK",
+                $"Contadores da execucao (independentes da lista de 500 eventos): {_serverWindowRequests} requisicoes, {_serverWindowReplies} respostas correlacionadas, {_serverWindowExceptions} exceptions. Pendentes: {_serverPendingRequests.Count}; sem correlacao/limite: {_serverWindowUnmatched}. Sondagens proprias excluidas. Sem requisicoes externas, nao ha validacao de clientes.",
+                "Correlacao por endpoint/TID/UID. Pendentes ao fim podem estar em transito, nao comprovam timeout por si mesmos. Consultar tempos e blocos no relatorio.");
         }
-        var row = ClientMapRows.FirstOrDefault(x => x.Enabled) ?? new ClientMapRow
-        {
-            Name = "Teste minimo FC03",
-            Function = "FC03 Holding Registers",
-            StartAddress = 0,
-            Quantity = 1,
-            Enabled = true
-        };
+        session ??= CurrentTestTargets().FirstOrDefault() ?? throw new InvalidOperationException("Nenhum alvo incluido no teste.");
+        var _client = session.Client;
+        var TargetIp = session.Address;
+        var Port = session.Port;
+        var UnitId = session.UnitId;
+        var row = session.Rows.FirstOrDefault(x => x.Enabled);
+        if (row is null) return new FullTestStepResult("Nao aplicavel", "Nenhum bloco habilitado; nao foi sondado um endereco arbitrario.", "Configurar o mapa do alvo para testar request/response.");
 
         if (row.FunctionCode is ModbusProtocol.ReadCoils or ModbusProtocol.ReadDiscreteInputs)
         {
@@ -2391,23 +1895,20 @@ public sealed partial class MainViewModel : ObservableObject
 
     private Task<FullTestStepResult> RunObservedFailuresAsync(CancellationToken cancellationToken)
     {
-        var warnings = ImportantWarnings.ToList();
-        var badChecks = VerificationChecks
-            .Where(x => x.Status is "Falha" or "Atencao" or "Erro")
-            .ToList();
-
-        var status = warnings.Any(x => x.Severity is "Falha" or "Erro") || badChecks.Any(x => x.Status is "Falha" or "Erro")
+        var warnings = _runWarnings.Values.ToList();
+        var status = warnings.Any(x => x.Severity is "Falha" or "Erro")
             ? "Falha"
-            : warnings.Count > 0 || badChecks.Count > 0 ? "Atencao" : "OK";
+            : warnings.Count > 0 ? "Atencao" : "OK";
 
         var details = string.Join(Environment.NewLine, [
             $"Avisos importantes consolidados: {warnings.Count}",
-            warnings.Count == 0 ? "Sem avisos importantes." : string.Join(Environment.NewLine, warnings.Take(12).Select(x => $"{x.Severity} x{x.Count}: {x.Title} - {x.LatestDetail}")),
-            $"Checks com atencao/falha: {badChecks.Count}",
-            badChecks.Count == 0 ? "Checklist automatico sem falhas atuais." : string.Join(Environment.NewLine, badChecks.Select(x => $"{x.Name}: {x.Status} - {x.Detail}")),
+            $"Escopo: eventos desde {_fullTestStartedAt:HH:mm:ss}, somente sessoes testadas. Historico e outros alvos nao reprovam esta execucao.",
+            $"Sessoes testadas: {(_fullTestClients.Length == 0 ? "Servidor local " + ServerEndpoint : string.Join(", ", _fullTestClients.Select(x => $"{x.Name} {x.Endpoint} UID {x.UnitId}")))}",
+            warnings.Count == 0 ? "Sem avisos importantes nesta execucao." : string.Join(Environment.NewLine, warnings.Select(x => $"{x.Severity} x{x.Count}: {x.Title} - {x.LatestDetail}")),
+            "Checks globais do Registro de avisos nao sao usados para reprovar este teste. As validacoes por alvo constam nas etapas TCP, mapa e envio/recebimento.",
             "",
             "Interpretacao:",
-            InterpretObservedFailures(warnings, badChecks)
+            InterpretObservedFailures(warnings)
         ]);
         var recommendation = status == "OK"
             ? "Nenhum evento classificado como falha/atencao foi consolidado na janela analisada."
@@ -2418,98 +1919,74 @@ public sealed partial class MainViewModel : ObservableObject
 
     private Task<FullTestStepResult> RunFullTestConclusionAsync(CancellationToken cancellationToken)
     {
-        var completed = FullTestSteps.Where(x => x.Name != "Conclusao").ToList();
-        var failures = completed.Where(x => x.Status is "Falha" or "Erro").ToList();
-        var warnings = completed.Where(x => x.Status == "Atencao").ToList();
-        var status = failures.Count > 0 ? "Falha" : warnings.Count > 0 ? "Atencao" : "OK";
-
-        var details = string.Join(Environment.NewLine, [
-            $"Etapas OK: {completed.Count(x => x.Status == "OK")}",
-            $"Etapas com atencao: {warnings.Count}",
-            $"Etapas com falha: {failures.Count}",
-            failures.Count == 0 ? "Sem falhas criticas no teste completo." : $"Falhas: {string.Join(", ", failures.Select(x => x.Name))}",
-            warnings.Count == 0 ? "Sem alertas adicionais." : $"Atencoes: {string.Join(", ", warnings.Select(x => x.Name))}",
-            "",
-            "Interpretacao:",
-            InterpretConclusion(completed.Count, failures.Count, warnings.Count)
-        ]);
-        var recommendation = status == "OK"
-            ? "Relatorio apto como referencia tecnica da condicao analisada."
-            : "Executar nova coleta apos tratar itens criticos para comparar variacao de conectividade, mapa e carga.";
-
-        return Task.FromResult(new FullTestStepResult(status, details, recommendation));
+        var steps = FullTestSteps.Where(x => x.Name != "Conclusao").ToList();
+        var faults = steps.Where(x => x.Status is "Falha" or "Erro").ToList();
+        var warnings = steps.Where(x => x.Status == "Atencao").ToList();
+        var unknown = steps.Where(x => x.Status == "Inconclusivo").ToList();
+        var notApplicable = steps.Count(x => x.Status == "Nao aplicavel");
+        var status = faults.Count > 0 ? "Falha" : warnings.Count > 0 ? "Atencao" : unknown.Count > 0 ? "Inconclusivo" : "OK";
+        return Task.FromResult(new FullTestStepResult(status,
+            $"Agregacao, nao nova transacao: falhas {faults.Count}, atencoes {warnings.Count}, inconclusivas {unknown.Count}, nao aplicaveis {notApplicable}."
+            + Environment.NewLine + $"Falhas: {string.Join(", ", faults.Select(x => x.Name))}."
+            + Environment.NewLine + $"Sem evidencia suficiente: {string.Join(", ", unknown.Select(x => x.Name))}."
+            + Environment.NewLine + FullTestCoverage
+            + Environment.NewLine + "Resultado restrito aos alvos, blocos e janelas executados. Falha em um alvo nao invalida os resultados independentes dos demais. Topologia fisica e saude de todos os enlaces nao foram validadas.",
+            faults.Count > 0 ? "Investigar as evidencias por alvo/bloco; repetir com os mesmos parametros apos a correcao."
+                : "Comparar com referencia e ampliar observacao se houver suspeita de intermitencia. Etapas inconclusivas requerem instrumentacao/dados adicionais."));
     }
 
-    private string BuildFullTestReport()
+
+    private string BuildTechnicalAppendix()
     {
         var builder = new StringBuilder();
-        builder.AppendLine("# Relatorio - Teste completo Modbus TCP");
+        builder.AppendLine("### Parametros de coleta");
+        builder.AppendLine($"Interface: {SelectedCaptureDevice?.Description ?? "indisponivel"}. BPF: `{GeneratedCaptureFilter}`.");
+        builder.AppendLine($"Referencia: {PassiveObservationSeconds} s; monitor TCP: {TcpMonitoringSeconds} s; {ReadValidationAttempts} tentativas/bloco; intervalo adicional: {ReadValidationIntervalMs} ms.");
+        builder.AppendLine($"Sondagem: {(EnableActiveSubnetScan ? ActiveScanCidr : "desabilitada")}; portas: {ModbusDiscoveryPorts}; limite: {ProbeRatePerSecond}/s; concorrencia: {ActiveScanConcurrency}.");
         builder.AppendLine();
-        builder.AppendLine($"- Caso: {CaseName}");
-        builder.AppendLine($"- Gerado em: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
-        builder.AppendLine($"- Modo: {SelectedMode}");
-        builder.AppendLine($"- Endpoint do modo ativo: {ActiveEndpoint}");
-        builder.AppendLine($"- Unit ID: {UnitId}");
-        builder.AppendLine($"- Interface captura: {SelectedCaptureDevice?.Description ?? "Nao selecionada"}");
-        builder.AppendLine($"- Filtro BPF: {GeneratedCaptureFilter}");
-        builder.AppendLine($"- Status geral: {FullTestOverallStatus}");
-        builder.AppendLine($"- Score: {FullTestScore}");
-        builder.AppendLine($"- Rede: {FullTestNetworkSummary}");
-        builder.AppendLine($"- Modbus: {FullTestModbusSummary}");
-        builder.AppendLine($"- Rotas: {FullTestRouteSummary}");
-        builder.AppendLine($"- Banda: {FullTestBandwidthSummary}");
-        builder.AppendLine();
-
+        builder.AppendLine("### Checklist da execucao");
+        builder.AppendLine("| Etapa | Resultado | Duracao s |");
+        builder.AppendLine("|---|---|---:|");
         foreach (var step in FullTestSteps)
         {
-            builder.AppendLine($"## {step.Order}. {step.Name} - {step.Status}");
-            builder.AppendLine();
-            builder.AppendLine(step.Objective);
-            builder.AppendLine();
-            builder.AppendLine("Resultado:");
+            var duration = step.StartedAt is not null && step.FinishedAt is not null
+                ? $"{(step.FinishedAt.Value - step.StartedAt.Value).TotalSeconds:0.0}" : "-";
+            builder.AppendLine($"| {step.Order}. {EscapeMarkdownTable(step.Name)} | {step.Status} | {duration} |");
+        }
+        builder.AppendLine();
+        var detailed = FullTestSteps.Where(x => x.Name != "Conclusao" && x.Status is not ("OK" or "Nao aplicavel")).ToList();
+        if (detailed.Count > 0) builder.AppendLine("### Evidencias adicionais das etapas com ocorrencias");
+        foreach (var step in detailed)
+        {
+            builder.AppendLine($"#### {step.Order}. {step.Name} - {step.Status}");
             builder.AppendLine("```text");
             builder.AppendLine(step.Result);
             builder.AppendLine("```");
+        }
+        foreach (var stat in _blockReadStatistics.Where(x => x.Errors.Count > 0))
+            builder.AppendLine($"- {stat.Endpoint} / UID {stat.UnitId}: {stat.Describe()}");
+        var relevant = NetworkDiscoveryRows.Where(x => !x.IsSpecialAddress
+            && (x.IsModbusConfirmed || x.IsModbusObserved || !string.IsNullOrWhiteSpace(x.OpenTcpPorts))).OrderBy(x => IpSortKey(x.Ip)).ToList();
+        if (relevant.Count > 0)
+        {
             builder.AppendLine();
-            builder.AppendLine($"Recomendacao: {step.Recommendation}");
+            builder.AppendLine("### Dispositivos com evidencia de servico");
+            builder.AppendLine($"{relevant.Count} entradas com Modbus ou porta TCP aberta. Inventario completo disponivel na aba Dispositivos do teste.");
+            builder.AppendLine("| IP | Papel / evidencia | TCP aberto | Modbus confirmado | Modbus observado |");
+            builder.AppendLine("|---|---|---|---|---|");
+            foreach (var row in relevant)
+                builder.AppendLine($"| {row.Ip} | {EscapeMarkdownTable(row.RoleGuess)} | {row.OpenTcpPorts} | {row.ConfirmedModbusPorts} | {row.ObservedModbusPorts} |");
+            builder.AppendLine("Porta aberta nao confirma protocolo. Modbus observado passivamente nao equivale a uma validacao ativa do mapa.");
+        }
+        if (DiscoveredMapRows.Count > 0)
+        {
             builder.AppendLine();
-        }
-
-        builder.AppendLine("## Dispositivos / rede");
-        builder.AppendLine();
-        if (NetworkDiscoveryRows.Count == 0)
-        {
-            builder.AppendLine("Nenhum dispositivo consolidado.");
-        }
-        else
-        {
-            builder.AppendLine("| IP | MAC | Fonte | Papel provavel | Portas/Modbus | Notas |");
-            builder.AppendLine("|---|---|---|---|---|---|");
-            foreach (var row in NetworkDiscoveryRows.OrderBy(x => IpSortKey(x.Ip)))
-            {
-                builder.AppendLine($"| {row.Ip} | {row.Mac} | {EscapeMarkdownTable(row.Source)} | {EscapeMarkdownTable(row.RoleGuess)} | {EscapeMarkdownTable(row.ModbusStatus)} | {EscapeMarkdownTable(row.Notes)} |");
-            }
-        }
-
-        builder.AppendLine();
-        builder.AppendLine("## Mapa descoberto");
-        builder.AppendLine();
-        if (DiscoveredMapRows.Count == 0)
-        {
-            builder.AppendLine(EnableMapDiscovery
-                ? "Nenhum range de mapa foi descoberto nesta execucao."
-                : "Descoberta de mapa nao habilitada nesta execucao.");
-        }
-        else
-        {
-            builder.AppendLine("| Endpoint | Unit ID | Function | Inicio | Fim | Quantidade | Modo | Confianca | Notas |");
-            builder.AppendLine("|---|---:|---|---:|---:|---:|---|---|---|");
+            builder.AppendLine("### Faixas de mapa descobertas");
+            builder.AppendLine("| Endpoint / UID | Funcao | Inicio - Fim | Confianca |");
+            builder.AppendLine("|---|---|---|---|");
             foreach (var row in DiscoveredMapRows.OrderBy(x => x.Endpoint).ThenBy(x => x.UnitId).ThenBy(x => x.Function).ThenBy(x => x.StartAddress))
-            {
-                builder.AppendLine($"| {row.Endpoint} | {row.UnitId} | {EscapeMarkdownTable(row.Function)} | {row.StartAddress} | {row.EndAddress} | {row.Quantity} | {EscapeMarkdownTable(row.DiscoveryMode)} | {EscapeMarkdownTable(row.Confidence)} | {EscapeMarkdownTable(row.Notes)} |");
-            }
+                builder.AppendLine($"| {row.Endpoint} / {row.UnitId} | {EscapeMarkdownTable(row.Function)} | {row.StartAddress} - {row.EndAddress} | {EscapeMarkdownTable(row.Confidence + "; " + row.Notes)} |");
         }
-
         return builder.ToString();
     }
 
@@ -2521,23 +1998,25 @@ public sealed partial class MainViewModel : ObservableObject
     private void UpdateFullTestSummaryCards()
     {
         var steps = FullTestSteps.ToList();
-        var ok = steps.Count(x => x.Status == "OK");
-        var warnings = steps.Count(x => x.Status == "Atencao");
-        var failures = steps.Count(x => x.Status is "Falha" or "Erro");
-        var completed = ok + warnings + failures;
-
+        var completed = steps.Count(x => x.Status is "OK" or "Atencao" or "Falha" or "Erro" or "Inconclusivo" or "Nao aplicavel" or "Cancelado");
         FullTestTotalSteps = steps.Count;
         FullTestCompletedSteps = completed;
-        FullTestProgressPercent = steps.Count == 0 ? 0 : (int)Math.Round(100.0 * completed / steps.Count);
-        FullTestOkCount = ok;
-        FullTestWarningCount = warnings;
-        FullTestFailureCount = failures;
-        FullTestScore = $"{ok}/{steps.Count} OK";
-        FullTestOverallStatus = IsFullTestRunning && completed < steps.Count
-            ? "Executando"
-            : completed == 0 && string.IsNullOrWhiteSpace(FullTestReport) ? "Aguardando"
-            : failures > 0 ? "Falha" : warnings > 0 ? "Atencao" : "OK";
+        FullTestProgressPercent = steps.Count == 0 ? 0 : (int)Math.Round(100d * completed / steps.Count);
+        FullTestOkCount = steps.Count(x => x.Status == "OK");
+        FullTestWarningCount = steps.Count(x => x.Status == "Atencao");
+        FullTestFailureCount = steps.Count(x => x.Status is "Falha" or "Erro");
+        FullTestInconclusiveCount = steps.Count(x => x.Status == "Inconclusivo");
+        FullTestNotApplicableCount = steps.Count(x => x.Status == "Nao aplicavel");
+        FullTestScore = $"{completed}/{steps.Count} etapas processadas";
+        FullTestCoverage = $"Blocos exercitados: {_blockReadStatistics.Count(x => x.Attempted > 0)}; leituras validas/tentadas: {_blockReadStatistics.Sum(x => x.Success)}/{_blockReadStatistics.Sum(x => x.Attempted)}. Referencia: {_baselineTraffic?.Seconds ?? 0:0.0} s; monitor TCP: {_operationalTraffic?.Seconds ?? 0:0.0} s. Inconclusivas: {FullTestInconclusiveCount}; nao aplicaveis: {FullTestNotApplicableCount}.";
+        FullTestOverallStatus = IsFullTestRunning && completed < steps.Count ? "Executando"
+            : steps.Any(x => x.Status == "Cancelado") ? "Cancelado"
+            : completed == 0 ? "Aguardando"
+            : FullTestFailureCount > 0 ? "Falha" : FullTestWarningCount > 0 ? "Atencao"
+            : FullTestInconclusiveCount > 0 || completed < steps.Count ? "Inconclusivo" : "OK";
+        RefreshTestExperience();
     }
+
 
     private async Task<List<TcpTimelineRow>> CollectPassiveTrafficSampleAsync(int minNewPackets, CancellationToken cancellationToken)
     {
@@ -2737,15 +2216,15 @@ public sealed partial class MainViewModel : ObservableObject
         return $"Criterio: leitura read-only por linha habilitada. Resultado: {ok}/{total} linha(s) responderam ({FormatPercent(ok, total)}). Implicacao: {string.Join(" ", causeHints.DefaultIfEmpty("classificar falhas por exception Modbus, timeout ou erro de socket para separar erro de mapa de erro de transporte."))}";
     }
 
-    private static string InterpretObservedFailures(IReadOnlyList<ImportantWarningSummary> warnings, IReadOnlyList<VerificationCheck> badChecks)
+    private static string InterpretObservedFailures(IReadOnlyList<ImportantWarningSummary> warnings)
     {
-        if (warnings.Count == 0 && badChecks.Count == 0)
+        if (warnings.Count == 0)
         {
-            return "Criterio: agregacao de warnings e checks automaticos. Resultado: zero eventos classificados. Implicacao: os sintomas monitorados nao ocorreram na janela analisada; diagnostico limitado a essa janela temporal.";
+            return "Criterio: eventos consolidados das sessoes testadas nesta execucao. Resultado: zero eventos classificados. Implicacao: os sintomas monitorados nao foram registrados na janela analisada; isso nao comprova estabilidade fora dessa janela.";
         }
 
-        var critical = warnings.Count(x => x.Severity is "Falha" or "Erro") + badChecks.Count(x => x.Status is "Falha" or "Erro");
-        var attention = warnings.Count + badChecks.Count - critical;
+        var critical = warnings.Count(x => x.Severity is "Falha" or "Erro");
+        var attention = warnings.Count - critical;
         return $"Criterio: severidade agregada. Resultado: criticos={critical}, atencao={attention}. Implicacao: falhas de transporte/mapa invalidam conclusao de estabilidade; itens de polling/carga devem ser analisados apos eliminar exceptions e timeouts.";
     }
 
@@ -2758,7 +2237,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (failures > 0)
         {
-            return $"Criterio: etapas com status Falha/Erro. Resultado: {failures}/{total}. Implicacao: diagnostico reprovado; resultados posteriores podem estar contaminados por falha primaria de conectividade, mapa ou captura.";
+            return $"Criterio: etapas com status Falha/Erro nesta execucao. Resultado: {failures}/{total}. Implicacao: houve falha no escopo testado; consultar as etapas e os alvos identificados. Falha em um servidor nao implica falha nos demais.";
         }
 
         if (warnings > 0)
@@ -2769,97 +2248,29 @@ public sealed partial class MainViewModel : ObservableObject
         return "Criterio: status final agregado. Resultado: zero falhas e zero atencoes. Implicacao: referencia tecnica valida apenas para as condicoes, filtros e janela de observacao executados.";
     }
 
-    private List<string> BuildDiscoveryCandidates()
-    {
-        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        if (IsIPv4(TargetIp))
-        {
-            candidates.Add(TargetIp);
-        }
-
-        foreach (var row in TcpTimeline)
-        {
-            var source = ExtractHost(row.Source);
-            var destination = ExtractHost(row.Destination);
-            if (IsIPv4(source))
-            {
-                candidates.Add(source);
-            }
-            if (IsIPv4(destination))
-            {
-                candidates.Add(destination);
-            }
-        }
-
-        foreach (var row in NetworkDiscoveryRows)
-        {
-            if (IsIPv4(row.Ip))
-            {
-                candidates.Add(row.Ip);
-            }
-        }
-
-        if (EnableActiveSubnetScan)
-        {
-            foreach (var profile in GetNetworkProfiles().Where(x => x.IsOperational))
-            {
-                foreach (var ip in EnumerateSubnetHosts(profile.Address, profile.PrefixLength, 512))
-                {
-                    candidates.Add(ip);
-                }
-            }
-        }
-
-        return candidates
-            .Where(IsIPv4)
-            .OrderBy(IpSortKey)
-            .Take(512)
-            .ToList();
-    }
+    private List<string> BuildDiscoveryCandidates() => AuthorizedCandidates();
 
     private IReadOnlyList<MapDiscoveryEndpoint> BuildMapDiscoveryEndpoints()
     {
-        var endpoints = new Dictionary<string, MapDiscoveryEndpoint>(StringComparer.OrdinalIgnoreCase);
-
-        void Add(string ip, int endpointPort)
-        {
-            if (!IsIPv4(ip) || endpointPort <= 0 || endpointPort > 65535)
-            {
-                return;
-            }
-
-            endpoints.TryAdd($"{ip}:{endpointPort}", new MapDiscoveryEndpoint(ip, endpointPort));
-        }
-
-        Add(TargetIp, Port);
-
-        foreach (var row in NetworkDiscoveryRows)
-        {
-            var openPorts = ExtractPorts(row.ModbusStatus);
-            foreach (var endpointPort in openPorts)
-            {
-                Add(row.Ip, endpointPort);
-            }
-
-            if (openPorts.Count == 0 && row.RoleGuess.Contains("Modbus", StringComparison.OrdinalIgnoreCase))
-            {
-                Add(row.Ip, Port);
-            }
-        }
-
-        return endpoints.Values
-            .OrderBy(x => IpSortKey(x.Ip))
-            .ThenBy(x => x.Port)
-            .Take(8)
-            .ToList();
+        var endpoints = new HashSet<(string Address, int Port)>();
+        foreach (var confirmed in _confirmedModbusEndpoints)
+            if (IPEndPoint.TryParse(confirmed, out var ep) && NetworkDiscoveryRows.Any(row => row.Ip == ep.Address.ToString()
+                && row.IsModbusConfirmed && row.ConfirmedModbusPorts.Split(',').Any(port => port.Trim() == ep.Port.ToString())))
+                endpoints.Add((ep.Address.ToString(), ep.Port));
+        foreach (var session in FullTestIsClientMode ? CurrentTestTargets() : [])
+            endpoints.Add((session.Address, session.Port));
+        return endpoints.Where(x => IsIPv4(x.Address) && x.Port is > 0 and <= 65535)
+            .OrderBy(x => IpSortKey(x.Address)).ThenBy(x => x.Port)
+            .Select(x => new MapDiscoveryEndpoint(x.Address, x.Port)).ToList();
     }
+
 
     private IReadOnlyList<byte> BuildMapDiscoveryUnitIds()
     {
         if (!EnableMapDiscoveryUnitSweep)
         {
-            return [UnitId];
+            return FullTestIsServerMode ? [ServerUnitId]
+                : CurrentTestTargets().Select(x => x.UnitId).DefaultIfEmpty((byte)1).Distinct().ToArray();
         }
 
         var start = Math.Clamp(MapDiscoveryUnitIdStart, byte.MinValue, byte.MaxValue);
@@ -2907,6 +2318,7 @@ public sealed partial class MainViewModel : ObservableObject
         int timeoutMs,
         CancellationToken cancellationToken)
     {
+        await PaceProbeAsync(cancellationToken);
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -2924,6 +2336,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            if (cancellationToken.IsCancellationRequested) throw;
             return new MapProbeResult(false, "", "timeout");
         }
         catch (Exception ex)
@@ -3004,6 +2417,7 @@ public sealed partial class MainViewModel : ObservableObject
             NetworkDiscoveryRows.Add(new NetworkDiscoveryRow
             {
                 Ip = ip,
+                DeviceIdentity = DeviceIdentityFor(ip, _localIpv4Addresses),
                 Mac = mac,
                 Source = source,
                 RoleGuess = roleGuess,
@@ -3017,8 +2431,10 @@ public sealed partial class MainViewModel : ObservableObject
         {
             row.Mac = mac;
         }
+        row.DeviceIdentity = DeviceIdentityFor(ip, _localIpv4Addresses);
         row.Source = MergeText(row.Source, source);
-        row.RoleGuess = PreferLonger(row.RoleGuess, roleGuess);
+        if (!row.IsModbusConfirmed && !row.IsModbusObserved && !row.IsModbusClientObserved)
+            row.RoleGuess = source.Contains("ARP") ? "Vizinho IPv4 (ARP)" : roleGuess;
         row.ModbusStatus = MergeText(row.ModbusStatus, modbusStatus);
         row.Notes = MergeText(row.Notes, notes);
     }
@@ -3079,7 +2495,9 @@ public sealed partial class MainViewModel : ObservableObject
     private Dictionary<string, InterfaceTrafficSnapshot> TakeInterfaceSnapshots()
     {
         var snapshots = new Dictionary<string, InterfaceTrafficSnapshot>(StringComparer.OrdinalIgnoreCase);
-        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces().Where(x => x.OperationalStatus == OperationalStatus.Up))
+        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces().Where(x => x.OperationalStatus == OperationalStatus.Up
+            && x.NetworkInterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211
+            && !Regex.IsMatch(x.Description, "WFP|Npcap|QoS|Filter|Virtual|Pseudo", RegexOptions.IgnoreCase)))
         {
             try
             {
@@ -3088,7 +2506,9 @@ public sealed partial class MainViewModel : ObservableObject
                     networkInterface.Name,
                     stats.BytesReceived,
                     stats.BytesSent,
-                    networkInterface.Speed);
+                    networkInterface.Speed,
+                    stats.IncomingPacketsWithErrors + stats.OutgoingPacketsWithErrors,
+                    stats.IncomingPacketsDiscarded + stats.OutgoingPacketsDiscarded);
             }
             catch
             {
@@ -3147,6 +2567,7 @@ public sealed partial class MainViewModel : ObservableObject
             await client.ConnectAsync(ip, port, timeout.Token);
             return true;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch
         {
             return false;
@@ -3177,7 +2598,7 @@ public sealed partial class MainViewModel : ObservableObject
         return ip switch
         {
             "127.0.0.1" => "Loopback/local",
-            _ => "Host industrial ou infraestrutura"
+            _ => "Host observado (tipo desconhecido)"
         };
     }
 
@@ -3199,19 +2620,6 @@ public sealed partial class MainViewModel : ObservableObject
         _ => $"FC{functionCode:00}"
     };
 
-    private static string ClientPointType(int functionCode) => functionCode switch
-    {
-        ModbusProtocol.ReadCoils => "Coil",
-        ModbusProtocol.ReadDiscreteInputs => "Discrete Input",
-        ModbusProtocol.ReadHoldingRegisters => "Holding Register",
-        ModbusProtocol.ReadInputRegisters => "Input Register",
-        _ => "Ponto"
-    };
-
-    private static bool IsClientWritableFunction(int functionCode)
-    {
-        return functionCode is ModbusProtocol.ReadCoils or ModbusProtocol.ReadHoldingRegisters;
-    }
 
     private static string FormatUnitIdList(IReadOnlyList<byte> unitIds)
     {
@@ -3341,6 +2749,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     private static async Task<string> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken)
     {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        var encoding = Encoding.GetEncoding(System.Globalization.CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
         using var process = new Process
         {
             StartInfo = new ProcessStartInfo(fileName, arguments)
@@ -3348,6 +2758,8 @@ public sealed partial class MainViewModel : ObservableObject
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                StandardOutputEncoding = encoding,
+                StandardErrorEncoding = encoding,
                 CreateNoWindow = true
             }
         };
@@ -3422,7 +2834,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (trafficEvent.FunctionCode is 5 or 6 or 15 or 16)
         {
-            SetCheck("Escritas", "Atencao", $"Escrita observada: FC{trafficEvent.FunctionCode}, endereco {trafficEvent.StartAddress}.");
+            SetCheck("Escritas", "OK", $"Escrita observada: FC{trafficEvent.FunctionCode}, endereco {trafficEvent.StartAddress}; consulte a resposta para confirmar o resultado.");
         }
 
         if (finding.Severity == "Erro")
@@ -3438,9 +2850,10 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (trafficEvent.Direction == TrafficDirection.ClientToServer && trafficEvent.StartAddress is not null)
+        if (trafficEvent.Direction == TrafficDirection.ClientToServer && trafficEvent.StartAddress is not null
+            && _capturePhase is not ("Sondagem" or "Validacao de mapa"))
         {
-            var signature = $"{trafficEvent.Endpoint}|FC{trafficEvent.FunctionCode}|{trafficEvent.StartAddress}|{trafficEvent.Quantity}";
+            var signature = $"{trafficEvent.SessionId}|{trafficEvent.Endpoint}|UID{trafficEvent.UnitId}|FC{trafficEvent.FunctionCode}|{trafficEvent.StartAddress}|{trafficEvent.Quantity}";
             if (_lastRequestBySignature.TryGetValue(signature, out var lastSeen))
             {
                 var intervalMs = (trafficEvent.Timestamp - lastSeen).TotalMilliseconds;
@@ -3464,17 +2877,22 @@ public sealed partial class MainViewModel : ObservableObject
                 else
                 {
                     var medianMs = Median(intervals);
-                    var status = medianMs < 100 ? "Atencao" : "OK";
-                    SetCheck("Padrao de polling", status, $"FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress} qty {trafficEvent.Quantity}: mediana ~{medianMs:0} ms em {intervals.Count} amostras. Ultimo intervalo bruto: {intervalMs:0} ms.");
+                    var owner = ClientSessions.FirstOrDefault(x => x.Id == trafficEvent.SessionId);
+                    var expectedMs = owner?.ScanRateMs;
+                    var unexpectedRate = expectedMs is > 0 && intervals.Count >= 6 && medianMs < expectedMs.Value * 0.75;
+                    var reference = expectedMs is > 0
+                        ? $" Taxa configurada: {expectedMs.Value} ms; desvio: {(medianMs / expectedMs.Value - 1) * 100:0.0}%."
+                        : " Periodo configurado do cliente externo desconhecido; frequencia isolada nao determina sobrecarga.";
+                    SetCheck("Padrao de polling", unexpectedRate ? "Atencao" : "OK", $"FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress} qty {trafficEvent.Quantity}: mediana ~{medianMs:0} ms em {intervals.Count} amostras. Ultimo intervalo bruto: {intervalMs:0} ms.{reference}");
 
-                    if (medianMs < 100)
+                    if (unexpectedRate)
                     {
                         UpsertImportantWarning(
-                            "polling-rapido",
+                            $"{trafficEvent.SessionId}|polling-rapido|{signature}",
                             "Atencao",
-                            "Polling muito rapido observado",
-                            $"Mediana de requisicoes abaixo de 100 ms para FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress}: {medianMs:0} ms em {intervals.Count} amostras.",
-                            "Verifique se a taxa de scan do cliente/PLC esta adequada para o equipamento e para a rede.",
+                            "Periodo de polling inferior ao configurado",
+                            $"{trafficEvent.Origin} {trafficEvent.Endpoint}: mediana {medianMs:0} ms, configurado {expectedMs} ms, para FC{trafficEvent.FunctionCode} addr {trafficEvent.StartAddress}, em {intervals.Count} amostras. Limite de sinalizacao: 75% do periodo configurado.",
+                            "Verifique requisicoes concorrentes para o mesmo bloco e a origem das leituras adicionais. A divergencia de periodo nao comprova sobrecarga.",
                             trafficEvent.Timestamp);
                     }
                 }
@@ -3485,14 +2903,14 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (trafficEvent.Summary.Contains("exception", StringComparison.OrdinalIgnoreCase))
         {
-            var key = $"FC{trafficEvent.FunctionCode}|{trafficEvent.StartAddress}|{trafficEvent.Quantity}";
+            var key = $"{trafficEvent.SessionId}|{trafficEvent.Endpoint}|UID{trafficEvent.UnitId}|FC{trafficEvent.FunctionCode}|{trafficEvent.StartAddress}|{trafficEvent.Quantity}";
             _exceptionCounts[key] = _exceptionCounts.GetValueOrDefault(key) + 1;
             SetCheck("Exceptions repetidas", _exceptionCounts[key] >= 3 ? "Falha" : "Atencao", $"{_exceptionCounts[key]} exception(s) em {key}.");
         }
 
         if (trafficEvent.Summary.Contains("fora do mapa", StringComparison.OrdinalIgnoreCase))
         {
-            var key = $"FC{trafficEvent.FunctionCode}|{trafficEvent.StartAddress}|{trafficEvent.Quantity}";
+            var key = $"{trafficEvent.SessionId}|{trafficEvent.Endpoint}|UID{trafficEvent.UnitId}|FC{trafficEvent.FunctionCode}|{trafficEvent.StartAddress}|{trafficEvent.Quantity}";
             _outOfMapCounts[key] = _outOfMapCounts.GetValueOrDefault(key) + 1;
             SetCheck("Mapa / range", "Falha", $"{_outOfMapCounts[key]} acesso(s) fora do mapa em {key}.");
         }
@@ -3525,12 +2943,25 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void UpsertImportantWarning(TrafficEvent trafficEvent, DiagnosticFinding finding)
     {
-        var key = BuildWarningKey(trafficEvent, finding);
-        UpsertImportantWarning(key, finding.Severity, BuildWarningTitle(trafficEvent, finding), finding.Message, finding.Recommendation, finding.Timestamp);
+        var key = $"{trafficEvent.SessionId}|{BuildWarningKey(trafficEvent, finding)}";
+        UpsertImportantWarning(key, finding.Severity, BuildWarningTitle(trafficEvent, finding), $"{trafficEvent.Origin} {trafficEvent.Endpoint}: {finding.Message}", finding.Recommendation, trafficEvent.Timestamp);
     }
 
     private void UpsertImportantWarning(string key, string severity, string title, string latestDetail, string recommendation, DateTimeOffset timestamp)
     {
+        if (IsFullTestRunning && timestamp >= _fullTestStartedAt
+            && !(_capturePhase == "Sondagem" && key.StartsWith("local-server|", StringComparison.Ordinal))
+            && _fullTestSessionIds.Any(id => key.StartsWith(id + "|", StringComparison.Ordinal)))
+        {
+            if (_runWarnings.TryGetValue(key, out var runWarning))
+            {
+                runWarning.Count++;
+                runWarning.Severity = MergeSeverity(runWarning.Severity, severity);
+                runWarning.LatestDetail = latestDetail;
+                runWarning.LastSeenAt = timestamp;
+            }
+            else _runWarnings[key] = new ImportantWarningSummary(key, severity, title, latestDetail, recommendation, timestamp);
+        }
         var existing = ImportantWarnings.FirstOrDefault(x => x.Key == key);
         if (existing is null)
         {
@@ -3786,6 +3217,8 @@ public sealed partial class FullTestStep : ObservableObject
         {
             "OK" => "#2E7D32",
             "Atencao" => "#C58A00",
+            "Inconclusivo" => "#9B751C",
+            "Nao aplicavel" => "#74828B",
             "Falha" or "Erro" => "#B3261E",
             "Executando" => "#1E6BD6",
             _ => "#9AA39C"
@@ -3797,9 +3230,21 @@ public sealed record FullTestStepResult(string Status, string Detail, string Rec
 
 public sealed partial class NetworkDiscoveryRow : ObservableObject
 {
-    [ObservableProperty] private string ip = "";
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IpSortKey))] private string ip = "";
+    public uint IpSortKey
+    {
+        get
+        {
+            if (!System.Net.IPAddress.TryParse(Ip, out var address)
+                || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) return uint.MaxValue;
+            var bytes = address.GetAddressBytes();
+            return ((uint)bytes[0] << 24) | ((uint)bytes[1] << 16) | ((uint)bytes[2] << 8) | bytes[3];
+        }
+    }
     [ObservableProperty] private string mac = "";
-    [ObservableProperty] private string source = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SidebarCaption))]
+    private string source = "";
     [ObservableProperty] private string roleGuess = "";
     [ObservableProperty] private string modbusStatus = "";
     [ObservableProperty] private string notes = "";
@@ -3834,7 +3279,7 @@ internal sealed record NetworkInterfaceProfile(
     long SpeedBitsPerSecond,
     bool IsOperational);
 
-internal sealed record InterfaceTrafficSnapshot(string Name, long BytesReceived, long BytesSent, long SpeedBitsPerSecond);
+internal sealed record InterfaceTrafficSnapshot(string Name, long BytesReceived, long BytesSent, long SpeedBitsPerSecond, long Errors = 0, long Discards = 0);
 
 internal sealed record ArpEntry(string Ip, string Mac, string Type);
 
@@ -3842,6 +3287,19 @@ internal sealed record HostProbeResult(string Ip, bool PingOk, bool ConfiguredPo
 
 public sealed class TcpTimelineRow
 {
+    public NeighborAdvertisement? Neighbor { get; init; }
+    public DateTimeOffset Timestamp { get; init; }
+    public string SourceHost { get; init; } = "";
+    public string DestinationHost { get; init; } = "";
+    public string CapturePhase { get; set; } = "Operacional";
+    public bool IsTcp { get; init; }
+    public bool TcpReset { get; init; }
+    public bool TcpSynchronize { get; init; }
+    public bool TcpAcknowledgment { get; init; }
+    public ushort TcpWindow { get; init; }
+    public uint TcpSequence { get; init; }
+    public int TcpPayloadLength { get; init; }
+    public string ModbusKind { get; init; } = "";
     public int Number { get; init; }
     public double RelativeTime { get; init; }
     public string Source { get; init; } = "";
@@ -3858,6 +3316,8 @@ public sealed class TcpTimelineRow
         $"Destination: {Destination}",
         $"Protocol: {Protocol}",
         $"Length: {Length}",
-        $"Info: {Info}"
+        $"Info: {Info}",
+        $"Fase: {CapturePhase}",
+        $"Modbus: {(ModbusKind.Length == 0 ? "Nao confirmado" : ModbusKind)}"
     });
 }

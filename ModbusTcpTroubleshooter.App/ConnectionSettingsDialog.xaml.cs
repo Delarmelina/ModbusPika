@@ -5,6 +5,8 @@ namespace ModbusTcpTroubleshooter.App;
 public partial class ConnectionSettingsDialog : Window
 {
     private readonly bool _isClient;
+    private bool _ready;
+    public bool IsClientConfiguration => _isClient;
 
     public ConnectionSettingsDialog(bool isClient, string address, int port, byte unitId, int scanRateMs, bool keepConnectionOpen = true)
     {
@@ -19,7 +21,7 @@ public partial class ConnectionSettingsDialog : Window
         KeepConnectionCheckBox.IsChecked = keepConnectionOpen;
         ScanRateLabel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
         ScanRatePanel.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
-        ScanRateRow.Height = isClient ? new GridLength(32) : new GridLength(0);
+        ScanRateRow.Height = isClient ? GridLength.Auto : new GridLength(0);
         KeepConnectionCheckBox.Visibility = isClient ? Visibility.Visible : Visibility.Collapsed;
         ConnectionModeRow.Height = isClient ? GridLength.Auto : new GridLength(0);
         // Window height includes title bar, validation area and button row.
@@ -28,6 +30,26 @@ public partial class ConnectionSettingsDialog : Window
         AddressTextBox.SelectAll();
         AddressTextBox.Focus();
         UiLocalization.Apply(this);
+        _ready = true;
+        ValidateFields();
+    }
+
+    private void InputChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    { if (_ready) ValidateFields(); }
+
+    private bool ValidateFields()
+    {
+        AddressError.Text = !System.Net.IPAddress.TryParse(AddressTextBox.Text.Trim(), out var ip)
+            || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork ? "Informe um endereço IPv4 válido." : "";
+        PortError.Text = !int.TryParse(PortTextBox.Text, out var port) || port is < 1 or > 65535 ? "Porta: 1 a 65535." : "";
+        UnitError.Text = !byte.TryParse(UnitIdTextBox.Text, out _) ? "ID da unidade: 0 a 255." : "";
+        ScanError.Text = _isClient && (!int.TryParse(ScanRateTextBox.Text, out var scan) || scan < 100) ? "Intervalo mínimo: 100 ms." : "";
+        foreach (var (input, error) in new[] { (AddressTextBox, AddressError), (PortTextBox, PortError), (UnitIdTextBox, UnitError), (ScanRateTextBox, ScanError) })
+        {
+            error.Visibility = error.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            input.BorderBrush = error.Text.Length > 0 ? System.Windows.Media.Brushes.Firebrick : System.Windows.Media.Brushes.SlateGray;
+        }
+        return ConfirmButton.IsEnabled = new[] { AddressError, PortError, UnitError, ScanError }.All(x => x.Text.Length == 0);
     }
 
     public string Address { get; private set; } = "";
@@ -38,6 +60,7 @@ public partial class ConnectionSettingsDialog : Window
 
     private void Confirm_Click(object sender, RoutedEventArgs e)
     {
+        if (!ValidateFields()) return;
         var address = AddressTextBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(address))
         {

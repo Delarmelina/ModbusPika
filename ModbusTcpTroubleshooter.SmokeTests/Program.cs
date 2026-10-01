@@ -2,6 +2,14 @@ using System.Net;
 using System.Net.Sockets;
 using ModbusTcpTroubleshooter.Core;
 
+var classifierRequest = ModbusProtocol.BuildReadRequest(1, 1, 3, 0, 1);
+if (ModbusFrameClassifier.Classify(classifierRequest) != "Request"
+    || ModbusFrameClassifier.Classify(Array.Empty<byte>()) != ""
+    || ModbusFrameClassifier.Classify(new byte[] { 0, 1, 0, 0, 0, 5, 1, 3, 2, 0x12, 0x34 }) != "Response"
+    || ModbusFrameClassifier.Classify(new byte[] { 0, 1, 0, 0, 0, 3, 1, 0x83, 2 }) != "Exception"
+    || ModbusFrameClassifier.Classify(classifierRequest.AsSpan(0, 8)) != "")
+    throw new InvalidOperationException("Complete Modbus ADU classification failed.");
+
 var map = new ModbusDataMap();
 map.LoadDefaults();
 

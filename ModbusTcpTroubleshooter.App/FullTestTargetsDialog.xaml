@@ -1,0 +1,26 @@
+<Window x:Class="ModbusTcpTroubleshooter.App.FullTestTargetsDialog"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Alvos do teste completo" Width="700" Height="430" MinWidth="620" MinHeight="340"
+ WindowStartupLocation="CenterOwner" Background="#F2F6FA" FontFamily="Segoe UI" FontSize="12">
+ <DockPanel Margin="14">
+  <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+   <TextBlock Text="Quais servidores-alvo devem participar?" FontSize="17" FontWeight="SemiBold"/>
+   <TextBlock Text="Cada alvo usa seu IP, porta, ID e mapa cadastrados. Esta selecao nao altera a conexao nem o dispositivo selecionado na lateral." TextWrapping="Wrap" Margin="0,6"/>
+   <StackPanel Orientation="Horizontal"><Button Content="Selecionar todos" Click="SelectAll_Click"/><Button Content="Limpar selecao" Click="Clear_Click"/></StackPanel>
+  </StackPanel>
+  <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+   <Button Content="OK" IsDefault="True" Click="Confirm_Click" MinWidth="85"/>
+   <Button Content="Cancelar" IsCancel="True" MinWidth="85"/>
+  </StackPanel>
+  <DataGrid x:Name="TargetsGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single">
+   <DataGrid.Columns>
+    <DataGridCheckBoxColumn Header="Incluir" Binding="{Binding Included, UpdateSourceTrigger=PropertyChanged}" Width="60" MinWidth="60"/>
+    <DataGridTextColumn Header="Nome" Binding="{Binding Session.Name}" IsReadOnly="True" Width="170" MinWidth="150"/>
+    <DataGridTextColumn Header="Endpoint" Binding="{Binding Session.Endpoint}" IsReadOnly="True" Width="175" MinWidth="160"/>
+    <DataGridTextColumn Header="ID" Binding="{Binding Session.UnitId}" IsReadOnly="True" Width="55" MinWidth="45"/>
+    <DataGridTextColumn Header="Estado" Binding="{Binding Session.ConnectionState}" IsReadOnly="True" Width="130" MinWidth="120"/>
+   </DataGrid.Columns>
+  </DataGrid>
+ </DockPanel>
+</Window>

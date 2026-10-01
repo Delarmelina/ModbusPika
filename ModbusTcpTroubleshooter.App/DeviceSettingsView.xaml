@@ -1,0 +1,35 @@
+<UserControl x:Class="ModbusTcpTroubleshooter.App.DeviceSettingsView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" FontWeight="Normal">
+ <ScrollViewer VerticalScrollBarVisibility="Auto">
+  <StackPanel Margin="16" MaxWidth="620" HorizontalAlignment="Left">
+   <TextBlock Text="Configuracao do dispositivo" FontSize="18" FontWeight="SemiBold" />
+   <TextBlock x:Name="RoleLabel" Margin="0,4,0,16" TextWrapping="Wrap" />
+   <Grid x:Name="Fields">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="155"/><ColumnDefinition Width="300"/></Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+     <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+     <RowDefinition Height="Auto"/><RowDefinition x:Name="ScanRow" Height="Auto"/><RowDefinition x:Name="SocketRow" Height="Auto"/>
+    </Grid.RowDefinitions>
+    <Label Content="_Nome" Target="{Binding ElementName=NameInput}" VerticalAlignment="Center"/>
+    <StackPanel Grid.Column="1" Margin="0,0,0,10"><TextBox x:Name="NameInput" MinHeight="30" MaxLength="1024" TextChanged="InputChanged"/><TextBlock x:Name="NameError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
+    <Label x:Name="AddressLabel" Grid.Row="1" Content="Endereco _IP" Target="{Binding ElementName=AddressInput}" VerticalAlignment="Center"/>
+    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,10"><TextBox x:Name="AddressInput" MinHeight="30" TextChanged="InputChanged"/><TextBlock x:Name="AddressError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
+    <Label Grid.Row="2" Content="_Porta TCP" Target="{Binding ElementName=PortInput}" VerticalAlignment="Center"/>
+    <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,10"><TextBox x:Name="PortInput" MinHeight="30" TextChanged="InputChanged"/><TextBlock x:Name="PortError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
+    <Label Grid.Row="3" Content="ID da _unidade" Target="{Binding ElementName=UnitInput}" VerticalAlignment="Center"/>
+    <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,10"><TextBox x:Name="UnitInput" MinHeight="30" TextChanged="InputChanged"/><TextBlock x:Name="UnitError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
+    <Label x:Name="ScanLabel" Grid.Row="4" Content="_Intervalo de leitura (ms)" Target="{Binding ElementName=ScanInput}" VerticalAlignment="Center"/>
+    <StackPanel x:Name="ScanFields" Grid.Row="4" Grid.Column="1" Margin="0,0,0,10"><TextBox x:Name="ScanInput" MinHeight="30" TextChanged="InputChanged"/><TextBlock x:Name="ScanError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
+    <CheckBox x:Name="PersistentInput" Grid.Row="5" Grid.ColumnSpan="2" Content="Manter uma conexao TCP entre as requisicoes" Margin="0,8" Checked="PersistentChanged" Unchecked="PersistentChanged" ToolTip="Desmarcado: conecta e desconecta em cada requisicao. Configuracao independente por alvo."/>
+   </Grid>
+   <TextBlock x:Name="LockMessage" Margin="0,8" TextWrapping="Wrap"/>
+   <TextBlock x:Name="Feedback" Margin="0,8" TextWrapping="Wrap" Foreground="#B13C36"/>
+   <StackPanel Orientation="Horizontal">
+    <Button x:Name="ApplyButton" Content="Aplicar configuracao" Click="Apply_Click" MinWidth="145"/>
+    <Button Content="Descartar alteracoes" Click="Reset_Click" MinWidth="145"/>
+   </StackPanel>
+   <TextBlock Text="Alterar IP, porta ou ID invalida os valores recebidos anteriormente, mas preserva os blocos do mapa. Nenhuma conexao e iniciada ao aplicar." Margin="0,16,0,0" TextWrapping="Wrap"/>
+  </StackPanel>
+ </ScrollViewer>
+</UserControl>

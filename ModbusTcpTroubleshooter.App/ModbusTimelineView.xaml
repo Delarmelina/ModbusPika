@@ -1,0 +1,37 @@
+<UserControl x:Class="ModbusTcpTroubleshooter.App.ModbusTimelineView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ModbusTcpTroubleshooter.App" FontWeight="Normal">
+ <UserControl.Resources><local:TrafficDirectionLabelConverter x:Key="DirectionLabel"/></UserControl.Resources>
+ <Grid Margin="0,8,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="1.2*" MinHeight="130"/><RowDefinition Height="8"/><RowDefinition Height="*" MinHeight="130"/></Grid.RowDefinitions>
+  <StackPanel><TextBlock Text="Investigar comunicação Modbus" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+   <WrapPanel Margin="0,0,0,8">
+    <StackPanel Margin="0,0,12,6"><Label Content="_Sessão / alvo" Target="{Binding ElementName=SessionFilter}"/><TextBox x:Name="SessionFilter" Width="210" ToolTip="Filtra nome da sessão ou endpoint; não altera a captura." TextChanged="FilterChanged"/></StackPanel>
+    <StackPanel Margin="0,0,12,6"><Label Content="_Unit ID" Target="{Binding ElementName=UnitFilter}"/><TextBox x:Name="UnitFilter" Width="80" ToolTip="Inteiro de 0 a 255; vazio inclui todos." TextChanged="FilterChanged"/></StackPanel>
+    <StackPanel Margin="0,0,12,6"><Label Content="_Função (FC)" Target="{Binding ElementName=FunctionFilter}"/><TextBox x:Name="FunctionFilter" Width="90" ToolTip="Decimal: 1, 2, 3, 4, 5, 6, 15 ou 16. Exceções são incluídas pela função original." TextChanged="FilterChanged"/></StackPanel>
+    <CheckBox x:Name="ErrorsOnly" Content="Somente erros" VerticalAlignment="Bottom" Margin="0,0,12,10" Checked="FilterChanged" Unchecked="FilterChanged"/>
+    <Button Content="Limpar filtros" Click="ClearFilters_Click" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
+   </WrapPanel>
+   <TextBlock x:Name="FilterFeedback" Foreground="#526B7D" TextWrapping="Wrap" Margin="0,0,0,8"/>
+  </StackPanel>
+  <DataGrid x:Name="Messages" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" SelectionChanged="MessageSelected" GridLinesVisibility="Horizontal">
+   <DataGrid.Columns>
+    <DataGridTextColumn Header="Hora" Binding="{Binding Timestamp, StringFormat=HH:mm:ss.fff}" Width="100" MinWidth="95"/>
+    <DataGridTextColumn Header="Sessão" Binding="{Binding Origin}" Width="150" MinWidth="140"/>
+    <DataGridTextColumn Header="Tipo" Binding="{Binding Direction, Converter={StaticResource DirectionLabel}}" Width="100" MinWidth="95"/>
+    <DataGridTextColumn Header="Endpoint" Binding="{Binding Endpoint}" Width="155" MinWidth="150"/>
+    <DataGridTextColumn Header="TID" Binding="{Binding TransactionId}" Width="60" MinWidth="55"/>
+    <DataGridTextColumn Header="UID" Binding="{Binding UnitId}" Width="55" MinWidth="50"/>
+    <DataGridTextColumn Header="FC" Binding="{Binding FunctionCode}" Width="55" MinWidth="50"/>
+    <DataGridTextColumn Header="Endereço" Binding="{Binding StartAddress}" Width="75" MinWidth="75"/>
+    <DataGridTextColumn Header="Qtd" Binding="{Binding Quantity}" Width="55" MinWidth="50"/>
+    <DataGridTextColumn Header="Resumo" Binding="{Binding Summary}" Width="*" MinWidth="180"/>
+   </DataGrid.Columns>
+  </DataGrid>
+  <GridSplitter Grid.Row="2" Height="8" HorizontalAlignment="Stretch" Background="#D5DEE4"/>
+  <GroupBox Grid.Row="3" Header="Detalhes da transação selecionada" Padding="10">
+   <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+    <TextBlock x:Name="TransactionDetails" Text="Selecione uma mensagem para investigar requisição, resposta, tempo e exceção." TextWrapping="Wrap"/>
+    <Expander Header="Dados brutos — hexadecimal" Margin="0,10,0,0"><TextBox x:Name="RawDetails" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" MaxHeight="180"/></Expander>
+   </StackPanel></ScrollViewer>
+  </GroupBox>
+ </Grid>
+</UserControl>

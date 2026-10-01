@@ -5,22 +5,23 @@
         Width="420"
         Height="285"
         MinHeight="245"
+        SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="#F0F0F0">
     <Grid Margin="12">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="22" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="34" />
         </Grid.RowDefinitions>
         <GroupBox Header="Connection settings" Padding="12" Margin="0,0,0,8">
             <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="32" />
-                        <RowDefinition Height="32" />
-                        <RowDefinition Height="32" />
-                        <RowDefinition x:Name="ScanRateRow" Height="32" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition x:Name="ScanRateRow" Height="Auto" />
                         <RowDefinition x:Name="ConnectionModeRow" Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
@@ -29,22 +30,22 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock x:Name="AddressLabel" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="IP address" />
-                    <TextBox x:Name="AddressTextBox" Grid.Column="1" Width="200" Height="26" Padding="4,2" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Margin="0,0,0,8"><TextBox x:Name="AddressTextBox" Height="26" Padding="4,2" TextChanged="InputChanged"/><TextBlock x:Name="AddressError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
                     <TextBlock Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="Service port" />
-                    <TextBox x:Name="PortTextBox" Grid.Row="1" Grid.Column="1" Width="100" Height="26" Padding="4,2" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,8"><TextBox x:Name="PortTextBox" Width="100" Height="26" Padding="4,2" HorizontalAlignment="Left" TextChanged="InputChanged"/><TextBlock x:Name="PortError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
                     <TextBlock Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="Unit ID" />
-                    <TextBox x:Name="UnitIdTextBox" Grid.Row="2" Grid.Column="1" Width="100" Height="26" Padding="4,2" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,8"><TextBox x:Name="UnitIdTextBox" Width="100" Height="26" Padding="4,2" HorizontalAlignment="Left" TextChanged="InputChanged"/><TextBlock x:Name="UnitError" TextWrapping="Wrap" Foreground="#B3261E"/></StackPanel>
                     <TextBlock x:Name="ScanRateLabel" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" Text="Scan rate" />
-                    <StackPanel x:Name="ScanRatePanel" Grid.Row="3" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBox x:Name="ScanRateTextBox" Width="100" Height="26" Padding="4,2" Margin="0" />
-                        <TextBlock Text="ms" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <StackPanel x:Name="ScanRatePanel" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal"><TextBox x:Name="ScanRateTextBox" Width="100" Height="26" Padding="4,2" Margin="0" TextChanged="InputChanged"/><TextBlock Text="ms" VerticalAlignment="Center" Margin="8,0,0,0" /></StackPanel>
+                        <TextBlock x:Name="ScanError" TextWrapping="Wrap" Foreground="#B3261E"/>
                     </StackPanel>
                     <CheckBox x:Name="KeepConnectionCheckBox" Grid.Row="4" Grid.ColumnSpan="2" Content="Keep one TCP connection open for all requests" Margin="0,8,0,0" VerticalAlignment="Center" ToolTip="Uses one TCP socket for the polling session. Disconnect closes it." />
             </Grid>
         </GroupBox>
         <TextBlock x:Name="ValidationText" Grid.Row="1" Foreground="#B3261E" TextWrapping="Wrap" VerticalAlignment="Center" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Button Content="OK" Width="82" Height="26" Margin="0,0,14,0" IsDefault="True" Click="Confirm_Click" />
+            <Button x:Name="ConfirmButton" Content="OK" Width="82" Height="26" Margin="0,0,14,0" IsDefault="True" Click="Confirm_Click" />
             <Button Content="Cancel" Width="82" Height="26" Margin="0" IsCancel="True" Click="Cancel_Click" />
         </StackPanel>
     </Grid>

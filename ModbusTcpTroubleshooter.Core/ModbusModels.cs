@@ -34,7 +34,11 @@ public sealed record TrafficEvent(
     ushort? StartAddress,
     ushort? Quantity,
     string Summary,
-    string Hex);
+    string Hex)
+{
+    public string SessionId { get; init; } = "";
+    public string Origin { get; init; } = "";
+}
 
 public sealed record DiagnosticFinding(
     DateTimeOffset Timestamp,
@@ -49,10 +53,16 @@ public sealed class TroubleshootCase
     public string TargetIp { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 502;
     public byte UnitId { get; set; } = 1;
+    public int ServerPort { get; set; } = 502;
+    public byte ServerUnitId { get; set; } = 1;
+    public List<ClientSessionCase> ClientSessions { get; set; } = [];
     public List<ModbusPoint> Map { get; set; } = [];
     public List<TrafficEvent> Traffic { get; set; } = [];
     public List<DiagnosticFinding> Diagnostics { get; set; } = [];
 }
+
+public sealed record ClientBlockCase(string Name, byte FunctionCode, ushort StartAddress, ushort Quantity, bool Enabled);
+public sealed record ClientSessionCase(string Name, string Address, int Port, byte UnitId, int ScanRateMs, bool KeepConnectionOpen, List<ClientBlockCase> Blocks);
 
 public sealed class ModbusDataMap
 {

@@ -13,17 +13,28 @@ public partial class MainWindow : Window
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
-    private double _connectionsPaneWidth = 220;
+    private double _connectionsPaneWidth = 260;
+    private readonly System.Windows.Threading.DispatcherTimer _experienceTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private object? _lastWorkspaceTab;
+    private bool _restoringWorkspace;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainViewModel();
+        ((MainViewModel)DataContext).ConfirmPendingDeviceEdits = DeviceSettings.ConfirmLeave;
         MainTabs.Items.Remove(TimelineTab);
-        MainTabs.Items.Insert(2, TimelineTab);
+        MainTabs.Items.Insert(MainTabs.Items.IndexOf(CommunicationMapTab) + 1, TimelineTab);
+        AddGlobalScopeBanner(TimelineTab, "Linha do tempo: tráfego de todas as conexões e da interface de captura selecionada.");
+        AddGlobalScopeBanner(IssueLogsTab, "Avisos: ocorrências consolidadas de todas as conexões e testes desta sessão.");
         MainTabs.SelectedItem = FullTestTab;
         UiLocalization.Apply(this);
         SourceInitialized += (_, _) => ApplyCaptionColors();
+        _lastWorkspaceTab = MainTabs.SelectedItem;
+        MainTabs.SelectionChanged += WorkspaceSelectionChanged;
+        _experienceTimer.Tick += (_, _) => { if (DataContext is MainViewModel vm) vm.RefreshTestExperience(); };
+        _experienceTimer.Start();
+        Closing += (_, e) => { if (!DeviceSettings.ConfirmLeave()) e.Cancel = true; };
     }
 
     private void ApplyCaptionColors()
@@ -36,8 +47,12 @@ public partial class MainWindow : Window
         _ = DwmSetWindowAttribute(hwnd, 36, ref textColor, sizeof(int));
     }
 
+    private void ManualMenuItem_Click(object sender, RoutedEventArgs e) =>
+        ManualHelp.Open(this, ManualHelp.ContextFor(this, Keyboard.FocusedElement as DependencyObject));
+
     protected override void OnClosed(EventArgs e)
     {
+        _experienceTimer.Stop();
         if (DataContext is MainViewModel viewModel) viewModel.StopAllOperations();
         base.OnClosed(e);
     }
@@ -63,6 +78,85 @@ public partial class MainWindow : Window
     private void ShowFullTest_Click(object sender, RoutedEventArgs e)
     {
         ToggleViewTab(FullTestTab, FullTestMenuItem);
+    }
+
+    private void FocusTestExecution_Click(object sender, RoutedEventArgs e) =>
+        FullTestSections.SelectedItem = FullTestExecutionTab;
+
+    private async void ReviewAndStartTest_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || !vm.StartFullTestCommand.CanExecute(null)) return;
+        string review;
+        try { review = vm.BuildTestReview(); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Revisar configuração", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        var dialog = new FullTestReviewDialog(review) { Owner = this };
+        if (dialog.ShowDialog() != true || !vm.StartFullTestCommand.CanExecute(null)) return;
+        FullTestSections.SelectedItem = FullTestExecutionTab;
+        await vm.StartFullTestCommand.ExecuteAsync(null);
+        vm.RefreshTestExperience();
+        if (!vm.IsFullTestRunning) FullTestSections.SelectedItem = FullTestSummaryTab;
+    }
+
+    private void OpenFinding_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && sender is FrameworkElement { DataContext: FullTestStep step })
+        {
+            vm.SelectedFullTestStep = step;
+            FullTestSections.SelectedItem = FullTestExecutionTab;
+        }
+    }
+
+    private void WorkspaceSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_restoringWorkspace || e.Source != MainTabs) return;
+        if (_lastWorkspaceTab == CommunicationMapTab && MainTabs.SelectedItem != CommunicationMapTab && !DeviceSettings.ConfirmLeave())
+        {
+            _restoringWorkspace = true;
+            MainTabs.SelectedItem = _lastWorkspaceTab;
+            _restoringWorkspace = false;
+            return;
+        }
+        _lastWorkspaceTab = MainTabs.SelectedItem;
+    }
+
+    private void SelectTestClient_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && !vm.IsFullTestRunning) vm.TestMode = "Client";
+    }
+
+    private void SelectTestServer_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && !vm.IsFullTestRunning) vm.TestMode = "Server";
+    }
+
+    private void SelectTestTargets_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || vm.IsFullTestRunning) return;
+        var dialog = new FullTestTargetsDialog(vm.ClientSessions) { Owner = this };
+        if (dialog.ShowDialog() == true) vm.SetFullTestTargets(dialog.SelectedTargets);
+    }
+
+    private void VerifyDiscoveredDevice_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || vm.IsFullTestRunning || vm.IsDeviceProbeRunning) return;
+        var address = (sender as FrameworkElement)?.DataContext is NetworkDiscoveryRow host ? host.Ip : "";
+        new DeviceProbeDialog(vm, address) { Owner = this }.ShowDialog();
+    }
+
+    private void AddDiscoveredTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || sender is not FrameworkElement { DataContext: NetworkDiscoveryRow host }) return;
+        if (!DeviceSettings.ConfirmLeave()) return;
+        if (vm.IsFullTestRunning || vm.IsDeviceProbeRunning)
+        {
+            MessageBox.Show(this, "Aguarde a verificacao atual terminar antes de adicionar um alvo.",
+                "Adicionar alvo", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new DiscoveredTargetDialog(vm, host) { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.AddedTarget is null) return;
+        MainTabs.SelectedItem = CommunicationMapTab;
+        OpenDeviceConfiguration();
     }
 
     private void ToggleConnectionsPane_Click(object sender, RoutedEventArgs e)
@@ -91,17 +185,125 @@ public partial class MainWindow : Window
 
     private void SelectClientMode_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is MainViewModel viewModel && !viewModel.IsServerRunning && !viewModel.IsClientScanning && !viewModel.IsFullTestRunning)
+        if (DataContext is MainViewModel viewModel && !viewModel.IsFullTestRunning)
         {
             viewModel.SelectedMode = "Client";
         }
     }
 
+    private void AddGlobalScopeBanner(TabItem tab, string description)
+    {
+        if (tab.Content is not UIElement content) return;
+        tab.Content = null;
+        var panel = new DockPanel();
+        var banner = new Border { Background = new SolidColorBrush(Color.FromRgb(242, 246, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(197, 208, 215)),
+            BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(12, 8, 12, 8) };
+        banner.Child = new TextBlock { Text = "ESCOPO GLOBAL  ·  " + description, TextWrapping = TextWrapping.Wrap };
+        DockPanel.SetDock(banner, Dock.Top);
+        panel.Children.Add(banner);
+        panel.Children.Add(content);
+        tab.Content = panel;
+        tab.ToolTip = description;
+    }
+
+    private void ShowClientStation_Click(object sender, RoutedEventArgs e)
+    {
+        ClientStationMenuItem.IsChecked = true;
+        if (DataContext is MainViewModel vm) vm.SelectedMode = "Client";
+        MainTabs.SelectedItem = ClientStationTab;
+    }
+
+    private void ShowClientStationView_Click(object sender, RoutedEventArgs e)
+    {
+        if (ClientStationMenuItem.IsChecked) ShowClientStation_Click(sender, e);
+        else if (ReferenceEquals(MainTabs.SelectedItem, ClientStationTab)) MainTabs.SelectedItem = FullTestTab;
+    }
+
+    private void OpenSelectedTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || vm.IsFullTestRunning || !vm.HasClientTargets) return;
+        vm.SelectedMode = "Client";
+        OpenDeviceConfiguration();
+    }
+
+    private async void RemoveClientTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || !vm.RemoveClientSessionCommand.CanExecute(null)) return;
+        if (!DeviceSettings.ConfirmLeave()) return;
+        await vm.RemoveClientSessionCommand.ExecuteAsync(null);
+        if (vm.HasClientTargets || vm.SelectedMode != "Client") return;
+        ClientStationMenuItem.IsChecked = true;
+        MainTabs.SelectedItem = ClientStationTab;
+    }
+
+    private void StationTargetsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is not null)
+            OpenSelectedTarget_Click(sender, e);
+    }
+
+    private void OpenDeviceConfiguration()
+    {
+        if (CommunicationMapTab is null || DeviceConfigurationTab is null) return;
+        CommunicationMapTab.Visibility = Visibility.Visible;
+        CommunicationMapMenuItem.IsChecked = true;
+        MainTabs.SelectedItem = CommunicationMapTab;
+        MapPresentationTabs.SelectedItem = DeviceConfigurationTab;
+        DeviceSettings.Reload();
+    }
+
+    private void ClientTargetList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Selection can also be synchronized from the station table or an imported file.
+        // Only direct sidebar interaction should navigate away from the current workspace.
+        if (ClientTargetList.IsKeyboardFocusWithin && DataContext is MainViewModel { HasClientTargets: true }) OpenDeviceConfiguration();
+        else DeviceSettings?.Reload();
+    }
+
+    private void ClientTargetList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel && !viewModel.IsFullTestRunning
+            && FindVisualParent<ListBoxItem>(e.OriginalSource as DependencyObject) is not null)
+        {
+            viewModel.SelectedMode = "Client";
+            OpenDeviceConfiguration();
+        }
+    }
+
+    private async void MapPoint_Activated(object? sender, MapPointEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        if (e.Point is ClientCommunicationPointRow client)
+        {
+            if (!client.Writable)
+            {
+                MessageBox.Show(this, "Esta área de dados é somente leitura no protocolo Modbus.", "Ponto somente leitura", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var result = ShowWriteDialog(viewModel, client.SourceLine, client.Address, client.Address, client.Value, client.FunctionCode);
+            if (result is not null) await viewModel.WritePointFromCommunicationPointAsync(client, result.Value.Value);
+        }
+        else if (e.Point is ServerPointRow server)
+        {
+            var bit = server.Type is ModbusPointType.Coil or ModbusPointType.DiscreteInput;
+            var dialog = new WriteRegisterDialog($"Memória local · {viewModel.ServerEndpoint} · {server.TypeLabel} {server.Address}", server.Address, server.Address, server.Value, "Alterar valor do servidor simulado", bit ? "Novo valor (0=OFF, 1=ON)" : "Novo valor") { Owner = this };
+            if (dialog.ShowDialog() != true) return;
+            if (dialog.Address != server.Address || dialog.EndAddress != server.Address)
+            {
+                MessageBox.Show(this, "A edição deste bloco visual altera apenas o endereço selecionado.", "Endereço inválido", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            server.Value = bit && dialog.Value != 0 ? (ushort)1 : dialog.Value;
+        }
+    }
+
     private void SelectServerMode_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is MainViewModel viewModel && !viewModel.IsServerRunning && !viewModel.IsClientScanning && !viewModel.IsFullTestRunning)
+        if (DataContext is MainViewModel viewModel && !viewModel.IsFullTestRunning)
         {
             viewModel.SelectedMode = "Server";
+            OpenDeviceConfiguration();
         }
     }
 
@@ -113,35 +315,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void StartFullTest_Click(object sender, RoutedEventArgs e)
-    {
-        FullTestMenuItem.IsChecked = true;
-        FullTestTab.Visibility = Visibility.Visible;
-        MainTabs.SelectedItem = FullTestTab;
-
-        if (DataContext is MainViewModel viewModel && viewModel.StartFullTestCommand.CanExecute(null))
-        {
-            viewModel.StartFullTestCommand.Execute(null);
-        }
-    }
-
-    private void ShowFullTestReport_Click(object sender, RoutedEventArgs e)
-    {
-        LegacyFullTestTab.Visibility = Visibility.Visible;
-        MainTabs.SelectedItem = LegacyFullTestTab;
-        FullTestSections.SelectedItem = FullTestReportTab;
-    }
-
-    private void ShowTestDetails_Click(object sender, RoutedEventArgs e)
-    {
-        LegacyFullTestTab.Visibility = Visibility.Visible;
-        MainTabs.SelectedItem = LegacyFullTestTab;
-    }
-
     private void NewSession_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel || viewModel.IsFullTestRunning) return;
-        if (viewModel.IsServerRunning || viewModel.IsClientScanning)
+        if (!DeviceSettings.ConfirmLeave()) return;
+        if (viewModel.IsServerRunning || viewModel.AnyClientRunning)
         {
             MessageBox.Show(this, "Desconecte o cliente ou pare o servidor antes de iniciar uma nova sessão.", "Nova sessão", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
@@ -154,18 +332,46 @@ public partial class MainWindow : Window
     private void OpenDiscoveredHost_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { DataContext: NetworkDiscoveryRow host }) return;
+        ShowObservedDeviceDetails(host);
+    }
 
-        FullTestMenuItem.IsChecked = true;
-        LegacyFullTestTab.Visibility = Visibility.Visible;
-        MainTabs.SelectedItem = LegacyFullTestTab;
-        FullTestSections.SelectedItem = FullTestDevicesTab;
-        DiscoveredDevicesGrid.SelectedItem = host;
-        DiscoveredDevicesGrid.ScrollIntoView(host);
+    private void DiscoveredDevicesGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is DataGrid { SelectedItem: NetworkDiscoveryRow host }
+            && FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is not null)
+            ShowObservedDeviceDetails(host);
+    }
+
+    private void DiscoveredDevicesGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        var row = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject);
+        grid.ContextMenu.IsEnabled = row is not null;
+        if (row is not null) grid.SelectedItem = row.Item;
+    }
+
+    private void ShowObservedDeviceDetails(NetworkDiscoveryRow host)
+    {
+        var details = $"IP: {host.Ip}\nMAC: {host.Mac}\nFonte: {host.Source}\nPapel / evidencia: {host.RoleGuess}\n"
+            + $"TCP aberto: {host.OpenTcpPorts}\nModbus confirmado: {host.ConfirmedModbusPorts}\n"
+            + $"Modbus observado: {host.ObservedModbusPorts}\nPortas sondadas: {host.ProbedPorts}\n"
+            + $"Ultima sondagem: {host.LastProbeAt}\n\n{host.ProbeSummary}\n\n{host.Notes}";
+        var dialog = new Window { Owner = this, Title = $"Dispositivo observado - {host.Ip}",
+            Width = 570, Height = 420, MinWidth = 400, MinHeight = 300, WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        var panel = new DockPanel { Margin = new Thickness(14) };
+        var close = new Button { Content = "Fechar", IsCancel = true, HorizontalAlignment = HorizontalAlignment.Right, MinWidth = 85 };
+        close.Click += (_, _) => dialog.Close();
+        DockPanel.SetDock(close, Dock.Bottom);
+        panel.Children.Add(close);
+        panel.Children.Add(new TextBox { Text = details, IsReadOnly = true, TextWrapping = TextWrapping.Wrap,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        dialog.Content = panel;
+        dialog.ShowDialog();
     }
 
     private void ConfigureFullTestScope_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel)
+        if (DataContext is not MainViewModel viewModel || viewModel.IsFullTestRunning)
         {
             return;
         }
@@ -174,7 +380,15 @@ public partial class MainWindow : Window
             viewModel.EnableActiveSubnetScan,
             viewModel.ActiveScanTimeoutMs,
             viewModel.ActiveScanConcurrency,
-            viewModel.PassiveObservationSeconds)
+            viewModel.PassiveObservationSeconds,
+            viewModel.TcpMonitoringSeconds,
+            viewModel.ReadValidationAttempts,
+            viewModel.ReadValidationIntervalMs,
+            viewModel.ActiveScanCidr,
+            viewModel.ProbeRatePerSecond,
+            viewModel.PacketRateWarningThreshold,
+            viewModel.EnableRouteTracing, viewModel.RouteTraceMaxHops, viewModel.RouteTraceTimeoutMs, viewModel.RouteTraceMaxTargets,
+            viewModel.ModbusDiscoveryPorts, viewModel.AutomaticNetworkScope)
         {
             Owner = this
         };
@@ -188,11 +402,24 @@ public partial class MainWindow : Window
         viewModel.ActiveScanTimeoutMs = dialog.ActiveScanTimeoutMs;
         viewModel.ActiveScanConcurrency = dialog.ActiveScanConcurrency;
         viewModel.PassiveObservationSeconds = dialog.PassiveObservationSeconds;
+        viewModel.TcpMonitoringSeconds = dialog.TcpMonitoringSeconds;
+        viewModel.ReadValidationAttempts = dialog.ReadValidationAttempts;
+        viewModel.ReadValidationIntervalMs = dialog.ReadValidationIntervalMs;
+        viewModel.ActiveScanCidr = dialog.ActiveScanCidr;
+        viewModel.ProbeRatePerSecond = dialog.ProbeRatePerSecond;
+        viewModel.PacketRateWarningThreshold = dialog.PacketRateWarningThreshold;
+        viewModel.EnableRouteTracing = dialog.EnableRouteTracing;
+        viewModel.RouteTraceMaxHops = dialog.RouteTraceMaxHops;
+        viewModel.RouteTraceTimeoutMs = dialog.RouteTraceTimeoutMs;
+        viewModel.RouteTraceMaxTargets = dialog.RouteTraceMaxTargets;
+        viewModel.ModbusDiscoveryPorts = dialog.ModbusDiscoveryPorts;
+        viewModel.AutomaticNetworkScope = dialog.AutomaticNetworkScope;
+        viewModel.SaveTestScopeSettings();
     }
 
     private void ConfigureMapDiscovery_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel)
+        if (DataContext is not MainViewModel viewModel || viewModel.IsFullTestRunning)
         {
             return;
         }
@@ -235,7 +462,7 @@ public partial class MainWindow : Window
     {
         MessageBox.Show(
             this,
-            "O teste completo executa uma coleta tecnica guiada. Ele inicia o modo cliente ou servidor selecionado quando necessario, captura trafego, verifica rotas IP e ARP, mede a carga observada e valida a comunicacao Modbus configurada.\n\nEscopo do teste configura a sondagem TCP ativa e o tempo de observacao passiva. Habilite a varredura ativa de sub-rede somente quando houver autorizacao.\n\nA descoberta de mapa e somente para leitura. No modo cliente, sonda faixas FC01-FC04. No modo servidor, registra as faixas requisitadas pelos clientes conectados. Nenhuma funcao Modbus de escrita e enviada.",
+            "O teste completo possui papel e alvos independentes da selecao lateral. Escolha Cliente / Mestre ou Servidor / Escravo na aba Execucao. Como cliente, selecione quais servidores cadastrados participarao. Como servidor, o teste utiliza o simulador local. IP, porta e mapas sao configurados na area Dispositivo.\n\nConfigure os procedimentos para ajustar as janelas TCP, tentativas por bloco, sondagem da sub-rede e rotas ICMP. A descoberta ativa exige autorizacao; nenhuma escrita Modbus e enviada. No modo cliente, a descoberta de mapa sonda faixas FC01-FC04; como servidor, observa os enderecos solicitados pelos clientes.\n\nExecucao, resumo, dispositivos, topologia, mapa descoberto e relatorio ficam na mesma aba Teste completo. A exportacao MD / PDF esta na subaba Relatorio. Alterar a configuracao da proxima execucao nao apaga os resultados anteriores.",
             "Teste completo - Ajuda",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
@@ -267,6 +494,17 @@ public partial class MainWindow : Window
         ShowConnectionSettings(isClient: false);
     }
 
+    private void AddClientTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel || viewModel.IsFullTestRunning) return;
+        if (!DeviceSettings.ConfirmLeave()) return;
+        var dialog = new ConnectionSettingsDialog(true, "127.0.0.1", 502, 1, 1000, true) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        viewModel.AddClientSession(dialog.Address, dialog.Port, dialog.UnitId, dialog.ScanRateMs, dialog.KeepConnectionOpen);
+        MainTabs.SelectedItem = CommunicationMapTab;
+        OpenDeviceConfiguration();
+    }
+
     private async void ShowConnectionSettings(bool isClient)
     {
         if (DataContext is not MainViewModel viewModel)
@@ -274,11 +512,15 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (viewModel.IsDeviceProbeRunning || !(isClient ? viewModel.CanConfigureClient : viewModel.CanConfigureServer)) return;
+        if (!DeviceSettings.ConfirmLeave()) return;
+        var session = viewModel.SelectedClientSession;
+
         var dialog = new ConnectionSettingsDialog(
             isClient,
             isClient ? viewModel.TargetIp : viewModel.LocalIp,
-            viewModel.Port,
-            viewModel.UnitId,
+            isClient ? viewModel.SelectedClientSession.Port : viewModel.ServerPort,
+            isClient ? viewModel.SelectedClientSession.UnitId : viewModel.ServerUnitId,
             viewModel.ScanRateMs,
             viewModel.KeepClientConnectionOpen)
         {
@@ -290,23 +532,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        viewModel.SelectedMode = isClient ? "Client" : "Server";
-        if (isClient)
+        try
         {
-            viewModel.TargetIp = dialog.Address;
-            viewModel.ScanRateMs = dialog.ScanRateMs;
+            await viewModel.ConfigureDeviceAsync(isClient, session, isClient ? session.Name : viewModel.ServerName,
+                dialog.Address, dialog.Port, dialog.UnitId, dialog.ScanRateMs, dialog.KeepConnectionOpen);
+            viewModel.SelectedMode = isClient ? "Client" : "Server";
+            DeviceSettings.Reload();
         }
-        else
-        {
-            viewModel.LocalIp = dialog.Address;
-        }
-
-        viewModel.Port = dialog.Port;
-        viewModel.UnitId = dialog.UnitId;
-        if (isClient)
-        {
-            await viewModel.SetClientConnectionModeAsync(dialog.KeepConnectionOpen);
-        }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Configuração do dispositivo", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
 
 
