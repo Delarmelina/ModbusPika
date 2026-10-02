@@ -552,7 +552,10 @@ public partial class MainWindow : Window
     {
         MessageBox.Show(
             this,
-            "Modbus TCP Troubleshooter\nFerramenta de troubleshooting para Modbus TCP client/server, timeline de rede e teste completo.",
+            "Modbus Diagnostic Tool - Autvix\nRevisão 1.1 | Versão 1.1.0\n\n"
+                + "Diagnóstico de comunicação Modbus TCP, captura de rede e teste completo.\n\n"
+                + "Felipe Ferreira Delarmelina\n"
+                + "Contato para dúvidas: Felipe.Ferreira@autvix.com.br",
             "Sobre",
             MessageBoxButton.OK,
             MessageBoxImage.Information);

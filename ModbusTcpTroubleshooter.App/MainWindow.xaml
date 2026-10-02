@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ModbusTcpTroubleshooter.App"
         mc:Ignorable="d"
-        Title="Modbus TCP Diagnostic Tool" Height="840" Width="1260" MinHeight="680" MinWidth="980"
+        Title="Modbus Diagnostic Tool - Autvix" Icon="AppIcon-v3.ico" Height="840" Width="1260" MinHeight="680" MinWidth="980"
         Background="#E9EFF3" FontFamily="Segoe UI" FontSize="12">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -760,16 +760,18 @@
                                     </GroupBox>
                                     <GroupBox Header="Filtros da lista de pacotes" Padding="8" Margin="0,0,0,5" Background="White">
                                         <Grid>
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Text="Origem contem" Foreground="#5B665F" /><TextBox Text="{Binding SourceColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
                                             <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Destino contem" Foreground="#5B665F" /><TextBox Text="{Binding DestinationColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
                                             <StackPanel Grid.Column="2" Margin="0,0,8,0"><TextBlock Text="Protocolo contem" Foreground="#5B665F" /><TextBox Text="{Binding ProtocolColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
                                             <StackPanel Grid.Column="3"><TextBlock Text="Informacao contem" Foreground="#5B665F" /><TextBox Text="{Binding InfoColumnFilter, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                            <Button Grid.Column="4" Content="Limpar histórico" Command="{Binding ClearTimelineHistoryCommand}" VerticalAlignment="Bottom" Margin="8,0,0,0" ToolTip="Limpa o histórico Modbus e TCP, sem apagar avisos ou resultados do teste. A coleta ativa continua."/>
                                         </Grid>
                                     </GroupBox>
                                     <TextBlock Foreground="#6D756E" Text="{Binding QueuedPassivePackets, StringFormat=Pacotes aguardando exibicao na interface: {0}}" />
                                 </StackPanel>
                                 <DataGrid ItemsSource="{Binding FilteredTcpTimeline}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MouseDoubleClick="TcpTimelineGrid_MouseDoubleClick">
+                                    <DataGrid.ContextMenu><ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"><MenuItem Header="Limpar histórico" Command="{Binding ClearTimelineHistoryCommand}"/></ContextMenu></DataGrid.ContextMenu>
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Nº" Binding="{Binding Number}" Width="55" />
                                         <DataGridTextColumn Header="Tempo" Binding="{Binding RelativeTime, StringFormat=0.000000}" Width="95" />

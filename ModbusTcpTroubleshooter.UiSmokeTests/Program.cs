@@ -17,6 +17,12 @@ internal static class Program
     {
         var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.InitializeComponent();
+        if (args.Contains("--traffic-report-tests"))
+        {
+            CheckTimelineTrafficReport();
+            app.Shutdown();
+            return;
+        }
         if (args.Contains("--manual-images"))
         {
             CaptureManualDialog(new ConnectionSettingsDialog(true, "172.27.30.84", 1501, 1, 1000), "ManualClient");
@@ -384,6 +390,42 @@ internal static class Program
             restored.StopAllOperations();
             if (File.Exists(path)) File.Delete(path);
         }
+    }
+
+    private static void CheckTimelineTrafficReport()
+    {
+        var vm = new MainViewModel();
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var start = DateTimeOffset.Now.AddMinutes(-1);
+        typeof(MainViewModel).GetField("_fullTestStartedAt", flags)!.SetValue(vm, start);
+        for (var i = 1; i <= 24; i++)
+        {
+            var a = $"10.0.0.{i}:5000";
+            var b = "10.0.1.1:502";
+            vm.TcpTimeline.Add(new TcpTimelineRow { Timestamp = start.AddSeconds(i), Source = a, Destination = b,
+                SourceHost = $"10.0.0.{i}", DestinationHost = "10.0.1.1", Protocol = "TCP", Length = 100 * i });
+            vm.TcpTimeline.Add(new TcpTimelineRow { Timestamp = start.AddSeconds(i + .1), Source = b, Destination = a,
+                SourceHost = "10.0.1.1", DestinationHost = $"10.0.0.{i}", Protocol = "Modbus/TCP", Length = 100 * i });
+        }
+        var summary = (string)typeof(MainViewModel).GetMethod("BuildFullTestReport", flags)!.Invoke(vm, null)!;
+        Require(summary.Contains("Top 10 dispositivos") && summary.Contains("Top 10 conversas"), "Summary includes traffic top 10");
+        Require(summary.Contains("| 10.0.0.24:5000 | 10.0.1.1:502 | Modbus/TCP, TCP | 2 |"), "Traffic conversations combine both directions and sort by volume");
+        var snapshot = vm.TcpTimeline.ToArray();
+        vm.TcpTimeline.Clear();
+        var full = (string)typeof(MainViewModel).GetMethod("BuildDetailedFullTestReport", flags)!.Invoke(vm, [summary])!;
+        Require(full.Contains("Top 20 dispositivos") && full.Contains("Top 20 conversas") && !full.Contains("Top 10 conversas"), "Detailed report expands frozen rankings without duplicate top 10");
+        var output = Path.Combine(Path.GetTempPath(), "ModbusTrafficReport-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(output);
+        ReportExporter.ExportAsync(Path.Combine(output, "report.md"), full, traffic: snapshot).GetAwaiter().GetResult();
+        ReportExporter.ExportAsync(Path.Combine(output, "report.pdf"), full, traffic: snapshot).GetAwaiter().GetResult();
+        Require(File.Exists(Path.Combine(output, "report.trafego-01.png")), "Markdown saves the traffic graphs as a sidecar image");
+        Require(File.ReadAllText(Path.Combine(output, "report.md")).Contains("![Taxas de trafego]"), "Markdown links the traffic graphs");
+        Require(new FileInfo(Path.Combine(output, "report.pdf")).Length > 1000, "PDF exports the traffic tables");
+        Require(File.ReadAllText(Path.Combine(output, "report.md")).Contains("Top 20 conversas"), "Markdown exports traffic tables");
+        var empty = (string)typeof(MainViewModel).GetMethod("BuildFullTestReport", flags)!.Invoke(vm, null)!;
+        Require(empty.Contains("Nenhum quadro retido nesta execucao"), "Empty capture reports missing evidence rather than zero network load");
+        Console.WriteLine("Traffic report tests passed. Exports: " + output);
+        vm.StopAllOperations();
     }
 
     private static void CheckServerTestRuntimeIndependence()

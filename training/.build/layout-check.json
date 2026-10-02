@@ -1,0 +1,1290 @@
+﻿[
+    {
+        "text":  "Troubleshooting\nModbus TCP",
+        "height":  21.8109455,
+        "shape":  "TextBox 3",
+        "bound":  109.6,
+        "slide":  1
+    },
+    {
+        "text":  "Diagnóstico de comunicação industrial\nTreinamento com o Modbus TCP Troubleshooter",
+        "height":  21.8109455,
+        "shape":  "TextBox 4",
+        "bound":  52,
+        "slide":  1
+    },
+    {
+        "text":  "Percurso do treinamento",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  2
+    },
+    {
+        "text":  "01  Dúvidas do primeiro treinamento",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "02  Transação Modbus TCP",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "03  Bancada e configuração",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "04  Mapa e endereçamento",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "05  Captura e timelines",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "06  Dados e carga da rede",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "07  Teste completo",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "08  Descoberta e topologia",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "09  Relatório técnico",
+        "height":  21.8109455,
+        "shape":  "TextBox 13",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "10  Estudo de caso",
+        "height":  21.8109455,
+        "shape":  "TextBox 14",
+        "bound":  25.2,
+        "slide":  2
+    },
+    {
+        "text":  "Dúvidas do primeiro treinamento",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  3
+    },
+    {
+        "text":  "01",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  36,
+        "slide":  3
+    },
+    {
+        "text":  "O equipamento responde ao ping. A leitura Modbus deve funcionar?",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  28.8,
+        "slide":  3
+    },
+    {
+        "text":  "02",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  36,
+        "slide":  3
+    },
+    {
+        "text":  "A porta TCP abriu. O mapa está validado?",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  28.8,
+        "slide":  3
+    },
+    {
+        "text":  "03",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  36,
+        "slide":  3
+    },
+    {
+        "text":  "Uma exceção Modbus significa perda de conexão?",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  28.8,
+        "slide":  3
+    },
+    {
+        "text":  "Três evidências, três conclusões",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  4
+    },
+    {
+        "text":  "Cliente, servidor e transação",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  5
+    },
+    {
+        "text":  "Cliente / Mestre",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  30,
+        "slide":  5
+    },
+    {
+        "text":  "Servidor / Escravo",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  30,
+        "slide":  5
+    },
+    {
+        "text":  "Inicia a requisição",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  5
+    },
+    {
+        "text":  "Define UID, função, endereço e quantidade",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  50.4,
+        "slide":  5
+    },
+    {
+        "text":  "Confere a resposta recebida",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  5
+    },
+    {
+        "text":  "Escuta em um IP e uma porta",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  5
+    },
+    {
+        "text":  "Consulta o mapa e executa a função",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  5
+    },
+    {
+        "text":  "Retorna dados ou uma exceção",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  25.2,
+        "slide":  5
+    },
+    {
+        "text":  "Campos que identificam a leitura",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  6
+    },
+    {
+        "text":  "As quatro áreas de leitura",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  7
+    },
+    {
+        "text":  "Bancada local para a demonstração",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  8
+    },
+    {
+        "text":  "Configuração do alvo cliente",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  9
+    },
+    {
+        "text":  "Conexão persistente ou por requisição",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  10
+    },
+    {
+        "text":  "TCP persistente",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  30,
+        "slide":  10
+    },
+    {
+        "text":  "Conexão por requisição",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  30,
+        "slide":  10
+    },
+    {
+        "text":  "Mantém o socket entre as consultas",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  10
+    },
+    {
+        "text":  "Reduz aberturas repetidas de conexão",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  25.2,
+        "slide":  10
+    },
+    {
+        "text":  "É a configuração padrão do cliente",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  10
+    },
+    {
+        "text":  "Abre e encerra o socket em cada consulta",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  10
+    },
+    {
+        "text":  "Produz mais eventos de conexão",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  10
+    },
+    {
+        "text":  "Ajuda a comparar comportamento de sessões",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  50.4,
+        "slide":  10
+    },
+    {
+        "text":  "Teste de conexão: porta correta e errada",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  11
+    },
+    {
+        "text":  "1",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  31.2,
+        "slide":  11
+    },
+    {
+        "text":  "Leitura única em 127.0.0.1:1502",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  26.4,
+        "slide":  11
+    },
+    {
+        "text":  "2",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  31.2,
+        "slide":  11
+    },
+    {
+        "text":  "Alterar somente a porta para uma sem serviço",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  26.4,
+        "slide":  11
+    },
+    {
+        "text":  "3",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  31.2,
+        "slide":  11
+    },
+    {
+        "text":  "Repetir a leitura e registrar a mensagem",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  26.4,
+        "slide":  11
+    },
+    {
+        "text":  "4",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  31.2,
+        "slide":  11
+    },
+    {
+        "text":  "Restaurar 1502 e confirmar recuperação",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  26.4,
+        "slide":  11
+    },
+    {
+        "text":  "A falha da porta ocorre no transporte TCP. Uma exceção Modbus exige resposta do protocolo.",
+        "height":  21.8109455,
+        "shape":  "TextBox 13",
+        "bound":  48,
+        "slide":  11
+    },
+    {
+        "text":  "Um ponto depende da área e do offset",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  12
+    },
+    {
+        "text":  "Endereço documental e offset de protocolo",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  13
+    },
+    {
+        "text":  "40001  corresponde a  offset 0",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  42,
+        "slide":  13
+    },
+    {
+        "text":  "Exemplo válido quando o fabricante usa a convenção clássica",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  26.4,
+        "slide":  13
+    },
+    {
+        "text":  "40101 corresponde a offset 100 nessa mesma convenção",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  26.4,
+        "slide":  13
+    },
+    {
+        "text":  "O campo do software usa offset base zero",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  26.4,
+        "slide":  13
+    },
+    {
+        "text":  "Uma requisição pode ultrapassar a faixa",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  14
+    },
+    {
+        "text":  "Valor, qualidade e horário",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  15
+    },
+    {
+        "text":  "O que a leitura retorna",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  30,
+        "slide":  15
+    },
+    {
+        "text":  "O que exige documentação",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  30,
+        "slide":  15
+    },
+    {
+        "text":  "Bits ou palavras de 16 bits",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  15
+    },
+    {
+        "text":  "Status da operação",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  25.2,
+        "slide":  15
+    },
+    {
+        "text":  "Horário da última atualização",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  15
+    },
+    {
+        "text":  "Escala e unidade física",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  15
+    },
+    {
+        "text":  "Tipo numérico e ordem de palavras",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  15
+    },
+    {
+        "text":  "Significado da variável no processo",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  25.2,
+        "slide":  15
+    },
+    {
+        "text":  "Timeline Modbus e timeline TCP",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  16
+    },
+    {
+        "text":  "Modbus",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  30,
+        "slide":  16
+    },
+    {
+        "text":  "TCP",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  30,
+        "slide":  16
+    },
+    {
+        "text":  "Eventos das operações da aplicação",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  16
+    },
+    {
+        "text":  "TID, UID, função e região",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  25.2,
+        "slide":  16
+    },
+    {
+        "text":  "Requisição, resposta e exceção",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  16
+    },
+    {
+        "text":  "Quadros da interface de captura",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  16
+    },
+    {
+        "text":  "IP, porta, protocolo e tamanho",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  16
+    },
+    {
+        "text":  "Sinais de transporte e tráfego visível",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  25.2,
+        "slide":  16
+    },
+    {
+        "text":  "Visibilidade depende do ponto de captura",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  17
+    },
+    {
+        "text":  "Sinais TCP que pedem correlação",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  18
+    },
+    {
+        "text":  "Rajada entre blocos e período de polling",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  19
+    },
+    {
+        "text":  "Dados da rede após parar a captura",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  20
+    },
+    {
+        "text":  "1",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  31.2,
+        "slide":  20
+    },
+    {
+        "text":  "Capturar uma janela representativa",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  26.4,
+        "slide":  20
+    },
+    {
+        "text":  "2",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  31.2,
+        "slide":  20
+    },
+    {
+        "text":  "Parar a captura e consolidar a sessão",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  26.4,
+        "slide":  20
+    },
+    {
+        "text":  "3",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  31.2,
+        "slide":  20
+    },
+    {
+        "text":  "Abrir Dados e conferir o período analisado",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  26.4,
+        "slide":  20
+    },
+    {
+        "text":  "4",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  31.2,
+        "slide":  20
+    },
+    {
+        "text":  "Consultar gráficos, protocolos e conversas",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  26.4,
+        "slide":  20
+    },
+    {
+        "text":  "A aba Dados fica disponível após a parada. O snapshot contém os pacotes retidos daquela sessão.",
+        "height":  21.8109455,
+        "shape":  "TextBox 13",
+        "bound":  48,
+        "slide":  20
+    },
+    {
+        "text":  "Taxas observadas e cobertura da amostra",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  21
+    },
+    {
+        "text":  "Pico de tráfego e impacto na comunicação",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  22
+    },
+    {
+        "text":  "Um pico identifica quando investigar",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  48,
+        "slide":  22
+    },
+    {
+        "text":  "Latência e descartes mostram possível impacto",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  48,
+        "slide":  22
+    },
+    {
+        "text":  "Velocidade e contadores de porta ajudam a avaliar utilização",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  72,
+        "slide":  22
+    },
+    {
+        "text":  "Dispositivos e conversas com mais tráfego",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  23
+    },
+    {
+        "text":  "10 pacotes de A para B",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  42,
+        "slide":  23
+    },
+    {
+        "text":  "A participa de 100% dos pacotes da amostra",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  26.4,
+        "slide":  23
+    },
+    {
+        "text":  "B também participa de 100% desses pacotes",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  26.4,
+        "slide":  23
+    },
+    {
+        "text":  "A soma de participação entre endpoints pode superar 100%",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  26.4,
+        "slide":  23
+    },
+    {
+        "text":  "Resultados reunidos no Teste completo",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  24
+    },
+    {
+        "text":  "Configurações que definem o ensaio",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  25
+    },
+    {
+        "text":  "Estados do checklist",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  26
+    },
+    {
+        "text":  "Descoberta de mapa: alcance e requests",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  27
+    },
+    {
+        "text":  "São 11 janelas iniciais por FC, UID e endpoint",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  48,
+        "slide":  27
+    },
+    {
+        "text":  "Leitura de diagnóstico e escrita manual",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  28
+    },
+    {
+        "text":  "Teste completo",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  30,
+        "slide":  28
+    },
+    {
+        "text":  "Escrita manual",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  30,
+        "slide":  28
+    },
+    {
+        "text":  "Sondagens e leituras configuradas",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  28
+    },
+    {
+        "text":  "Descoberta de mapa sem escrita",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  25.2,
+        "slide":  28
+    },
+    {
+        "text":  "Observação dos requests recebidos",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  28
+    },
+    {
+        "text":  "Pode alterar o processo",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  28
+    },
+    {
+        "text":  "Exige ponto e valor aprovados",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  28
+    },
+    {
+        "text":  "Timeout exige conferir o estado antes de repetir",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  50.4,
+        "slide":  28
+    },
+    {
+        "text":  "O que significa dispositivo encontrado",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  29
+    },
+    {
+        "text":  "Rotas e topologia inferida",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  30
+    },
+    {
+        "text":  "Leitura do diagrama e das suas lacunas",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  31
+    },
+    {
+        "text":  "01",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  36,
+        "slide":  31
+    },
+    {
+        "text":  "Qual enlace tem evidência Modbus?",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  28.8,
+        "slide":  31
+    },
+    {
+        "text":  "02",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  36,
+        "slide":  31
+    },
+    {
+        "text":  "Qual salto veio de uma resposta ICMP?",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  28.8,
+        "slide":  31
+    },
+    {
+        "text":  "03",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  36,
+        "slide":  31
+    },
+    {
+        "text":  "Há anúncio que identifica infraestrutura?",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  28.8,
+        "slide":  31
+    },
+    {
+        "text":  "04",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  36,
+        "slide":  31
+    },
+    {
+        "text":  "Qual conexão física ainda exige confirmação?",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  28.8,
+        "slide":  31
+    },
+    {
+        "text":  "Relatório resumido e completo",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  32
+    },
+    {
+        "text":  "Resumido",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  30,
+        "slide":  32
+    },
+    {
+        "text":  "Completo",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  30,
+        "slide":  32
+    },
+    {
+        "text":  "Principais achados e resultados",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  32
+    },
+    {
+        "text":  "Impacto e próxima verificação",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  25.2,
+        "slide":  32
+    },
+    {
+        "text":  "Comunicação rápida à equipe",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  32
+    },
+    {
+        "text":  "Etapas e estatísticas detalhadas",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  32
+    },
+    {
+        "text":  "Inventário, mapa e topologia",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  32
+    },
+    {
+        "text":  "Rastreabilidade técnica do ensaio",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  25.2,
+        "slide":  32
+    },
+    {
+        "text":  "Um achado técnico reproduzível",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  33
+    },
+    {
+        "text":  "FC03 recusou a faixa 9–10",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  42,
+        "slide":  33
+    },
+    {
+        "text":  "Evidência: três respostas com exceção 02, UID 1",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  26.4,
+        "slide":  33
+    },
+    {
+        "text":  "Mapa de bancada: HR 0–9",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  26.4,
+        "slide":  33
+    },
+    {
+        "text":  "Próxima verificação: corrigir quantidade ou mapa documentado",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  26.4,
+        "slide":  33
+    },
+    {
+        "text":  "Parâmetros para repetir o teste",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  34
+    },
+    {
+        "text":  "Estudo de caso: a primeira evidência",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  35
+    },
+    {
+        "text":  "01",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  36,
+        "slide":  35
+    },
+    {
+        "text":  "O cliente indica falha no HR documental 40010",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  28.8,
+        "slide":  35
+    },
+    {
+        "text":  "02",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  36,
+        "slide":  35
+    },
+    {
+        "text":  "O IP responde ao ping",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  28.8,
+        "slide":  35
+    },
+    {
+        "text":  "03",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  36,
+        "slide":  35
+    },
+    {
+        "text":  "A porta TCP aceita conexão",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  28.8,
+        "slide":  35
+    },
+    {
+        "text":  "04",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  36,
+        "slide":  35
+    },
+    {
+        "text":  "Qual será o próximo teste?",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  28.8,
+        "slide":  35
+    },
+    {
+        "text":  "Estudo de caso: a leitura recusada",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  36
+    },
+    {
+        "text":  "Estudo de caso: confirmação após ajuste",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  37
+    },
+    {
+        "text":  "1",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  31.2,
+        "slide":  37
+    },
+    {
+        "text":  "Corrigir somente a quantidade para 1",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  26.4,
+        "slide":  37
+    },
+    {
+        "text":  "2",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  31.2,
+        "slide":  37
+    },
+    {
+        "text":  "Repetir a leitura no offset 9",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  26.4,
+        "slide":  37
+    },
+    {
+        "text":  "3",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  31.2,
+        "slide":  37
+    },
+    {
+        "text":  "Conferir valor, qualidade e horário",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  26.4,
+        "slide":  37
+    },
+    {
+        "text":  "4",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  31.2,
+        "slide":  37
+    },
+    {
+        "text":  "Registrar o antes e depois no relatório",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  26.4,
+        "slide":  37
+    },
+    {
+        "text":  "A leitura válida confirma o diagnóstico do range na bancada. Registrar a convenção usada para 40010.",
+        "height":  21.8109455,
+        "shape":  "TextBox 13",
+        "bound":  48,
+        "slide":  37
+    },
+    {
+        "text":  "Método de diagnóstico para o campo",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  38
+    },
+    {
+        "text":  "1  Papel do equipamento",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "2  IP, rota e interface",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "3  Porta TCP e serviço",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "4  UID, função e região",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "5  Leitura mínima conhecida",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "6  Timeline e captura",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "7  Hipótese e próximo teste",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "8  Repetição e evidência final",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  25.2,
+        "slide":  38
+    },
+    {
+        "text":  "Dúvidas, decisões e próximos passos",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  39
+    },
+    {
+        "text":  "01",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  36,
+        "slide":  39
+    },
+    {
+        "text":  "Quais dúvidas do primeiro treinamento foram resolvidas?",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  28.8,
+        "slide":  39
+    },
+    {
+        "text":  "02",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  36,
+        "slide":  39
+    },
+    {
+        "text":  "Qual etapa precisa de reforço?",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  28.8,
+        "slide":  39
+    },
+    {
+        "text":  "03",
+        "height":  21.8109455,
+        "shape":  "TextBox 9",
+        "bound":  36,
+        "slide":  39
+    },
+    {
+        "text":  "Que evidência ou acesso falta no caso real?",
+        "height":  21.8109455,
+        "shape":  "TextBox 10",
+        "bound":  28.8,
+        "slide":  39
+    },
+    {
+        "text":  "04",
+        "height":  21.8109455,
+        "shape":  "TextBox 11",
+        "bound":  36,
+        "slide":  39
+    },
+    {
+        "text":  "Quem fica responsável pela próxima verificação?",
+        "height":  21.8109455,
+        "shape":  "TextBox 12",
+        "bound":  28.8,
+        "slide":  39
+    },
+    {
+        "text":  "Referências e material de apoio",
+        "height":  21.8109455,
+        "shape":  "TextBox 2",
+        "bound":  38.4,
+        "slide":  40
+    },
+    {
+        "text":  "Ata e roteiro de 03/10/2026: sequência dos dez momentos",
+        "height":  21.8109455,
+        "shape":  "TextBox 5",
+        "bound":  27.6,
+        "slide":  40
+    },
+    {
+        "text":  "Manual integrado do software: campos, funções e diagnóstico",
+        "height":  21.8109455,
+        "shape":  "TextBox 6",
+        "bound":  27.6,
+        "slide":  40
+    },
+    {
+        "text":  "Modbus Application Protocol Specification V1.1b3",
+        "height":  21.8109455,
+        "shape":  "TextBox 7",
+        "bound":  27.6,
+        "slide":  40
+    },
+    {
+        "text":  "Modbus Messaging on TCP/IP Implementation Guide V1.0b",
+        "height":  21.8109455,
+        "shape":  "TextBox 8",
+        "bound":  27.6,
+        "slide":  40
+    }
+]

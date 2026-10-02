@@ -275,6 +275,7 @@ public sealed record ConversationTrafficRow(string EndpointA, string EndpointB, 
 
 public sealed class TrafficSparkline : FrameworkElement
 {
+    public string EndLabel { get; set; } = "agora";
     private double[] _values = [];
     private string _unit = "";
     private int _seconds = 60;
@@ -305,7 +306,7 @@ public sealed class TrafficSparkline : FrameworkElement
             DrawLabel(dc, $"{maximum * (2 - i) / 2d:0.#}", new Point(0, y - 7), textBrush, 39);
         }
         DrawLabel(dc, $"−{_seconds} s", new Point(left, h - 18), textBrush, 45);
-        DrawLabel(dc, "agora", new Point(w - right - 44, h - 18), textBrush, 44);
+        DrawLabel(dc, EndLabel, new Point(w - right - 44, h - 18), textBrush, 44);
         DrawLabel(dc, maximum > 0 ? $"máx. {maximum:0.#} {_unit}" : $"sem amostra de {_unit}", new Point(left + 4, 0), textBrush, Math.Max(80, plotW - 8));
         if (_values.Length < 2 || maximum <= 0) return;
         var geometry = new StreamGeometry();

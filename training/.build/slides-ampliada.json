@@ -1,0 +1,1189 @@
+[
+  {
+    "kind": "cover",
+    "title": "Modbus TCP\nna prática",
+    "subtitle": "Guia de operação do software\nTelas, configurações e interpretação dos testes",
+    "notes": "Treinamento prático. Use os prints para apresentar a função de cada tela e depois demonstre no software. Os dados nas telas de resultados são exemplos didáticos, sem captura ou sondagem real da rede."
+  },
+  {
+    "kind": "wide",
+    "title": "Visão geral: onde cada atividade acontece",
+    "section": "01 · Navegação",
+    "image": "estacao",
+    "body": [
+      "Painel lateral: seleciona a estação, um alvo ou o servidor local.",
+      "Dispositivo: configuração e mapa do item selecionado.",
+      "Linha do tempo e Avisos: acompanham comunicação e eventos.",
+      "Teste completo: ambiente próprio, com papel e alvos independentes."
+    ],
+    "notes": "Abra a aplicação e mostre essas quatro regiões. Diferencie seleção de visualização de serviço em execução. Cliente e servidor podem operar simultaneamente. Selecionar um item lateral não define sozinho o escopo do teste. A imagem contém cadastros demonstrativos, sem conexão iniciada."
+  },
+  {
+    "kind": "wide",
+    "title": "Estação cliente: lista de servidores-alvo",
+    "section": "02 · Conexões",
+    "image": "estacao",
+    "body": [
+      "Cada alvo tem nome, IP:porta, Unit ID, mapa e política TCP próprios.",
+      "Adicionar e excluir: alteram o cadastro da estação.",
+      "Selecionar um alvo: abre suas configurações e seu mapa.",
+      "Estado: indica a operação daquela sessão, não de todos os alvos."
+    ],
+    "notes": "Demonstre a diferença entre estação cliente e servidor-alvo. Uma estação pode manter várias sessões independentes. Excluir Alvo 1 permite trabalhar apenas como servidor ou partir de descoberta sem alvo pré-cadastrado. Se houver alvo ativo, pare sua comunicação antes de alterar o endpoint. Salvar .ffd preserva essa estrutura."
+  },
+  {
+    "kind": "screen",
+    "title": "Configurar cliente: destino da comunicação",
+    "section": "02 · Conexões",
+    "image": "config-client",
+    "body": [
+      "Endereço IP: servidor remoto. 127.0.0.1 consulta o próprio notebook.",
+      "Porta de serviço: porta real do listener. Exemplo: 1502.",
+      "Unit ID: destino lógico no MBAP, conforme a documentação.",
+      "OK confirma os campos. Cancelar mantém a configuração anterior."
+    ],
+    "notes": "Caminho: Conexões, Cliente/Mestre, configurar servidor-alvo selecionado. IP não identifica a porta automaticamente. Porta aceita 1 a 65535. Unit ID aceita 0 a 255, mas o equipamento pode restringir o uso. 0.0.0.0 não é destino apropriado. Para a bancada, use 127.0.0.1:1502 e UID 1. Configuração válida no formulário ainda exige leitura válida para comprovar comunicação."
+  },
+  {
+    "kind": "screen",
+    "title": "Configurar cliente: ciclo e conexão TCP",
+    "section": "02 · Conexões",
+    "image": "config-client",
+    "body": [
+      "Intervalo de leitura: pausa em ms entre os ciclos de blocos.",
+      "Marcado: mantém um socket TCP entre as requisições.",
+      "Desmarcado: conecta e desconecta a cada requisição.",
+      "Conectar inicia leitura cíclica. Leitura única executa uma rodada."
+    ],
+    "notes": "O intervalo mínimo do diálogo é 100 ms. A pausa soma-se ao tempo das transações. Padrão 1000 ms e conexão persistente marcada. Compare os handshakes na captura se necessário. Desconectar para a sessão e fecha seu socket. Não interpretar a diferença entre dois blocos do mesmo ciclo como o período de polling do mesmo bloco."
+  },
+  {
+    "kind": "screen",
+    "title": "Configurar servidor: serviço local de simulação",
+    "section": "02 · Conexões",
+    "image": "config-server",
+    "body": [
+      "Endereço de escuta: IP local onde o serviço aceitará conexões.",
+      "0.0.0.0: escuta nas interfaces locais disponíveis.",
+      "Porta e Unit ID: parâmetros que os clientes deverão utilizar.",
+      "Iniciar servidor abre o listener. Parar servidor encerra o serviço."
+    ],
+    "notes": "Para ensaio isolado, configure 127.0.0.1:1502. 0.0.0.0 permite acesso por outras interfaces e exige avaliar exposição e firewall. Configurar não inicia o servidor automaticamente. Conflito de porta ou IP não pertencente ao notebook pode impedir a escuta. O mapa aplicado define os pontos que o simulador responderá. Não duplicar IP de PLC ativo em produção."
+  },
+  {
+    "kind": "wide",
+    "title": "Dispositivo: editar o cadastro selecionado",
+    "section": "03 · Dispositivo e mapa",
+    "image": "dispositivo",
+    "body": [
+      "Nome: identificação local para facilitar a operação.",
+      "IP, porta e ID: endpoint e unidade deste alvo.",
+      "Aplicar configuração: valida e salva os campos editados.",
+      "Descartar alterações: restaura os valores antes da edição."
+    ],
+    "notes": "Selecione um alvo no painel lateral e abra Dispositivo, Configuração do dispositivo. Intervalo e conexão persistente aparecem para o cliente. O servidor possui dados de escuta. A configuração pode ficar bloqueada durante operação ou teste. Alterar IP, porta ou ID invalida as amostras anteriores, mas preserva os blocos. Aplicar não inicia comunicação. Demonstre renomear e descartar sem iniciar serviço."
+  },
+  {
+    "kind": "wide",
+    "title": "Blocos do cliente: o que será lido",
+    "section": "03 · Dispositivo e mapa",
+    "image": "blocos",
+    "cropHeight": 270,
+    "body": [
+      "Ativo: inclui o bloco no ciclo de leitura.",
+      "Nome: rótulo local. FC: define COIL, DI, HR ou IR.",
+      "Endereço: offset base zero. Qtd: pontos na requisição.",
+      "Adicionar e remover linha: modificam o mapa de leitura."
+    ],
+    "notes": "Cada linha habilitada gera uma requisição por ciclo. FC01 lê COIL, FC02 DI, FC03 HR e FC04 IR. Endereço de 0 a 65535. Quantidade positiva, até 125 registros ou 2000 bits no protocolo básico, podendo existir limite menor no equipamento. Exemplo início 1000 e quantidade 10 lê 1000 até 1009. Confirme a edição da célula. Nome não é tag enviada ao PLC."
+  },
+  {
+    "kind": "wide",
+    "title": "Blocos do cliente: retorno e atualidade",
+    "section": "03 · Dispositivo e mapa",
+    "image": "blocos",
+    "cropHeight": 270,
+    "body": [
+      "Último valor: sequência de amostras do bloco, na ordem dos offsets.",
+      "Status: resultado da leitura, inclusive exceção ou falha.",
+      "Hora: instante do resultado mais recente.",
+      "Alterar função ou faixa reconstrói o mapa e invalida dados antigos."
+    ],
+    "notes": "Mostre que os blocos da imagem estão Não lido porque não houve requisição. Valor antigo não comprova leitura atual. O bloco 2 está desabilitado. Não deve aparecer como região ativa do cliente. Explique que 40001 só corresponde a offset 0 quando o fabricante usa a convenção clássica. Valor bruto de 16 bits ainda exige escala, unidade, tipo e ordem de palavras para representar engenharia."
+  },
+  {
+    "kind": "wide",
+    "title": "Mapa de comunicação: pontos por área",
+    "section": "03 · Dispositivo e mapa",
+    "image": "mapa-tabela",
+    "cropHeight": 330,
+    "body": [
+      "HR, IR, COIL e DISCRETE: separam as áreas de dados.",
+      "Linha e endereço: mostram qual bloco originou o ponto.",
+      "Valor, qualidade e hora: precisam ser avaliados em conjunto.",
+      "Duplo clique: abre escrita manual apenas quando permitida."
+    ],
+    "notes": "Demonstre navegar por HR e IR e comparar com os blocos habilitados. Regiões sobrepostas podem mostrar um endereço em mais de uma linha. Qualidade Não lido não é zero válido. R/W não representa autorização operacional. Escrita em COIL/HR usa funções próprias e modifica o destino. Durante o treinamento, somente bancada autorizada. O teste completo não usa esse popup."
+  },
+  {
+    "kind": "wide",
+    "title": "Mapa de endereços: visão visual e paginação",
+    "section": "03 · Dispositivo e mapa",
+    "image": "mapa-visual",
+    "cropHeight": 420,
+    "body": [
+      "Área: escolhe o tipo de dado que será apresentado.",
+      "Cada posição mostra endereço, valor e estado da amostra.",
+      "Localização e páginas: ajudam a navegar em mapas grandes.",
+      "Ativar um ponto: usa a mesma regra de escrita do mapa em tabela."
+    ],
+    "notes": "Mostre o mesmo HR nas duas visões. A página limita a quantidade renderizada para preservar desempenho. Um hífen em ponto não lido evita apresentar um zero artificial. A forma visual não altera FC, quantidade, dados ou direitos de escrita. O mapa deve refletir os blocos atualmente habilitados."
+  },
+  {
+    "kind": "wide",
+    "title": "Faixas do servidor: regiões disponibilizadas",
+    "section": "03 · Dispositivo e mapa",
+    "image": "faixas-server",
+    "cropHeight": 310,
+    "body": [
+      "Ativo e Tipo: escolhem as regiões presentes no mapa local.",
+      "Prefixo: identifica os pontos. Início e Qtd: definem o range.",
+      "Valor inicial: conteúdo de partida. Inc: incrementa por posição.",
+      "R/W: permite escrita remota em COIL e HR."
+    ],
+    "notes": "Configure HR início 0, Qtd 3, inicial 1000. Inc desligado produz 1000,1000,1000. Ligado produz 1000,1001,1002. Para bits, use 0/1. DI/IR continuam áreas de leitura para Modbus remoto. Soma de início e quantidade deve ser no máximo 65536. Faixas sobrepostas do mesmo tipo podem substituir pontos anteriores. O prefixo é local, não parte do protocolo."
+  },
+  {
+    "kind": "wide",
+    "title": "Servidor: aplicar mapa e editar valores",
+    "section": "03 · Dispositivo e mapa",
+    "image": "valores-server",
+    "cropHeight": 370,
+    "body": [
+      "Aplicar mapa recompõe a memória a partir das faixas habilitadas.",
+      "Tipo, endereço e nome: identificam o ponto efetivo.",
+      "Valor: conteúdo que o simulador retorna aos clientes.",
+      "Acesso e atualizado: permissão remota e horário da alteração."
+    ],
+    "notes": "Aplicar mapa pode substituir valores editados em memória pelos iniciais das faixas. Edição local de DI/IR é simulação, diferente de escrita Modbus remota. Se uma leitura atravessar uma região ausente, o servidor pode responder exceção 02. Demonstre observar valores sem realizar escrita em dispositivo de produção."
+  },
+  {
+    "kind": "screen",
+    "title": "Popup de escrita: operação manual controlada",
+    "section": "03 · Dispositivo e mapa",
+    "image": "escrita",
+    "body": [
+      "Endpoint e região: conferem onde a alteração ocorrerá.",
+      "Endereço inicial e final: delimitam o intervalo inclusivo.",
+      "Valor: novo dado que a operação enviará.",
+      "OK executa a escrita. Cancelar fecha sem enviar."
+    ],
+    "notes": "Este popup é uma ação operacional, não diagnóstico automático. O exemplo permite o intervalo 0 a 1. Só demonstrar em bancada. Escrita de range pode executar sequencialmente e terminar parcialmente após uma falha. Em timeout, o destino pode ter aplicado o valor antes de a resposta se perder. Conferir o estado antes de repetir. COIL aceita estado lógico; HR aceita palavra de 16 bits. Uma marca R/W não autoriza comando de processo."
+  },
+  {
+    "kind": "wide",
+    "title": "Linha do tempo Modbus: cada operação do software",
+    "section": "04 · Captura e acompanhamento",
+    "image": "timeline-modbus",
+    "cropHeight": 340,
+    "body": [
+      "Hora, sessão, tipo e endpoint: identificam o evento.",
+      "TID e UID: associam transação e destino lógico.",
+      "FC, endereço e quantidade: descrevem a operação solicitada.",
+      "Resumo: descreve dados, exceções e falhas de comunicação."
+    ],
+    "notes": "A imagem inicial não tem eventos porque não iniciamos comunicação. Na aula, faça leitura única em bancada e procure request e response. A seleção de mensagem abre o detalhamento, inclusive Hex quando disponível. Esta timeline registra eventos da aplicação, não todos os quadros Ethernet. Uma resposta de exceção confirma protocolo naquela tentativa, mas recusa a operação. Exemplo FC03 offset 9 Qtd2 quando mapa só tem 0 a 9."
+  },
+  {
+    "kind": "wide",
+    "title": "Linha do tempo Modbus: localizar uma operação",
+    "section": "04 · Captura e acompanhamento",
+    "image": "timeline-modbus",
+    "body": [
+      "Sessão/alvo: limita a lista ao participante pesquisado.",
+      "Unit ID e Função: restringem o destino lógico e a operação.",
+      "Somente erros: mostra exceções e mensagens de falha/timeout.",
+      "Limpar filtros: volta a apresentar as mensagens retidas."
+    ],
+    "notes": "Esses campos alteram a visualização, não a captura. Combine alvo, UID e FC para localizar o bloco. Sem resultados, primeiro limpe filtros antes de concluir ausência de comunicação. Compare contagem de mensagens visíveis com total retido. Erro inclui exceção do servidor e falha de transporte, que têm significados diferentes. Demonstre localizar o request recusado do exercício final."
+  },
+  {
+    "kind": "wide",
+    "title": "TCP: configuração da captura",
+    "section": "04 · Captura e acompanhamento",
+    "image": "timeline-tcp",
+    "cropHeight": 370,
+    "body": [
+      "Interface: placa da rede industrial ou loopback para 127.0.0.1.",
+      "Protocolo: define quais quadros poderão chegar à análise.",
+      "IP e direção: restringem o host e o sentido observado.",
+      "Porta e direção: restringem o serviço, preservando ambos os sentidos."
+    ],
+    "notes": "Escolha a interface adequada, não apenas a primeira da lista. O campo pode conter adaptadores virtuais. Filtrar porta 502 exclui um servidor na 1501. Somente origem pode excluir a resposta. Filtro TCP/IP/porta pode excluir ARP, ICMP, LLDP e CDP. Uma NIC sem espelhamento pode não ver comunicação entre outros dois hosts. Não iniciar captura em rede real durante produção da apresentação."
+  },
+  {
+    "kind": "wide",
+    "title": "TCP: captura e filtro de apresentação",
+    "section": "04 · Captura e acompanhamento",
+    "image": "timeline-tcp",
+    "cropHeight": 430,
+    "body": [
+      "BPF: filtro do driver, antes de o pacote entrar na aplicação.",
+      "Aplicar filtro: atualiza os critérios da captura ativa.",
+      "Filtros da lista: refinam a visualização dos pacotes já capturados.",
+      "Iniciar e parar captura: controlam a coleta, não o polling dos alvos."
+    ],
+    "notes": "Atualizar interfaces recarrega os dispositivos expostos pelo driver. A prévia BPF mostra a combinação dos campos. Diferencie restrição de coleta e filtragem da lista. Mostre número, tempo relativo, origem/destino, protocolo, tamanho, fase e informação. Captura vazia exige verificar interface, tráfego, filtro e Npcap antes de concluir falha Modbus."
+  },
+  {
+    "kind": "wide",
+    "title": "Dados: taxas e gráficos após parar a captura",
+    "section": "04 · Captura e acompanhamento",
+    "image": "dados-resumo",
+    "body": [
+      "Período: escolhe a janela dentro da amostra retida.",
+      "Pacotes e volume: contagens dos quadros observados.",
+      "Médias e picos: taxas no período, incluindo o pico em 1 segundo.",
+      "Qualidade da captura: mostra limites, fila e descartes disponíveis."
+    ],
+    "notes": "Dados só fica disponível após parar a captura. O print usa 300 quadros demonstrativos distribuídos por cerca de 15 s, 90 bytes cada. Não corresponde à rede do usuário. O período Último 1 min inclui parte sem pacotes no gráfico, mas o resumo informa a duração entre o primeiro e o último quadro da amostra. Até 2000 pacotes retidos. Taxa de bytes não é utilização percentual do link nem prova de saturação. Conferir latência, descartes e contadores de NIC/switch."
+  },
+  {
+    "kind": "wide",
+    "title": "Dados: qualidade e limites da amostra",
+    "section": "04 · Captura e acompanhamento",
+    "image": "dados-limites",
+    "body": [
+      "Driver: estatísticas podem estar indisponíveis para a interface.",
+      "Fila pendente: pacotes aguardando exibição na aplicação.",
+      "Descartes e retenção: podem limitar o volume usado na análise.",
+      "Saturação: exige comparar taxas com velocidade e contadores de porta."
+    ],
+    "notes": "A amostra demonstrativa tem estatísticas de driver indisponíveis, fila zero e zero descartes da fila, sem representar saúde real da rede. Até 2000 quadros retidos. Fila zero não comprova ausência de perdas no driver ou switch. Byte/s soma tamanhos dos quadros observados e não mede banda útil nem utilização percentual do link. Conferir velocidade negociada, erros, descartes e latência para avaliar sobrecarga."
+  },
+  {
+    "kind": "wide",
+    "title": "Dados: dispositivos com mais tráfego",
+    "section": "04 · Captura e acompanhamento",
+    "image": "dados-hosts",
+    "cropHeight": 340,
+    "body": [
+      "Enviados e recebidos: contribuição do IP em cada direção.",
+      "Dados enviados e recebidos: volume dos quadros visíveis.",
+      "Participação: percentual dos pacotes que envolvem aquele IP.",
+      "Pico observado: maior atividade do participante em 1 segundo."
+    ],
+    "notes": "Print com dados demonstrativos. Um pacote A para B conta na participação de A e de B, então somar a coluna de percentuais pode exceder 100%. Na amostra de somente dois hosts, ambos participam de 100% dos quadros. Mais tráfego não implica sobrecarga. Compare função do host, comportamento esperado e impacto operacional."
+  },
+  {
+    "kind": "wide",
+    "title": "Dados: conversas entre endpoints",
+    "section": "04 · Captura e acompanhamento",
+    "image": "dados-conversas",
+    "cropHeight": 340,
+    "body": [
+      "Endpoint A e B: par IP:porta, agrupado nos dois sentidos.",
+      "Protocolos e pacotes: tipo de tráfego e volume da conversa.",
+      "Dados e participação: peso daquela conversa na amostra.",
+      "Pico em 1 s: momento de maior atividade do par."
+    ],
+    "notes": "O agrupamento soma os quadros de ida e volta. Retransmissões também contam como quadros. Identifique a conversa do alvo Modbus e compare com tráfego de outros serviços. O conteúdo Modbus depende de reconhecimento estrutural, não apenas do rótulo de protocolo atribuído ao exemplo. Não interpretar a captura sintética como confirmação de nenhum servidor real."
+  },
+  {
+    "kind": "wide",
+    "title": "Avisos: eventos, recorrência e checklist",
+    "section": "04 · Captura e acompanhamento",
+    "image": "avisos",
+    "cropHeight": 350,
+    "body": [
+      "Todos: eventos com hora, nível, mensagem e recomendação.",
+      "Avisos importantes: agrupa recorrências do mesmo achado.",
+      "Checklist: apresenta verificações e seu estado mais recente.",
+      "Contexto: confirme sessão, endpoint e horário antes de usar um aviso."
+    ],
+    "notes": "A tela está sem dados neste print. A aula deve gerar uma falha de porta controlada e verificar o evento. Desconectar e restaurar a porta correta. O histórico global de avisos não deve ser confundido com a consolidação do Teste completo, que usa o escopo e período da execução. Número elevado de ocorrências exige conferir causa comum e assinatura, não contar cada linha como uma falha independente."
+  },
+  {
+    "kind": "wide",
+    "title": "Teste completo: um ambiente independente",
+    "section": "05 · Teste completo",
+    "image": "teste-geral",
+    "body": [
+      "Execução: configura o papel e acompanha as etapas.",
+      "Resumo e Dispositivos/rede: apresentam achados e inventário.",
+      "Topologia e Mapa descoberto: reúnem as evidências específicas.",
+      "Relatório: consulta e exporta os resultados da execução."
+    ],
+    "notes": "Este é o centro da parte prática do treinamento. Mostre as seis subabas, todas dentro do Teste completo. A seleção lateral não restringe o teste. IP e porta dos serviços vêm do cadastro do dispositivo, não de um endpoint solto no teste. Procedimentos controlam como testar. A imagem é a interface atual com cadastros demonstrativos."
+  },
+  {
+    "kind": "wide",
+    "title": "Execução: papel do ensaio e ações",
+    "section": "05 · Teste completo",
+    "image": "teste-execucao",
+    "body": [
+      "Cliente/Mestre: consulta servidores-alvo ou descobre no escopo.",
+      "Servidor/Escravo: analisa o serviço local e os requests recebidos.",
+      "Revisar e executar: abre a confirmação antes de iniciar o plano.",
+      "Cancelar: interrompe o ensaio e preserva a evidência coletada."
+    ],
+    "notes": "Os botões Revisar e executar/Cancelar e a barra de progresso ficam acima das subabas na janela geral. O print de execução destaca a área interna. Serviços previamente ativos podem continuar, incluindo polling. Cancelado não deve ser interpretado como falha de comunicação. Configure os procedimentos e revise o plano antes de executar. O teste completo não realiza escrita automática."
+  },
+  {
+    "kind": "screen",
+    "title": "Revisão: confirmação antes do início",
+    "section": "05 · Teste completo",
+    "image": "revisar-teste",
+    "body": [
+      "Papel e alvos: conferem quais serviços receberão validação.",
+      "Captura e descoberta: mostram a cobertura e as sondagens previstas.",
+      "Estimativa mínima: explica parte da duração, sem prometer término.",
+      "Voltar ajusta a configuração. Confirmar e executar inicia o teste."
+    ],
+    "notes": "O conteúdo da revisão vem da configuração atual, antes de executar. Conferir autorização, IPs, portas, interface, filtros e quantidade de requests. A duração pode aumentar com timeouts, rotas, novos servidores e fallback. Uma operação já ativa pode continuar durante a referência. O print contém cadastros demonstrativos. Nenhum teste foi executado para produzi-lo."
+  },
+  {
+    "kind": "wide",
+    "title": "Selecionar alvos: significado de cada coluna",
+    "section": "05 · Configuração item a item",
+    "image": "alvos-teste",
+    "body": [
+      "Incluir: marca quais cadastros receberão validação repetida.",
+      "Nome: identificação local do servidor-alvo.",
+      "Endpoint e ID: IP:porta e Unit ID cadastrados.",
+      "Estado: situação da sessão, independente da inclusão no teste."
+    ],
+    "notes": "A seleção é independente do item lateral. Campos de cadastro são somente leitura nesta janela. Alterar IP, porta ou mapa na aba Dispositivo. Um alvo parado pode participar e ser iniciado pelo teste. Um alvo em leitura pode continuar acrescentando tráfego durante a referência. Exemplo: incluir apenas o PLC da bancada e deixar o PLC demonstrativo desmarcado."
+  },
+  {
+    "kind": "wide",
+    "title": "Selecionar alvos: ações e teste sem cadastro",
+    "section": "05 · Configuração item a item",
+    "image": "alvos-teste",
+    "body": [
+      "Selecionar todos: marca todos os alvos cadastrados.",
+      "Limpar seleção: remove a inclusão de todos os alvos.",
+      "OK confirma. Cancelar descarta a alteração da seleção.",
+      "Sem alvos: a descoberta depende do escopo autorizado."
+    ],
+    "notes": "OK apenas grava a seleção, não conecta imediatamente. Sem alvo selecionado, Cliente/Mestre pode descobrir servidores no escopo autorizado e validar os confirmados conforme o mapa disponível. Não presumir que todo host de ARP será sondado fora do escopo. No papel Servidor/Escravo, o serviço local observa clientes que o procuram, não usa essa lista como destino de leituras. Demonstrar revisão antes de executar."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: referência passiva inicial",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-0",
+    "body": [
+      "Referência inicial: janela de observação anterior às novas sondagens.",
+      "Unidade: segundos. Faixa aceita: 1 a 3600 s.",
+      "Polling e serviços já ativos continuam durante a referência.",
+      "Exemplo: 10 s permite comparar com a janela operacional."
+    ],
+    "notes": "A referência não representa rede silenciosa. O teste adia suas novas leituras e sondagens, mas não suspende comunicação já existente. A interface e BPF limitam a amostra. Aumentar para 30 a 60 s pode representar melhor tráfego variável, conforme autorização e duração aceitável. Comparar taxas normalizadas por segundo, não só totais de pacotes."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: monitoramento e limiar de pico",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-0",
+    "body": [
+      "Monitorar TCP: duração final, de 1 a 86400 segundos.",
+      "Pico: número de quadros no intervalo de 1 segundo.",
+      "Limiar pkt/s: dispara atenção ao ultrapassar o valor configurado.",
+      "O limiar precisa refletir a referência da sua rede."
+    ],
+    "notes": "O monitoramento final ocorre após sondagens, sem nova varredura de hosts nessa janela. Procura RST, zero-window, segmentos repetidos e picos. 5000 pkt/s é limiar operacional configurável, não capacidade universal de PLC nem saturação física. Tempo maior favorece observar intermitências, mas uma ausência de sinais só vale para o período e tráfego visíveis."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: tentativas por bloco",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-1",
+    "body": [
+      "Tentativas: leituras planejadas para cada bloco habilitado.",
+      "Faixa aceita: 1 a 1000 tentativas por bloco.",
+      "15/15 válidas: todas as tentativas executadas responderam.",
+      "Mais amostras ajudam a investigar falhas raras e latência."
+    ],
+    "notes": "A quantidade multiplica-se pelo número de blocos e alvos incluídos. Separar planejadas, tentadas e válidas quando houver cancelamento. 15/15 não prova estabilidade permanente. Menos de 20 respostas não caracteriza a cauda de latência. Descrever timeout, exceção e falha TCP separadamente. Essas são leituras adicionais ao polling existente, sem escrita."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: intervalo adicional entre ciclos",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-1",
+    "body": [
+      "Intervalo: pausa adicional entre ciclos.",
+      "Unidade: ms. Faixa aceita: 100 a 60000 ms.",
+      "A duração inclui transações, timeouts e a pausa.",
+      "15 ciclos a 1000 ms somam cerca de 14 s de pausas."
+    ],
+    "notes": "Para 15 tentativas há aproximadamente 14 pausas entre elas. A duração real soma o tempo das leituras de todos os blocos. Não confundir essa configuração com o intervalo de polling do cadastro do alvo. O socket pode ser compartilhado com polling ativo e a espera participa da latência medida. O exemplo do relatório leva 14,1 s para 15 leituras rápidas."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: autorização e CIDR",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-2",
+    "body": [
+      "Autorizar sondagem: habilita requisições ativas na rede.",
+      "CIDR: delimita a sub-rede quando o escopo é manual.",
+      "Exemplo: 192.168.1.0/24 representa aquela sub-rede IPv4.",
+      "Automático: usa a sub-rede da interface escolhida."
+    ],
+    "notes": "A autorização refere-se à sondagem, mesmo que somente leitura. Ela pode aumentar carga e gerar registros no equipamento. O campo CIDR manual é usado quando a identificação automática da sub-rede estiver desmarcada. Conferir VLAN, máscara e interface na revisão antes de executar. Não presumir alcance de outra sub-rede nem testar rede de produção sem autorização."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: timeout TCP de sondagem",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-2",
+    "body": [
+      "Timeout: tempo máximo de espera na sondagem TCP.",
+      "Faixa aceita: 200 a 3000 ms.",
+      "Curto demais: pode omitir serviços lentos ou distantes.",
+      "Longo demais: amplia a duração dos candidatos silenciosos."
+    ],
+    "notes": "Distinguir ausência de resposta de rejeição imediata. Timeout não prova host desligado. Pode haver firewall, ACL, serviço lento ou caminho indisponível. Escolher valor com base no caminho e equipamento, iniciando de forma conservadora e autorizada. No relatório exemplo a sondagem usa 250 ms, o que deve ser considerado ao interpretar 172.27.20.34:502 não confirmado."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: concorrência e taxa de sondagens",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-2",
+    "body": [
+      "Concorrência: até 1 a 16 sondagens simultâneas.",
+      "Taxa máxima: de 1 a 100 tentativas por segundo.",
+      "Concorrência controla simultaneidade. Taxa controla ritmo.",
+      "Valores baixos reduzem impacto e aumentam o tempo do teste."
+    ],
+    "notes": "Os dois limites atuam em conjunto. Não interpretar concorrência 2 como 2 sondagens/s. A duração depende de candidatos, portas, timeouts e confirmações. No relatório a varredura leva 210,2 s usando 5/s e concorrência 2. Evitar aumentar limites apenas para tornar a aula mais rápida em rede industrial real."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: sub-rede automática e portas",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-3",
+    "body": [
+      "Automático: identifica a sub-rede da interface selecionada.",
+      "Portas: lista TCP separada por vírgulas, com até 16 entradas.",
+      "502,1501,1502: testa somente esses serviços candidatos.",
+      "Portas não listadas ficam fora da descoberta ativa."
+    ],
+    "notes": "Automático: identifica a sub-rede da interface selecionada.\n\nPortas: lista TCP separada por vírgulas, com até 16 entradas.\n\n502,1501,1502: testa somente esses serviços candidatos.\n\nPortas não listadas ficam fora da descoberta ativa.\n\nAs portas precisam estar entre 1 e 65535. A aplicação verifica somente as portas listadas. A confirmação Modbus exige resposta coerente, não apenas o handshake TCP. Demonstrar a diferença entre 502 e uma porta alternativa como 1501."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: habilitar rastreamento ICMP",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-4",
+    "body": [
+      "Rastrear rotas: consulta o percurso com TTL crescente.",
+      "Cliente: usa os alvos. Servidor: pares Modbus observados.",
+      "Um switch L2 não aparece como salto de roteador.",
+      "ICMP sem resposta pode coexistir com Modbus funcional."
+    ],
+    "notes": "Rastrear rotas: consulta o percurso com TTL crescente.\n\nCliente: usa os alvos. Servidor: pares Modbus observados.\n\nUm switch L2 não aparece como salto de roteador.\n\nICMP sem resposta pode coexistir com Modbus funcional.\n\nA consulta usa uma requisição por TTL e não consulta DNS. Switches de camada 2 não reduzem TTL. Os anúncios LLDP/CDP observados não comprovam que o equipamento anunciado participa do caminho até cada servidor. A aplicação não consulta SNMP."
+  },
+  {
+    "kind": "wide",
+    "title": "Procedimentos: limites do rastreamento",
+    "section": "05 · Configuração item a item",
+    "image": "procedimento-grupo-4",
+    "body": [
+      "Máximo de saltos: TTL limite, de 1 a 30.",
+      "Timeout por salto: espera ICMP, de 200 a 3000 ms.",
+      "Máximo de alvos: de 1 a 32 destinos rastreados.",
+      "Limites baixos reduzem duração e podem deixar caminhos parciais."
+    ],
+    "notes": "Máximo de saltos: TTL limite, de 1 a 30.\n\nTimeout por salto: espera ICMP, de 200 a 3000 ms.\n\nMáximo de alvos: de 1 a 32 destinos rastreados.\n\nLimites baixos reduzem duração e podem deixar caminhos parciais.\n\nLimite superior aproximado de espera: quantidade de alvos vezes saltos vezes timeout. Com 8 alvos, 10 saltos e 200 ms, pode chegar a cerca de 16 s se todos ficarem silenciosos. O rastreamento termina antes quando o destino responde. Destinos omitidos reduzem a cobertura."
+  },
+  {
+    "kind": "screen",
+    "title": "Descoberta de mapa: habilitação e papel",
+    "section": "05 · Configuração item a item",
+    "image": "descoberta",
+    "body": [
+      "Habilitar: inclui a etapa opcional no Teste completo.",
+      "Cliente: sonda servidores com funções de leitura.",
+      "Servidor: observa ranges solicitados pelos clientes.",
+      "OK grava opções. A revisão confirma a execução."
+    ],
+    "notes": "Habilitar: inclui a etapa opcional no Teste completo.\n\nCliente: sonda servidores com funções de leitura.\n\nServidor: observa ranges solicitados pelos clientes.\n\nOK grava opções. A revisão confirma a execução.\n\nA descoberta usa FC01 a FC04, sem escrita automática. No papel servidor, os ranges observados correspondem às solicitações dos clientes, sem revelar necessariamente todo o mapa do PLC original. No cliente, a cobertura depende dos limites, funções e IDs escolhidos."
+  },
+  {
+    "kind": "screen",
+    "title": "Descoberta de mapa: endereço e tamanho do bloco",
+    "section": "05 · Configuração item a item",
+    "image": "descoberta",
+    "body": [
+      "Endereço máximo: limite inclusivo, de 0 a 65535.",
+      "Bloco: pontos por leitura, de 1 a 120.",
+      "Máximo 100, bloco 10: 11 leituras iniciais por UID/FC.",
+      "A última leitura cobre só o restante até o limite."
+    ],
+    "notes": "Endereço máximo: limite inclusivo, de 0 a 65535.\n\nBloco: pontos por leitura, de 1 a 120.\n\nMáximo 100, bloco 10: 11 leituras iniciais por UID/FC.\n\nA última leitura cobre só o restante até o limite.\n\nMáximo 100 e bloco 10 produz os ranges 0 a 9, 10 a 19, até 90 a 99 e depois somente o endereço 100. A quantidade inicial por combinação é teto((máximo + 1) / bloco). Máximo 120 produz 13 leituras. Uma leitura atravessando lacuna pode falhar mesmo que parte dos pontos exista."
+  },
+  {
+    "kind": "screen",
+    "title": "Descoberta de mapa: varredura dos Unit IDs",
+    "section": "05 · Configuração item a item",
+    "image": "descoberta",
+    "body": [
+      "Varrer IDs: testa a faixa de IDs em vez do UID cadastrado.",
+      "ID inicial e final: limites inclusivos, de 0 a 255.",
+      "Inicial deve ser menor ou igual ao final.",
+      "Mais IDs multiplicam requests e timeouts."
+    ],
+    "notes": "Varrer IDs: testa a faixa de IDs em vez do UID cadastrado.\n\nID inicial e final: limites inclusivos, de 0 a 255.\n\nInicial deve ser menor ou igual ao final.\n\nMais IDs multiplicam requests e timeouts.\n\nUm gateway pode usar Unit ID para selecionar um escravo serial. Se o ID já for conhecido, restringir a varredura reduz carga. A faixa 1 a 10 representa dez IDs testados e não dez dispositivos físicos confirmados. Neste relatório, somente UID 1 participou da descoberta de mapa."
+  },
+  {
+    "kind": "screen",
+    "title": "Descoberta de mapa: funções de leitura",
+    "section": "05 · Configuração item a item",
+    "image": "descoberta",
+    "body": [
+      "FC01: Coils. FC02: Discrete Inputs.",
+      "FC03: Holding Registers. FC04: Input Registers.",
+      "Ao menos uma função deve ficar selecionada.",
+      "Cada função descreve uma área independente."
+    ],
+    "notes": "FC01: Coils. FC02: Discrete Inputs.\n\nFC03: Holding Registers. FC04: Input Registers.\n\nAo menos uma função deve ficar selecionada.\n\nCada função descreve uma área independente.\n\nFC01 e FC02 retornam bits. FC03 e FC04 retornam palavras de 16 bits. Endereço 0 de HR é independente do endereço 0 de IR. Selecionar quatro funções multiplica as combinações. Exceção 01 pode indicar função não suportada e 02 pode indicar range inválido. Valores zero podem ser dados válidos."
+  },
+  {
+    "kind": "screen",
+    "title": "Descoberta de mapa: fallback ponto a ponto",
+    "section": "05 · Configuração item a item",
+    "image": "descoberta",
+    "body": [
+      "Fallback: repete pontos individuais após falha do bloco.",
+      "Ajuda a localizar regiões menores e lacunas.",
+      "Aumenta requests e duração em áreas inválidas.",
+      "O mapa mostra leitura aceita, sem nomes ou escalas de engenharia."
+    ],
+    "notes": "Fallback: repete pontos individuais após falha do bloco.\n\nAjuda a localizar regiões menores e lacunas.\n\nAumenta requests e duração em áreas inválidas.\n\nO mapa mostra leitura aceita, sem nomes ou escalas de engenharia.\n\nExemplo: a leitura 10 a 19 falha porque somente 10 a 14 existe. O fallback individual pode revelar os pontos aceitos. Esse recurso aumenta carga e duração, especialmente quando a maior parte da faixa não existe. Neste PDF, 208 requisições iniciais antes do fallback resultaram em 1016 requests totais. A descoberta não identifica nomes, escalas ou comandos seguros."
+  },
+  {
+    "kind": "wide",
+    "title": "Execução: checklist e evidência selecionada",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-evidencias",
+    "body": [
+      "Etapa e estado: mostram o percurso e o resultado de cada verificação.",
+      "Seleção da etapa: abre objetivo, resultado técnico e recomendação.",
+      "A configuração fica protegida durante a execução.",
+      "O plano varia conforme papel, alvos e descoberta habilitada."
+    ],
+    "notes": "Print com estados e texto didáticos. Nunca apresentá-lo como ensaio real. No software, clique uma etapa de leitura e confira tentativas, respostas e falhas. Clique referência passiva e compare cobertura. A ordem e a quantidade de etapas não são universais, pois alvos geram validações específicas. Resultado e recomendação devem orientar uma próxima ação verificável."
+  },
+  {
+    "kind": "wide",
+    "title": "Checklist: significado dos estados",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-evidencias",
+    "body": [
+      "OK: critério atendido na janela. Atenção: sinal a investigar.",
+      "Falha: operação ou critério não atendido.",
+      "Inconclusivo: evidência insuficiente. Não aplicável: etapa fora do cenário.",
+      "Executando e Pendente: etapa ativa ou ainda não processada."
+    ],
+    "notes": "Verde OK, amarelo atenção, vermelho falha, azul execução e cinza pendência. Inconclusivo tem cor de atenção mas exige interpretação de cobertura, sem equivaler a falha do processo. OK não certifica estabilidade futura. O estado global considera os resultados do plano. Dados da imagem são didáticos e não têm finalidade de validar o software ou a rede."
+  },
+  {
+    "kind": "wide",
+    "title": "Resumo: achados e cobertura",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-resumo",
+    "body": [
+      "Falhas e atenções: priorizam os achados que exigem investigação.",
+      "Consultar etapa: retorna ao resultado técnico correspondente.",
+      "Cobertura incompleta: separa falta de evidência de falha operacional.",
+      "Síntese: reúne rede, Modbus, rotas e carga."
+    ],
+    "notes": "Comece a interpretação por esta aba antes de ler todas as etapas. Um alerta de p95 próximo ao scan exige revisar ciclo e quantidade de blocos. Uma captura sem driver disponível limita a análise TCP e não prova que o Modbus falhou. Compare janelas inicial/final, amostras e alterações. Os estados do print são demonstrativos."
+  },
+  {
+    "kind": "wide",
+    "title": "Dispositivos/rede: identificação e origem",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-rede",
+    "cropHeight": 260,
+    "body": [
+      "IP e Dispositivo: endereço e identidade associada.",
+      "MAC: endereço de camada 2 quando disponível localmente.",
+      "Fonte: origem da evidência, como ARP, captura ou sondagem.",
+      "Papel provável: classificação sustentada pelos dados disponíveis."
+    ],
+    "notes": "Ordenação de IPv4 é numérica. ARP informa associação IP/MAC, não identifica um PLC nem comprova atividade atual. IP local e loopback podem representar o mesmo computador. Um host atrás de roteador pode não ter MAC próprio na tabela ARP local. Cliente observado pode não ter um listener para responder sondagem. O print tem dois hosts demonstrativos."
+  },
+  {
+    "kind": "wide",
+    "title": "Dispositivos/rede: confirmação e reutilização",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-rede",
+    "cropHeight": 260,
+    "body": [
+      "TCP aberto: serviço aceitou conexão, ainda sem validar Modbus.",
+      "Modbus confirmado: resposta válida por leitura ou exceção coerente.",
+      "Modbus observado: conteúdo reconhecido na comunicação capturada.",
+      "Botão direito: verificar IP ou adicionar como alvo, com mapa disponível."
+    ],
+    "notes": "A porta precisa estar no escopo ou ser explicitamente verificada. Para adicionar um descoberto, conferir endpoint e UID. Mapa observado não comprova todo o mapa remoto. Sem mapa, o fluxo oferece encontrar mapa quando pertinente. Tráfego de Internet ou ARP não autoriza sondagem fora do escopo. Adicionar alvo cria cadastro e não prova conexão persistente."
+  },
+  {
+    "kind": "wide",
+    "title": "Topologia: diagrama de evidências",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-topologia",
+    "body": [
+      "Pares Modbus: identificam quem comunica com quem.",
+      "Relações e rótulos: mostram a origem da evidência do enlace.",
+      "Infraestrutura: aparece conforme observação ou anúncio disponível.",
+      "Limitações: distinguem comunicação inferida e caminho físico verificado."
+    ],
+    "notes": "Dados do diagrama são demonstrativos. Nunca inferir que há um switch específico sem anúncio ou consulta que sustente a identidade. TTL não mostra switches L2. O diagrama filtra a relevância Modbus e pode agrupar outros hosts. Leia cobertura acima do diagrama. Caminho físico e saúde do switch exigem inventário e verificações autorizadas adicionais."
+  },
+  {
+    "kind": "wide",
+    "title": "Topologia: tabela de evidências Modbus",
+    "section": "06 · Resultados do Teste completo",
+    "image": "topo-evidencias",
+    "cropHeight": 280,
+    "body": [
+      "Origem e destino: participantes da relação observada.",
+      "Evidência: mecanismo que sustentou a relação.",
+      "Contagem: ocorrências acumuladas, não número de dispositivos.",
+      "Detalhes: operação ou contexto para confrontar com a timeline."
+    ],
+    "notes": "A tabela explicita a base do diagrama. No print, 300 é uma contagem demonstrativa. Não equivale a 300 leituras aceitas, pois quadros e operações são métricas diferentes. Correlação com request/response e UID ajuda a separar protocolo, sessão e host. Uma conversa observada não revela sozinha as portas físicas de switch."
+  },
+  {
+    "kind": "wide",
+    "title": "Topologia: rotas ICMP",
+    "section": "06 · Resultados do Teste completo",
+    "image": "topo-rotas",
+    "cropHeight": 290,
+    "body": [
+      "Alvo: destino do rastreamento.",
+      "TTL/salto e IP respondeu: posição e resposta naquele percurso.",
+      "Status ICMP: destino alcançado, TTL expirado ou ausência de resposta.",
+      "Consulta (ms): tempo da consulta ICMP, diferente da latência Modbus."
+    ],
+    "notes": "Print demonstrativo com destino alcançado no primeiro salto. Hosts da mesma sub-rede podem responder diretamente mesmo atravessando switch físico. Timeout de ICMP não comprova interrupção do TCP. O caminho de retorno pode diferir. Limites de saltos/alvos e filtro devem constar da cobertura. Não interpretar o tempo ICMP como tempo de processamento do PLC."
+  },
+  {
+    "kind": "wide",
+    "title": "Topologia: vizinhos LLDP/CDP",
+    "section": "06 · Resultados do Teste completo",
+    "image": "topo-vizinhos",
+    "cropHeight": 290,
+    "body": [
+      "Protocolo, nome e chassi: identidade anunciada do vizinho.",
+      "Porta, MAC e IP de gestão: identificadores recebidos no anúncio.",
+      "TTL: validade anunciada em segundos. Descrição: informação adicional.",
+      "Lista vazia: nenhum anúncio disponível nesta interface e janela."
+    ],
+    "notes": "A lista do print está vazia. Isso não comprova ausência de switch. O dispositivo pode não emitir anúncio, a captura pode estar no ponto errado ou BPF pode ter excluído LLDP/CDP. O software não executa consulta SNMP nem configuração de infraestrutura. Nome/porta anunciados não certificam saúde do switch, contadores ou cabeamento."
+  },
+  {
+    "kind": "wide",
+    "title": "Mapa descoberto: região, modo e confiança",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-mapa",
+    "cropHeight": 270,
+    "body": [
+      "Endpoint e Unit ID: serviço e unidade aos quais o achado pertence.",
+      "Função, início, fim e Qtd: área e intervalo inclusivo.",
+      "Modo: sondagem ativa ou range requisitado por cliente observado.",
+      "Confiança e notas: explicam o que foi efetivamente comprovado."
+    ],
+    "notes": "O print demonstra FC03 offsets0 a9 quantidade10. Na descoberta ativa, Qtd = fim-início+1. Range validado teve resposta aceita. Range requisitado só prova a solicitação e pode ter gerado exceção. Trechos pequenos válidos não garantem que a união deles seja aceita em bloco maior. Região ausente pode estar fora do máximo, em outra FC/UID ou não ter sido consultada. Descoberta não determina engenharia nem direitos de escrita."
+  },
+  {
+    "kind": "wide",
+    "title": "Relatório: leitura e exportação",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-relatorio",
+    "cropHeight": 410,
+    "body": [
+      "Texto exibido: resumo da execução, com achados e cobertura.",
+      "Exportar resumo: material objetivo para comunicação e triagem.",
+      "Exportar completo: etapas, métricas e evidências detalhadas.",
+      "MD ou PDF: formato escolhido na janela de salvamento."
+    ],
+    "notes": "O texto da imagem é didático, não resultado real. Demonstre exportar sem executar sondagem adicional. O completo inclui inventário, mapa e topologia conforme dados disponíveis. Em Markdown, imagens auxiliares devem acompanhar o arquivo. PDF reúne material para consulta. Confirme período, papel, endpoints e versão antes de compartilhar."
+  },
+  {
+    "kind": "wide",
+    "title": "Relatório: o que interpretar primeiro",
+    "section": "06 · Resultados do Teste completo",
+    "image": "teste-relatorio",
+    "cropHeight": 410,
+    "body": [
+      "Resultado e achados: apontam a prioridade de investigação.",
+      "Operação: endpoint, UID, FC, início e quantidade identificam a consulta.",
+      "Sucesso e tempo: válidas/tentadas, mediana, p95 e max.",
+      "Cobertura: delimita o alcance da conclusão e a próxima verificação."
+    ],
+    "notes": "Exemplo 15/15 válidas só comprova aquelas tentativas. P95 alto pede comparar com scan e ciclo total. Uma exceção02 repetida aponta função/range, sem perda total de conexão. Uma janela curta não caracteriza falha rara. Diagnóstico reproduzível inclui configuração, versão, interface, BPF, tempos e mapa documentado. Explicar à turma que mais texto não torna a conclusão automaticamente mais forte."
+  },
+  {
+    "kind": "wide",
+    "title": "Relatório real: escopo e resultado geral",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-01",
+    "body": [
+      "Papel: Cliente/Mestre. Duração total: 476,9 s.",
+      "Resultado Atenção: há sinais a investigar, sem falhas agregadas.",
+      "Alvo repetido: 127.0.0.1:1502, UID 1.",
+      "Nenhuma escrita automática ocorreu nesta execução."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026.\n\nPapel: Cliente/Mestre. Duração total: 476,9 s.\n\nResultado Atenção: há sinais a investigar, sem falhas agregadas.\n\nAlvo repetido: 127.0.0.1:1502, UID 1.\n\nNenhuma escrita automática ocorreu nesta execução.\n\nO resultado pertence aos alvos, blocos e janelas desta execução. Atenção significa investigação pendente e não uma causa raiz confirmada. Separar ensaio local de descoberta na rede. A duração total inclui a varredura e o fallback.",
+    "caption": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Resumo por servidor: sucesso e abrangência",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-02",
+    "body": [
+      "Blocos 1/1: um bloco cadastrado recebeu validação.",
+      "15/15/15: válidas, tentadas e planejadas coincidem.",
+      "Sucesso 100%: leitura do alvo local funcionou na amostra.",
+      "Os servidores descobertos não receberam esse mesmo ensaio."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026.\n\nBlocos 1/1: um bloco cadastrado recebeu validação.\n\n15/15/15: válidas, tentadas e planejadas coincidem.\n\nSucesso 100%: leitura do alvo local funcionou na amostra.\n\nOs servidores descobertos não receberam esse mesmo ensaio.\n\nA tabela inclui somente Alvo 1. Em cancelamento, comparar planejadas, tentadas e válidas. Para testar repetidamente os servidores remotos encontrados, cadastrar seus mapas e incluí-los como alvos, conforme autorização.",
+    "caption": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Achados prioritários: por que houve Atenção",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-03",
+    "body": [
+      "Referência: 6 RST em 10 segundos.",
+      "Operacional: 15 RST e 21 segmentos repetidos em 30 s.",
+      "Esses indicadores motivaram os avisos TCP.",
+      "Causa raiz exige associar sinais à conversa e ao horário."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026.\n\nReferência: 6 RST em 10 segundos.\n\nOperacional: 15 RST e 21 segmentos repetidos em 30 s.\n\nEsses indicadores motivaram os avisos TCP.\n\nCausa raiz exige associar sinais à conversa e ao horário.\n\nRST pode corresponder a encerramento esperado, rejeição ou interrupção. Segmentos repetidos são indícios e podem refletir retransmissão, duplicação de captura ou reuso de conexão. Zero-window, quando presente, indica falta de espaço anunciado pelo receptor. Neste PDF, os detalhes dos sinais apontam para conexões na porta 443.",
+    "caption": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Desempenho: mediana, p95 e scan",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-04",
+    "body": [
+      "Bloco: FC03, início 0, quantidade 10.",
+      "Mediana: 2,9 ms. p95: 4,4 ms.",
+      "p95: 0,44% do período configurado de 1000 ms.",
+      "Amostra: 15 respostas, insuficiente para eventos raros."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026.\n\nBloco: FC03, início 0, quantidade 10.\n\nMediana: 2,9 ms. p95: 4,4 ms.\n\np95: 0,44% do período configurado de 1000 ms.\n\nAmostra: 15 respostas, insuficiente para eventos raros.\n\nA razão 4,4 / 1000 equivale a 0,44%. Essa comparação por transação não mede utilização do PLC nem valida o ciclo inteiro. A espera pelo socket participa da latência. Quinze respostas não caracterizam falhas raras ou a cauda de latência. p95 elevado exige analisar espera, caminho e carga antes de atribuir processamento lento ao PLC.",
+    "caption": "Recorte do relatório fornecido. Página 1 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Cobertura: o que permaneceu sem validação",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-05",
+    "body": [
+      "Só um bloco recebeu 15 leituras repetidas.",
+      "Descoberta confirmou .200:502 e .202:502.",
+      "127.0.0.1 e 172.27.20.21 representam este computador.",
+      "Mapa completo, saúde física e escrita segura ficam fora do teste."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 2 de 34. Execução em 02/10/2026.\n\nSó um bloco recebeu 15 leituras repetidas.\n\nDescoberta confirmou .200:502 e .202:502.\n\n127.0.0.1 e 172.27.20.21 representam este computador.\n\nMapa completo, saúde física e escrita segura ficam fora do teste.\n\nConfirmar protocolo em uma sondagem não valida a estabilidade de todos os blocos. IPs locais diferentes podem representar o mesmo serviço. Mesmo IPs remotos distintos não garantem equipamentos físicos distintos. Limites de UID, função, endereço, interface e BPF reduzem o alcance da conclusão.",
+    "caption": "Recorte do relatório fornecido. Página 2 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Janelas TCP: comparação de taxas",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-06",
+    "body": [
+      "Referência: 63,1 pkt/s. Operacional: 62,7 pkt/s.",
+      "Variação média: -0,7%. Pico final: 296 pkt/s.",
+      "Zero-window: 0 nas duas janelas.",
+      "Pico e volume isolados não demonstram saturação."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 2 de 34. Execução em 02/10/2026.\n\nReferência: 63,1 pkt/s. Operacional: 62,7 pkt/s.\n\nVariação média: -0,7%. Pico final: 296 pkt/s.\n\nZero-window: 0 nas duas janelas.\n\nPico e volume isolados não demonstram saturação.\n\nComparar taxas por segundo em vez de totais de janelas com durações diferentes. O pico 296 está abaixo do limiar 5000 configurado, mas esse limiar não mede a capacidade física. O aumento em bytes pode refletir tráfego HTTPS externo. A comparação não estabelece causalidade entre sondagem e carga.",
+    "caption": "Recorte do relatório fornecido. Página 2 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Topologia: participantes e caminho inferido",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-07",
+    "body": [
+      "Dois participantes remotos com Modbus confirmado.",
+      "14 anúncios LLDP/CDP e 67 outros hosts fora do foco.",
+      "MK-AUTVIX-BORDA aparece como vizinho anunciado.",
+      "O anúncio não comprova o caminho físico dos servidores."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 3 de 34. Execução em 02/10/2026.\n\nDois participantes remotos com Modbus confirmado.\n\n14 anúncios LLDP/CDP e 67 outros hosts fora do foco.\n\nMK-AUTVIX-BORDA aparece como vizinho anunciado.\n\nO anúncio não comprova o caminho físico dos servidores.\n\nEsta seção apresenta uma relação lógica em texto. O vizinho anunciado não é um intermediário fisicamente verificado. Anúncios podem vir de hosts, PLCs ou equipamentos de rede. Sem inventário ou consulta autorizada, cabeamento, VLANs e portas permanecem desconhecidos.",
+    "caption": "Recorte do relatório fornecido. Página 3 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Rastreamento ICMP: tempo e TTL",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-08",
+    "body": [
+      "Todos os quatro destinos responderam no TTL 1.",
+      ".200 respondeu em 1 ms e .202 em 3 ms.",
+      "TTL 1 não significa conexão direta sem switch.",
+      "Esse tempo mede ICMP, não a leitura Modbus."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 3 de 34. Execução em 02/10/2026.\n\nTodos os quatro destinos responderam no TTL 1.\n\n.200 respondeu em 1 ms e .202 em 3 ms.\n\nTTL 1 não significa conexão direta sem switch.\n\nEsse tempo mede ICMP, não a leitura Modbus.\n\nOs quatro destinos incluem endereços do computador local. TTL 1 não revela switches transparentes de camada 2. Timeout ICMP pode ocorrer por ACL ou filtragem mesmo com TCP funcional. Um roteador que responde TTL expirado oferece uma evidência de salto, sem validar a saúde do enlace.",
+    "caption": "Recorte do relatório fornecido. Página 3 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Vizinhos anunciados: leitura dos campos",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-09",
+    "body": [
+      "Nome/chassi e MAC ajudam a reconhecer a origem.",
+      "Porta anunciada identifica o contexto informado pelo vizinho.",
+      "IP de gestão pode estar ausente no anúncio.",
+      "TTL é validade do anúncio, não contagem de saltos."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 4 de 34. Execução em 02/10/2026.\n\nNome/chassi e MAC ajudam a reconhecer a origem.\n\nPorta anunciada identifica o contexto informado pelo vizinho.\n\nIP de gestão pode estar ausente no anúncio.\n\nTTL é validade do anúncio, não contagem de saltos.\n\nTTL do anúncio significa validade em segundos e difere do TTL IP. LLDP não é exclusivo de switches. O PDF inclui Mx80 Ethernet: CPU e MK-AUTVIX-BORDA. A mesma origem pode aparecer por LLDP e CDP ou em contextos de porta diferentes. Campo ausente significa informação não disponível naquele anúncio.",
+    "caption": "Recorte do relatório fornecido. Página 4 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Parâmetros de coleta: reproduzir o ensaio",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-10",
+    "body": [
+      "Realtek Ethernet e BPF definem o tráfego visível.",
+      "Referência 10 s, monitor 30 s, 15 leituras/bloco.",
+      "CIDR 172.27.20.0/24. Portas 502,1501,1502.",
+      "Limites: 5 sondagens/s e concorrência 2."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 5 de 34. Execução em 02/10/2026.\n\nRealtek Ethernet e BPF definem o tráfego visível.\n\nReferência 10 s, monitor 30 s, 15 leituras/bloco.\n\nCIDR 172.27.20.0/24. Portas 502,1501,1502.\n\nLimites: 5 sondagens/s e concorrência 2.\n\nReproduzir um ensaio exige guardar interface, BPF, janelas, CIDR, portas, limites e configuração dos alvos. O destino 127.0.0.1 precisa de interface loopback para captura passiva. A leitura direta da aplicação continua possível pela API de socket, independentemente da NIC capturada.",
+    "caption": "Recorte do relatório fornecido. Página 5 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Checklist: duração e estado por etapa",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-11",
+    "body": [
+      "Varredura: 210,2 s. Descoberta de mapa: 206,9 s.",
+      "Juntas: cerca de 87,5% dos 476,9 s totais.",
+      "ARP: Não aplicável ao alvo loopback.",
+      "Atenção aparece nas duas janelas TCP e na conclusão."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 5 de 34. Execução em 02/10/2026.\n\nVarredura: 210,2 s. Descoberta de mapa: 206,9 s.\n\nJuntas: cerca de 87,5% dos 476,9 s totais.\n\nARP: Não aplicável ao alvo loopback.\n\nAtenção aparece nas duas janelas TCP e na conclusão.\n\nA soma 210,2 + 206,9 representa 417,1 s, aproximadamente 87,5% do total. Reduzir o CIDR ou o limite de mapa pode reduzir duração e também cobertura. ARP não se aplica ao loopback. Conclusão é uma agregação, sem nova transação. Cancelamento pode deixar etapas pendentes ou interrompidas.",
+    "caption": "Recorte do relatório fornecido. Página 5 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Referência: sinais TCP em conexões HTTPS",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-12",
+    "body": [
+      "Os 6 RST envolvem 187.64.130.42:443.",
+      "Porta 443 situa essas conversas fora do alvo Modbus testado.",
+      "O sinal global não comprova falha em 127.0.0.1:1502.",
+      "A análise precisa filtrar endpoints e horários relevantes."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 6 de 34. Execução em 02/10/2026.\n\nOs 6 RST envolvem 187.64.130.42:443.\n\nPorta 443 situa essas conversas fora do alvo Modbus testado.\n\nO sinal global não comprova falha em 127.0.0.1:1502.\n\nA análise precisa filtrar endpoints e horários relevantes.\n\nO recorte mostra duas conversas HTTPS com três RST cada. O PDF não comprova qual aplicação ou condição os gerou. Esses sinais não pertencem ao endpoint local Modbus repetidamente testado. Correlacionar horários e respostas do serviço investigado antes de afirmar impacto industrial.",
+    "caption": "Recorte do relatório fornecido. Página 6 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Monitoramento: volume e qualidade da captura",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-13",
+    "body": [
+      "1880 pacotes em 30 s, pico de 296 pkt/s.",
+      "Driver e fila reportam zero descartes nessa janela.",
+      "SO reporta zero erros e descartes de interface.",
+      "Nenhum desses contadores valida todas as portas do switch."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 6 de 34. Execução em 02/10/2026.\n\n1880 pacotes em 30 s, pico de 296 pkt/s.\n\nDriver e fila reportam zero descartes nessa janela.\n\nSO reporta zero erros e descartes de interface.\n\nNenhum desses contadores valida todas as portas do switch.\n\nSeparar fila da UI, descarte do driver e contadores do sistema operacional. Zero nesses contadores não valida perdas em portas de switches ou caminhos não visíveis. A análise de segmentos repetidos pode ser parcial quando os limites de detalhes são atingidos. Confrontar com contadores de infraestrutura se autorizado.",
+    "caption": "Recorte do relatório fornecido. Página 6 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Monitoramento: onde estão os segmentos repetidos",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-14",
+    "body": [
+      "As conversas detalhadas com sinais usam porta 443.",
+      "21 segmentos repetidos são indícios na captura.",
+      "Pode haver retransmissão, duplicação ou reuso de conexão.",
+      "Correlacionar com atraso ou falha do serviço investigado."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 6 de 34. Execução em 02/10/2026.\n\nAs conversas detalhadas com sinais usam porta 443.\n\n21 segmentos repetidos são indícios na captura.\n\nPode haver retransmissão, duplicação ou reuso de conexão.\n\nCorrelacionar com atraso ou falha do serviço investigado.\n\nO detector usa sequência e comprimento, sem remontagem completa de stream TCP. Não converter 21 segmentos repetidos em 21 perdas físicas. Para confirmar impacto, analisar a conexão relevante e os tempos de request/response, além de ACKs e contadores. A causa raiz permanece não confirmada.",
+    "caption": "Recorte do relatório fornecido. Página 6 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Inventário de serviços: TCP aberto versus Modbus",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-15",
+    "body": [
+      ".21:1502, .200:502 e .202:502: Modbus confirmado.",
+      ".34:502: TCP aberto, protocolo não confirmado.",
+      "Porta aberta demonstra aceitação de conexão TCP.",
+      "FC, UID e resposta válida sustentam confirmação Modbus."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 7 de 34. Execução em 02/10/2026.\n\n.21:1502, .200:502 e .202:502: Modbus confirmado.\n\n.34:502: TCP aberto, protocolo não confirmado.\n\nPorta aberta demonstra aceitação de conexão TCP.\n\nFC, UID e resposta válida sustentam confirmação Modbus.\n\nPara .34, considerar serviço diferente, UID inadequado, resposta lenta, ACL de aplicação ou gateway. Essas hipóteses não foram confirmadas. A porta 502, isoladamente, não autoriza chamar o host de PLC. Consultar documentação e repetir apenas as sondagens autorizadas.",
+    "caption": "Recorte do relatório fornecido. Página 7 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Mapa descoberto: intervalos e amostras",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-16",
+    "body": [
+      "Servidor local: quatro áreas de 0 a 19.",
+      "Servidor .200: áreas aceitas desde 0 até o limite 120.",
+      "Range validado: a leitura retornou resposta válida.",
+      "Amostra zero pode ser dado válido, sem falha de comunicação."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 7 de 34. Execução em 02/10/2026.\n\nServidor local: quatro áreas de 0 a 19.\n\nServidor .200: áreas aceitas desde 0 até o limite 120.\n\nRange validado: a leitura retornou resposta válida.\n\nAmostra zero pode ser dado válido, sem falha de comunicação.\n\nAs 16 faixas incluem quatro funções por quatro endpoints, com dois endereços para o mesmo servidor local. Não representam 16 dispositivos. Zeros podem ser respostas válidas sem revelar significado funcional. Comparar com o mapa de engenharia e não inferir ausência acima do máximo sondado.",
+    "caption": "Recorte do relatório fornecido. Página 7 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Descoberta Modbus: confirmação e timeout",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-17",
+    "body": [
+      "Quatro endpoints confirmados, consolidados em três grupos.",
+      "TID/UID/FC/MBAP coerentes sustentam a validação.",
+      ".34:502 respondeu TCP, mas FC03/UID 1 deu timeout.",
+      "Outros IDs, funções ou timeouts exigem ensaio autorizado."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 12 de 34. Execução em 02/10/2026.\n\nQuatro endpoints confirmados, consolidados em três grupos.\n\nTID/UID/FC/MBAP coerentes sustentam a validação.\n\n.34:502 respondeu TCP, mas FC03/UID 1 deu timeout.\n\nOutros IDs, funções ou timeouts exigem ensaio autorizado.\n\nOs três grupos consolidados incluem o serviço local e dois IPs remotos. A tabela ARP mostra o mesmo MAC para .200 e .202, portanto sua identidade física exige confirmação. O timeout de .34 não distingue falta de suporte de atraso ou filtragem. Ampliar UID ou timeout somente conforme documentação e autorização.",
+    "caption": "Recorte do relatório fornecido. Página 12 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Descoberta de mapa: por que foram 1016 requests",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-18",
+    "body": [
+      "Quatro endpoints, UID 1, quatro funções de leitura.",
+      "Máximo 120, bloco 10: 13 blocos iniciais por combinação.",
+      "208 requests iniciais, antes das tentativas adicionais.",
+      "Fallback habilitado ampliou a sondagem para 1016 requests."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 12 de 34. Execução em 02/10/2026.\n\nQuatro endpoints, UID 1, quatro funções de leitura.\n\nMáximo 120, bloco 10: 13 blocos iniciais por combinação.\n\n208 requests iniciais, antes das tentativas adicionais.\n\nFallback habilitado ampliou a sondagem para 1016 requests.\n\nTreze blocos vezes quatro funções vezes quatro endpoints geram 208 requests iniciais. O total 1016 inclui requisições adicionais do procedimento, sem indicar 808 retransmissões TCP. Máximo 120 cobre 121 endereços. O fallback nas áreas inexistentes do servidor local ajuda a explicar o custo do procedimento.",
+    "caption": "Recorte do relatório fornecido. Página 12 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Conectividade TCP: socket aberto não valida o mapa",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-19",
+    "body": [
+      "Socket abriu em 2 ms para 127.0.0.1:1502.",
+      "O resultado confirma o transporte daquela tentativa.",
+      "Ainda falta validar UID, função, range e resposta.",
+      "Recusa e timeout pedem investigações diferentes."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 13 de 34. Execução em 02/10/2026.\n\nSocket abriu em 2 ms para 127.0.0.1:1502.\n\nO resultado confirma o transporte daquela tentativa.\n\nAinda falta validar UID, função, range e resposta.\n\nRecusa e timeout pedem investigações diferentes.\n\nRecusa imediata e timeout são sintomas diferentes. Conferir listener, porta e firewall antes de analisar mapa. Se TCP abre e Modbus falha, investigar UID, FC, range, gateway e conformidade. A abertura local em 2 ms não valida o caminho até um PLC remoto.",
+    "caption": "Recorte do relatório fornecido. Página 13 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Leituras repetidas: sucesso e tipos de falha",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-20",
+    "body": [
+      "15/15 válidas, sem erros no bloco FC03 0 a 9.",
+      "Mín. 2,7 ms, mediana 2,9 ms, máx. 4,4 ms.",
+      "Timeout, exceção e falha TCP exigem diagnósticos separados.",
+      "Só os blocos habilitados entram nessa validação."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 14 de 34. Execução em 02/10/2026.\n\n15/15 válidas, sem erros no bloco FC03 0 a 9.\n\nMín. 2,7 ms, mediana 2,9 ms, máx. 4,4 ms.\n\nTimeout, exceção e falha TCP exigem diagnósticos separados.\n\nSó os blocos habilitados entram nessa validação.\n\nPossibilidades que não ocorreram neste exemplo: exceção 01 por função não suportada, 02 por range inválido, 03 por parâmetro inválido e 04 por falha ao executar a operação. Confirmar a interpretação com a documentação do destino. Timeout ou falha TCP não equivalem a exceção Modbus. Resposta com TID/UID/FC incoerentes exige analisar a conformidade da transação.",
+    "caption": "Recorte do relatório fornecido. Página 14 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Envio e recebimento: validade da transação",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-21",
+    "body": [
+      "Request/response FC03 completo e válido.",
+      "Valores de 1000 a 1009 no range solicitado.",
+      "Confirmação cobre aquela linha e aquele UID.",
+      "Valores plausíveis ainda precisam de contexto de engenharia."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 14 de 34. Execução em 02/10/2026.\n\nRequest/response FC03 completo e válido.\n\nValores de 1000 a 1009 no range solicitado.\n\nConfirmação cobre aquela linha e aquele UID.\n\nValores plausíveis ainda precisam de contexto de engenharia.\n\nResposta válida comprova a transação, sem garantir interpretação de engenharia. Valores podem exigir escala, sinal, ordem de palavras ou conversão para float. Offset incorreto pode retornar dados plausíveis do ponto errado. O exemplo local usa valores simulados de 1000 a 1009 e não medições reais do processo.",
+    "caption": "Recorte do relatório fornecido. Página 14 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Falhas observadas e conclusão: escopos diferentes",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-22",
+    "body": [
+      "Falhas observadas: zero avisos das sessões testadas.",
+      "Conclusão: 0 falhas, 2 atenções e 1 não aplicável.",
+      "Sinais TCP gerais podem coexistir com leituras locais OK.",
+      "Atenção global não equivale a falha do alvo."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 15 de 34. Execução em 02/10/2026.\n\nFalhas observadas: zero avisos das sessões testadas.\n\nConclusão: 0 falhas, 2 atenções e 1 não aplicável.\n\nSinais TCP gerais podem coexistir com leituras locais OK.\n\nAtenção global não equivale a falha do alvo.\n\nFalhas observadas usa eventos das sessões testadas desde o início da execução. Conclusão agrega também as atenções das janelas gerais de captura. Por isso zero avisos do alvo e Atenção global podem coexistir. A ausência de eventos só se refere aos sintomas e ao período monitorados.",
+    "caption": "Recorte do relatório fornecido. Página 15 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Inventário completo: origem e identidade dos IPs",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-23",
+    "body": [
+      "Fonte: ARP, sondagem e captura indicam como o IP apareceu.",
+      ".200 e .202 compartilham o MAC 00-04-17-91-c8-60.",
+      "Isso exige conferir a identidade física no inventário.",
+      "IPs e entradas ARP não são contagem segura de PLCs."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 11 de 34. Execução em 02/10/2026.\n\nFonte: ARP, sondagem e captura indicam como o IP apareceu.\n\n.200 e .202 compartilham o MAC 00-04-17-91-c8-60.\n\nIsso exige conferir a identidade física no inventário.\n\nIPs e entradas ARP não são contagem segura de PLCs.\n\nMesmo MAC em dois IPs pode envolver alias de uma CPU, gateway, proxy ARP ou configuração particular. O relatório não resolve essa identidade física. Usar inventário e anúncios para correlação. A lista completa contém também Internet, multicast e endereços especiais, sem equivaler a uma relação de PLCs.",
+    "caption": "Recorte do relatório fornecido. Página 11 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Conversas completas: tráfego relevante ao diagnóstico",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-24",
+    "body": [
+      "Origem/destino e detalhe localizam o par IP:porta.",
+      "Evidência informa TCP, UDP, ARP ou Modbus reconhecido.",
+      "Contagem indica volume observado daquela relação.",
+      "HTTPS e descoberta de nomes coexistem com o ensaio industrial."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 26 de 34. Execução em 02/10/2026.\n\nOrigem/destino e detalhe localizam o par IP:porta.\n\nEvidência informa TCP, UDP, ARP ou Modbus reconhecido.\n\nContagem indica volume observado daquela relação.\n\nHTTPS e descoberta de nomes coexistem com o ensaio industrial.\n\nAs páginas 26 a 33 preservam conversas para auditoria. Contagem de quadros HTTPS não é quantidade de leituras Modbus. Tráfego nas portas 5353, 137 ou 1900 pode corresponder a descoberta normal. Volume alto precisa de capacidade e impacto correlacionados antes de caracterizar sobrecarga.",
+    "caption": "Recorte do relatório fornecido. Página 26 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Mapa completo: confiança e notas para auditoria",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-25",
+    "body": [
+      "Endpoint/UID/FC identifica a área sondada.",
+      "Início e fim definem intervalo inclusivo aceito.",
+      "Modo ativo/client indica leitura, sem escrita.",
+      "Confiança e notas distinguem resposta válida de significado."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 34 de 34. Execução em 02/10/2026.\n\nEndpoint/UID/FC identifica a área sondada.\n\nInício e fim definem intervalo inclusivo aceito.\n\nModo ativo/client indica leitura, sem escrita.\n\nConfiança e notas distinguem resposta válida de significado.\n\nA tabela final preserva UID, função, intervalo, modo, confiança e notas. Não identifica nomes de tags, escala, endianidade, permissão de escrita ou comandos seguros. Uma faixa observada passivamente tem confiança diferente de uma leitura ativa válida. Arquivar o PDF e a configuração FFD para repetir o cenário.",
+    "caption": "Recorte do relatório fornecido. Página 34 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Contexto: operações ativas e escolha da interface",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-27",
+    "body": [
+      "Servidor local já escutava em 0.0.0.0:1502.",
+      "A Realtek venceu a seleção por maior tráfego em 2 s.",
+      "Maior tráfego não garante visibilidade do alvo loopback.",
+      "O escopo identifica serviços e carga já existentes."
+    ],
+    "notes": "Fonte: PDF fornecido por Felipe, página 9. Esta seção permite identificar o ambiente antes das novas sondagens. O software comparou interfaces, mas a NIC com maior tráfego era Ethernet e o alvo validado era 127.0.0.1. Essa diferença explica por que respostas ativas locais e ausência de frames passivos Modbus podem coexistir nas janelas. Escolher interface adequada ou um alvo LAN para ensaio real.",
+    "caption": "Recorte do relatório fornecido. Página 9 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "ARP e interfaces: vizinho conhecido versus serviço",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-28",
+    "body": [
+      "ARP relaciona IP e MAC no segmento local.",
+      "Entrada dinâmica registra resolução, sem confirmar Modbus.",
+      "Loopback não utiliza ARP e recebe Não aplicável.",
+      "Rotas e interface precisam corresponder à VLAN investigada."
+    ],
+    "notes": "Fonte: PDF fornecido por Felipe, página 11. As evidências de interfaces e rotas estão nas etapas 1 e 2. Verificar IP, máscara, gateway e interface usada para o destino. ARP ausente pode decorrer de falta de comunicação recente ou de um destino roteado, sem significar host inexistente. ARP presente não informa porta, função, mapa ou saúde atual. Roteamento incorreto exige confrontar a tabela de rotas com o inventário.",
+    "caption": "Recorte do relatório fornecido. Página 11 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Varredura de hosts: candidatos e limites de alcance",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-29",
+    "body": [
+      "34/255 candidatos responderam no CIDR avaliado.",
+      "Cinco endpoints tinham portas TCP abertas.",
+      "O procedimento levou 210,2 segundos.",
+      "Silêncio não distingue host ausente de filtragem."
+    ],
+    "notes": "Fonte: PDF fornecido por Felipe, página 11. A contagem de candidatos é a registrada pelo software e não uma contagem de PLCs. Somente portas 502, 1501 e 1502 participaram. Um host pode responder ICMP sem abrir essas portas, ou abrir TCP sem responder ICMP. Confirmar protocolo na etapa seguinte. O CIDR, timeout e limites de ritmo explicam duração e cobertura.",
+    "caption": "Recorte do relatório fornecido. Página 11 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Conclusão: agregação e validade do resultado",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-30",
+    "body": [
+      "0 falhas e 2 atenções motivam a conclusão Atenção.",
+      "Uma etapa Não aplicável não representa defeito.",
+      "A conclusão vale para alvos, blocos e janelas exercitados.",
+      "Nova execução com maior cobertura pode mudar o diagnóstico."
+    ],
+    "notes": "Fonte: PDF fornecido por Felipe, página 15. A conclusão não executa outra requisição. Ela agrega o que as etapas coletaram. Falha de um alvo não elimina resultados independentes de outros alvos. Inconclusivo, caso presente, aponta instrumentação ou dados insuficientes. Neste caso, ampliar o ensaio dos remotos e adequar a interface oferece mais informação do que tentar corrigir os sinais HTTPS como se fossem falha do PLC.",
+    "caption": "Recorte do relatório fornecido. Página 15 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Diagnóstico deste exemplo: síntese e próximos ensaios",
+    "section": "07 · Relatório real: leitura guiada",
+    "image": "relatorio-26",
+    "body": [
+      "O bloco local passou. Os alertas TCP não comprovam falha Modbus.",
+      "A NIC Ethernet não captura o alvo loopback diretamente.",
+      "Incluir .200 e .202 como alvos permite validar seus blocos.",
+      "Investigar .34 e a identidade dos MACs conforme autorização."
+    ],
+    "notes": "Recorte do relatório fornecido. Página 2 de 34. Execução em 02/10/2026.\n\nO bloco local passou. Os alertas TCP não comprovam falha Modbus.\n\nA NIC Ethernet não captura o alvo loopback diretamente.\n\nIncluir .200 e .202 como alvos permite validar seus blocos.\n\nInvestigar .34 e a identidade dos MACs conforme autorização.\n\nSíntese: o bloco local passou nas 15 leituras e os sinais HTTPS não confirmam falha Modbus. Zero frames Modbus nas janelas Ethernet não invalida respostas obtidas pela aplicação em loopback. Próximos ensaios autorizados: captura apropriada, mapas dos remotos como alvos, mais amostras para intermitência e verificação de .34. O PDF não demonstra saturação física.",
+    "caption": "Recorte do relatório fornecido. Página 2 de 34. Execução em 02/10/2026."
+  },
+  {
+    "kind": "wide",
+    "title": "Salvar configuração: repetir a mesma bancada",
+    "section": "07 · Recursos de apoio",
+    "image": "estacao",
+    "body": [
+      "Salvar .ffd: preserva servidor, mapas e sessões de clientes.",
+      "Abrir .ffd: recupera a configuração sem recriar cada alvo.",
+      "Estado em execução: exige iniciar os serviços novamente.",
+      "Relatórios e capturas: evidências do ensaio, diferentes da configuração."
+    ],
+    "notes": "Demonstre os comandos Arquivo/Salvar/Abrir disponíveis na versão. Preservar o original antes de introduzir erros de laboratório. .ffd não garante restauração de conexões ativas nem representa um dump do PLC. Conferir IPs e portas antes de reutilizar em outra rede. O print mostra a estação com os cadastros que seriam persistidos, não uma janela de arquivo."
+  },
+  {
+    "kind": "wide",
+    "title": "Ajuda e F1: consulta durante a operação",
+    "section": "07 · Recursos de apoio",
+    "image": "manual",
+    "body": [
+      "Tópicos e subtópicos: organizam operação, configuração e diagnóstico.",
+      "Pesquisa: localiza termos em títulos e conteúdo.",
+      "F1: abre a ajuda contextual quando houver tópico associado.",
+      "Referências de campos: complementam os exemplos do treinamento."
+    ],
+    "notes": "Mostre pesquisar Unit ID, CIDR, exceção02 e p95. O manual é integrado e não abre um PDF longo. Se o contexto não tiver associação específica, a ajuda geral continua disponível. Usar o manual para domínio/limites de cada campo. Screenshots e nomes dependem da versão atual. Registrar dúvidas não resolvidas para revisão posterior."
+  },
+  {
+    "kind": "wide",
+    "title": "Exercício guiado: uma leitura e seu diagnóstico",
+    "section": "08 · Demonstração final",
+    "image": "teste-execucao",
+    "body": [
+      "Bancada: servidor 127.0.0.1:1502, UID1, mapa HR0 a9.",
+      "Cliente: FC03, início0, Qtd10. Confirmar leitura e horário.",
+      "Falha controlada: início9, Qtd2. Investigar a resposta recebida.",
+      "Correção: Qtd1. Repetir, comparar e exportar os resultados."
+    ],
+    "notes": "Exercício exclusivo em laboratório. Configure referência12s, monitoramento30s, quinze tentativas e intervalo1000ms como exemplo, sem descoberta ativa de rede de produção. Primeiro confirmar mapa aplicado. No erro, fim=9+2-1=10, além de HR9, podendo retornar exceção02. Modificar somente quantidade para1 permite atribuir recuperação ao ajuste. Pedir à turma que encontre evidência na Execução, Resumo e Relatório. Concluir com próximos passos e dúvidas."
+  }
+]

@@ -603,6 +603,20 @@ public sealed partial class MainViewModel : ObservableObject
         Status = $"Caso exportado: {dialog.FileName}";
     }
 
+    [RelayCommand(CanExecute = nameof(CanConfigureFullTest))]
+    private void ClearTimelineHistory()
+    {
+        Traffic.Clear();
+        TcpTimeline.Clear();
+        FilteredTcpTimeline.Clear();
+        while (_passivePacketQueue.TryDequeue(out _))
+        {
+        }
+        QueuedPassivePackets = 0;
+        HasCompletedNetworkCapture = false;
+        Status = "Historico Modbus e TCP limpo. Avisos e resultados do teste preservados.";
+    }
+
     [RelayCommand]
     private void ClearTimeline()
     {
@@ -797,7 +811,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             Status = "Exportando relatorio...";
             await ReportExporter.ExportAsync(dialog.FileName, report, _fullTestTopologySnapshot,
-                NetworkDiscoveryRows.ToArray(), TopologyNeighbors.ToArray(), FullTestIsServerMode);
+                NetworkDiscoveryRows.ToArray(), TopologyNeighbors.ToArray(), FullTestIsServerMode, _reportTrafficRows);
             Status = $"Relatorio exportado: {dialog.FileName}";
         }
         catch (Exception ex)
@@ -1071,6 +1085,7 @@ public sealed partial class MainViewModel : ObservableObject
         SaveFullTestReportCommand.NotifyCanExecuteChanged();
         SaveDetailedFullTestReportCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanConfigureFullTest));
+        ClearTimelineHistoryCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnIsNetworkCaptureRunningChanged(bool value)

@@ -124,6 +124,8 @@ public sealed partial class MainViewModel
 
     private string BuildFullTestReport()
     {
+        _reportTrafficRows = TcpTimeline.Where(x => x.Timestamp >= _fullTestStartedAt
+            && x.Timestamp <= (_fullTestFinishedAt ?? DateTimeOffset.Now)).OrderBy(x => x.Timestamp).ToArray();
         var text = new StringBuilder();
         var end = _fullTestFinishedAt ?? DateTimeOffset.Now;
         text.AppendLine("# Diagnostico Modbus TCP");
@@ -232,6 +234,7 @@ public sealed partial class MainViewModel
                 ? "Nas janelas com pacotes, nao foram detectados RST, zero-window ou segmentos repetidos. Isso nao comprova ausencia de falhas fora da captura."
                 : "Ha indicadores TCP nas janelas capturadas; correlacionar endereco, horario e falhas Modbus. RST pode representar encerramento intencional; segmentos repetidos nao comprovam perda fisica.");
         text.AppendLine();
+        text.AppendLine(BuildTimelineTrafficReport(10));
         text.AppendLine(BuildTopologyReport());
         text.AppendLine("## Apendice tecnico");
         text.AppendLine(BuildTechnicalAppendix());
@@ -240,7 +243,7 @@ public sealed partial class MainViewModel
 
     private string BuildDetailedFullTestReport(string summary)
     {
-        var text = new StringBuilder(summary);
+        var text = new StringBuilder(summary.Replace(BuildTimelineTrafficReport(10), BuildTimelineTrafficReport(20), StringComparison.Ordinal));
         text.AppendLine();
         text.AppendLine("## Evidencias completas da execucao");
         text.AppendLine("Esta secao preserva dados brutos para auditoria. Linhas ARP, conversas e enderecos IP nao demonstram, isoladamente, dispositivos Modbus distintos nem falha fisica.");

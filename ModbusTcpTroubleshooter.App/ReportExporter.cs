@@ -10,7 +10,8 @@ namespace ModbusTcpTroubleshooter.App;
 public static class ReportExporter
 {
     public static async Task ExportAsync(string path, string markdown, IReadOnlyList<TopologyLink>? topology = null,
-        IReadOnlyList<NetworkDiscoveryRow>? devices = null, IReadOnlyList<NeighborAdvertisement>? neighbors = null, bool serverMode = false)
+        IReadOnlyList<NetworkDiscoveryRow>? devices = null, IReadOnlyList<NeighborAdvertisement>? neighbors = null, bool serverMode = false,
+        IReadOnlyList<TcpTimelineRow>? traffic = null)
     {
         var extension = Path.GetExtension(path);
         if (!extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
@@ -19,6 +20,21 @@ public static class ReportExporter
         if (string.IsNullOrWhiteSpace(markdown)) throw new ArgumentException("Relatorio vazio.", nameof(markdown));
 
         var images = new Dictionary<string, byte[]>();
+        if (traffic is { Count: > 0 })
+        {
+            var snapshot = traffic.OrderBy(x => x.Timestamp).ToArray();
+            var fileName = Path.GetFileNameWithoutExtension(path) + ".trafego-01.png";
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            images.Add(fileName, dispatcher is not null && !dispatcher.CheckAccess()
+                ? dispatcher.Invoke(() => ReportTrafficCharts.Render(snapshot)) : ReportTrafficCharts.Render(snapshot));
+            var last = snapshot[^1].Timestamp;
+            var seconds = Math.Min(60, Math.Max(2, (int)Math.Ceiling((last - snapshot[0].Timestamp).TotalSeconds) + 1));
+            var content = "### Graficos de pacotes e bytes\n\n"
+                + $"![Taxas de trafego](<{fileName}>)\n\n"
+                + $"Contagens por segundo nos ultimos {seconds} intervalos de calendario da amostra retida, terminando em {last:yyyy-MM-dd HH:mm:ss.fff zzz}. Primeiro e ultimo intervalos podem ser parciais. Zero significa nenhum quadro retido naquele intervalo, nao ausencia comprovada de trafego. O pico visual pode diferir do pico em segundos completos do resumo.\n\n";
+            var index = markdown.IndexOf("### Distribuicao por protocolo", StringComparison.Ordinal);
+            markdown = index >= 0 ? markdown.Insert(index, content) : markdown + "\n" + content;
+        }
         var relevantTopology = topology?.Where(x => x.Evidence is "Modbus confirmado" or "Captura Modbus TCP"
             || x.Evidence.EndsWith(" anunciado", StringComparison.Ordinal)).ToArray() ?? [];
         var overview = ModbusTopologyOverview.Build(devices ?? [], relevantTopology, neighbors ?? [], serverMode);
@@ -125,9 +141,9 @@ public static class ReportExporter
             var line = lines[i];
             if (line.StartsWith("```", StringComparison.Ordinal)) { code = !code; continue; }
             if (!code && string.IsNullOrWhiteSpace(line)) continue;
-            if (!code && line.StartsWith("![Topologia observada](<", StringComparison.Ordinal))
+            if (!code && line.StartsWith("![", StringComparison.Ordinal) && line.Contains("](<", StringComparison.Ordinal))
             {
-                var name = line["![Topologia observada](<".Length..].TrimEnd(')', '>');
+                var name = line[(line.IndexOf("](<", StringComparison.Ordinal) + 3)..].TrimEnd(')', '>');
                 if (images.TryGetValue(name, out var bytes))
                 {
                     var imageParagraph = section.AddParagraph();
